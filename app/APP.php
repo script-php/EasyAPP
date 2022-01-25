@@ -20,13 +20,11 @@
 ** APP::IP();
 ** APP::RANDOM($minlength=5, $maxlength=5, $uselower=true, $useupper=true, $usenumbers=true, $usespecial=false);
 ** APP::MAIL($to, $subject, $message);
-** APP::CALL("function_name")(arguments);
+** APP::FUNCTION("function_name", $functions_args...);
+** APP::CLASS("class_name", $class_args...);
 */
 
 
-/*
-** TODO: make a function to load (include) and use a class witout to include all classes from a folder...
-*/
 
 
 class APP {
@@ -181,10 +179,16 @@ class APP {
 	}
 	
 	
-	//UTIL::CALL("oFunctie")("param 1", "param 2");
-	public static function CALL($function) {
+	public static function FUNCTION($function, ...$args) {
 		include self::$folder_functions.'/'.$function.'.function.php';
+		$function = $function(...$args);
 		return $function;
+	}
+	
+	public static function CLASS($class, ...$args) {
+		include self::$folder_classes.'/'.$class.'.class.php';
+		$class = new $class(...$args);
+		return $class;
 	}
 	
 	public static function TextIntegrity(string $text) {
