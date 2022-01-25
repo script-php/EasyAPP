@@ -20,11 +20,12 @@
 ** APP::IP();
 ** APP::RANDOM($minlength=5, $maxlength=5, $uselower=true, $useupper=true, $usenumbers=true, $usespecial=false);
 ** APP::MAIL($to, $subject, $message);
+** APP::CALL("function_name")(arguments);
 */
 
 
 /*
-** TODO: make a function to load and use a class witout to include all classes...
+** TODO: make a function to load (include) and use a class witout to include all classes from a folder...
 */
 
 
@@ -180,8 +181,8 @@ class APP {
 	}
 	
 	
-	//UTIL::call("oFunctie")("param 1", "param 2");
-	public static function call($function) {
+	//UTIL::CALL("oFunctie")("param 1", "param 2");
+	public static function CALL($function) {
 		include self::$folder_functions.'/'.$function.'.function.php';
 		return $function;
 	}
