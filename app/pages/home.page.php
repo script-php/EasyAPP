@@ -4,7 +4,15 @@
 //e.g.
 
 //use a class 
-APP::CLASS("NameOfTheClass", "123", "321", "aaa")->a("plm");
+$class = APP::CLASS("NameOfTheClass", "123", "321", "aaa");
+$class->a("using a class");
+
+echo '<br/>';
+
+//use a static class
+echo APP::CLASS("staticClass")::a("test static class");
+
+echo '<br/>';
 
 //use a function
 $body = APP::FUNCTION("testFunction", "Home page content");

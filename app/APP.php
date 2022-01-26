@@ -14,7 +14,7 @@
 ** APP::checkChars($text,"allowed characters");
 ** APP::TextIntegrity($text);
 ** APP::FINGERPRINT();
-** APP::TextTemplate(string $text,array $params=NULL);
+** APP::TEXT(string $text,array $params=NULL);
 ** APP::FILE($path);
 ** APP::REDIRECT($address);
 ** APP::IP();
@@ -180,13 +180,33 @@ class APP {
 	
 	
 	public static function FUNCTION($function, ...$args) {
-		include self::$folder_functions.'/'.$function.'.function.php';
+		$included = false;
+		if(!function_exists($function)) {
+			if(!file_exists(self::$folder_functions.'/'.$function.'.function.php')) { exit("The \"{$function}\" function file does not exist."); }
+			else {
+				$included = true;
+				include self::$folder_functions.'/'.$function.'.function.php';
+			}
+			if(!function_exists($function) && $included) {
+				exit("The \"{$function}\" function file was loaded but probably the function have a different name.");
+			}
+		}
 		$function = $function(...$args);
 		return $function;
 	}
 	
 	public static function CLASS($class, ...$args) {
-		include self::$folder_classes.'/'.$class.'.class.php';
+		$included = false;
+		if(!class_exists($class)) {
+			if(!file_exists(self::$folder_classes.'/'.$class.'.class.php')) { exit("The \"{$class}\" class file does not exist."); }
+			else {
+				$included = true;
+				include self::$folder_classes.'/'.$class.'.class.php';
+			}
+			if(!class_exists($class) && $included) {
+				exit("The \"{$class}\" class file was loaded but probably the class have a different name.");
+			}
+		}
 		$class = new $class(...$args);
 		return $class;
 	}
@@ -236,7 +256,7 @@ class APP {
 			
 	}
 	
-	public static function TextTemplate(string $text,array $params=NULL) {
+	public static function TEXT(string $text,array $params=NULL) {
 		if($params != NULL) {
 			foreach($params as $param => $value) {
 				$text = str_replace('{'.strtoupper($param).'}',$value,$text);
