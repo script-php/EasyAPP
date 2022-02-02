@@ -5,8 +5,8 @@
 ** @Created: 23.01.2022
 **
 ** APP::RENDER_PAGES();
-** APP::RENDER_TEMPLATE($path_file_html, [array]);
-** APP::RENDER_JSON([array]);
+** APP::HTML($path_file_html, [array]);
+** APP::JSON([array]);
 ** APP::POST($name, [options]);
 ** APP::GET($name, [options]);
 ** APP::Chars2HTML($text);
@@ -22,12 +22,22 @@
 ** APP::MAIL($to, $subject, $message);
 ** APP::FUNCTION("function_name", $functions_args...);
 ** APP::CLASS("class_name", $class_args...);
+** APP::PDO($servername,$host,$name,$user,$pass,$options,$encoding);
+** APP::QUERY($servername, $query, $array_params);
+** APP::VAR('the_name_of_internal_variable', 'value'); to set a value OR
+** APP::VAR('the_name_of_internal_variable') to get the value
 */
 
 
 
 
 class APP {
+	
+	public static $variable = array();
+	
+	private static $conn = array();
+	
+	private static $queries = 0;
 	
 	public static $get_page = "page";
 	
@@ -44,6 +54,72 @@ class APP {
 	private static $characters = array('\'','-','_','~','`','@','$','^','*','(',')','=','[',']','{','}','"','“','”','\\','|','?','.','>','<',',',':','/','+');
 	
 	private static $html = array('&#39;','&#45;','&#95;','&#126;','&#96;','&#64;','&#36;','&#94;','&#42;','&#40;','&#41;','&#61;','&#91;','&#93;','&#123;','&#125;','&#34;','&#8220;','&#8221;','&#92;','&#124;','&#63;','&#46;','&#62;','&#60;','&#44;','&#58;','&#47;','&#43;');
+	
+	
+	public static function PDO($servername,$host,$name,$user,$pass,$options=NULL,$encoding='utf8') {
+		$conn = '';
+		if(class_exists('PDO')) {
+			try{
+				if($options == NULL) {
+					$options = [
+						PDO::MYSQL_ATTR_INIT_COMMAND        => "SET NAMES {$encoding}",
+						PDO::ATTR_PERSISTENT                => true, // Long connection
+						PDO::ATTR_EMULATE_PREPARES          => false, // turn off emulation mode for "real" prepared statements
+						PDO::ATTR_DEFAULT_FETCH_MODE        => PDO::FETCH_ASSOC, //make the default fetch be an associative array
+						PDO::MYSQL_ATTR_USE_BUFFERED_QUERY  => true,
+						PDO::ATTR_ERRMODE                   => PDO::ERRMODE_EXCEPTION, //turn on errors in the form of exceptions
+					];
+				}
+				else {
+					$options = $options;
+				}
+				$conn = new PDO("mysql:host={$host};dbname={$name}",$user,$pass,$options);
+				$conn -> exec("SET character_set_client='{$encoding}',character_set_connection='{$encoding}',character_set_results='{$encoding}';");
+				return self::$conn[$servername] = $conn;
+			}
+			catch(PDOException $e) {
+				exit($e->getMessage());
+			}
+		}
+		else {
+			exit('PDO is not installed on this server.');
+		}
+	}
+	
+	public static function QUERY($servername, $query, $params=NULL) {
+
+		if(!isSet($query)){ $query=NULL; }
+		if(!isSet($params)){ $params=NULL; }
+		
+		if(self::$conn[$servername] instanceof PDO) {
+			if($query!=NULL) {
+				$stmt = self::$conn[$servername] -> prepare($query);
+				if($params != NULL) {
+					foreach($params as $param => &$value) {
+						
+						$varType = ((is_null($value) ? \PDO::PARAM_NULL : is_bool($value)) ? \PDO::PARAM_BOOL : is_int($value)) ? \PDO::PARAM_INT : \PDO::PARAM_STR;
+						
+						$stmt -> bindParam($param, $value, $varType);
+					}
+				}
+				$stmt -> execute();
+				self::$queries++;
+				return  $stmt; 
+			}
+			else {
+				exit("Ohh, come on! Really? What do you want to do with this function if you not make a query?");
+			}
+		}
+		else {
+			exit('Why you bully this class? That thing you set there is not initiated by the PDO, so I think it\'s not a database. Do something good for this project and put a database ... You Mother Fucker.');
+		}
+
+	}
+	
+	//TODO: do it to show the number of queries per server
+	public function QUERIES() {
+		return self::$queries;
+	}
 	
 	
 	public static function RENDER_PAGES() {
@@ -71,7 +147,7 @@ class APP {
 	}
 	
 	
-	public static function RENDER_TEMPLATE($path,$array=NULL) {
+	public static function HTML($path,$array=NULL) {
 		if(file_exists($path)) {
 			ob_start();
 			include $path;
@@ -91,7 +167,7 @@ class APP {
 	}
 	
 	
-	public static function RENDER_JSON($Response) {
+	public static function JSON($Response) {
 		header('Content-type: text/json;charset=UTF-8');
 		echo json_encode($Response);
 	}
@@ -313,6 +389,15 @@ class APP {
 			return FALSE;
 		}
 
+	}
+	
+	public static function VAR($var, $value = NULL) {
+		if($value === NULL) {
+			return self::$variable[$var];
+		}
+		else {
+			self::$variable[$var] = $value;
+		}
 	}
 	
 }

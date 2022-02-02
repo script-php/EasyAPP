@@ -7,4 +7,12 @@ APP::$folder_page		= "app/pages"; //the location of the page files folder
 APP::$folder_functions	= "app/functions"; //the location of the functions files folder
 APP::$folder_classes	= "app/classes"; //the location of the classes files folder
 
+//set a connection to a database called "main" or whatever name you want to have.
+// APP::PDO('main','localhost','main','root','');
+
+//we can use multiple database connections if we need that. Just use a different name for every connection
+// APP::PDO('db2','localhost','database2','root','');
+// APP::PDO('db3','localhost','database3','root','');
+// APP::PDO('backup','localhost','backup','root','');
+
 ?>
