@@ -27,14 +27,14 @@ $files = APP::QUERY("db2", "SELECT * FROM files");
 
 
 
-//use a class 
+//use a method of a class 
 $class = APP::CLASS("NameOfTheClass", "123", "321", "aaa");
 $class->a("using a class");
 echo '<br/>';
 
 
 
-//use a static class
+//use a static method of a class
 echo APP::CLASS("staticClass")::a("test static class");
 echo '<br/>';
 
