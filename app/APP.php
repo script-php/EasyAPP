@@ -155,8 +155,7 @@ class APP {
 			ob_end_clean();
 		}
 		else { exit('File "'.$path.'" does not exist.'); }
-		if($array == NULL) { $path = $path; }
-		else {
+		if($array != NULL) {
 			foreach($array as $key => $value) { $path = str_replace('{'.strtoupper($key).'}',$value,$path); }
 			$path = $path;
 		}
