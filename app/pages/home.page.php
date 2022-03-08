@@ -2,6 +2,25 @@
 //write your logical code here
 //example:
 
+// prevent csrf on get
+if(APP::GET_CSRF()) {
+	echo 'get ok';
+}
+else {
+	echo 'get not ok';
+}
+
+echo '<br/>';
+
+// prevent csrf on post
+if(APP::POST_CSRF()) {
+	echo 'post ok';
+}
+else {
+	echo 'post not ok';
+}
+
+echo '<br/>';
 
 
 // do something for logged users

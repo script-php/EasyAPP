@@ -26,9 +26,9 @@
 ** APP::QUERY($servername, $query, $array_params);
 ** APP::VAR('the_name_of_internal_variable', 'value'); to set a value OR
 ** APP::VAR('the_name_of_internal_variable') to get the value
+** APP::POST_CSRF() : boolean
+** APP::GET_CSRF() : boolean
 */
-
-
 
 
 class APP {
@@ -54,8 +54,7 @@ class APP {
 	private static $characters = array('\'','-','_','~','`','@','$','^','*','(',')','=','[',']','{','}','"','“','”','\\','|','?','.','>','<',',',':','/','+');
 	
 	private static $html = array('&#39;','&#45;','&#95;','&#126;','&#96;','&#64;','&#36;','&#94;','&#42;','&#40;','&#41;','&#61;','&#91;','&#93;','&#123;','&#125;','&#34;','&#8220;','&#8221;','&#92;','&#124;','&#63;','&#46;','&#62;','&#60;','&#44;','&#58;','&#47;','&#43;');
-	
-	
+
 	public static function PDO($servername,$host,$name,$user,$pass,$options=NULL,$encoding='utf8') {
 		$conn = '';
 		if(class_exists('PDO')) {
@@ -123,30 +122,23 @@ class APP {
 	
 	
 	public static function RENDER_PAGES() {
-		
 		$page = self::GET(self::$get_page, ['type'=>'alphabetic']);
-		
 		if(self::checkChars($page, "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.-_")) {
-
 			if($page == NULL) {
 				$page = self::$index_page;
 			}
-
 			if(file_exists(self::$folder_page.'/'.$page.'.page.php')) {
 				include self::$folder_page.'/'.$page.'.page.php';
 			}
 			else {
 				include self::$folder_page.'/'.self::$error_page.'.page.php';
 			}
-			
 		}
 		else {
 			exit();
 		}
-		
 	}
-	
-	
+
 	public static function HTML($path,$array=NULL) {
 		if(file_exists($path)) {
 			ob_start();
@@ -164,14 +156,12 @@ class APP {
 		$path = preg_replace("/[\n\r]/","",$path);
 		return $path;
 	}
-	
-	
+
 	public static function JSON($Response) {
 		header('Content-type: text/json;charset=UTF-8');
 		echo json_encode($Response);
 	}
-	
-	
+
 	private static function OPTIONS(string $value, array $options = NULL) {
 		if($options != NULL) {
 			$filter = array_key_exists('filter', $options) ? $options['filter'] : NULL;
@@ -187,7 +177,6 @@ class APP {
 				}
 			}
 			if($type != NULL) {
-				
 				if (preg_match('/[a-zA-Z]/', $value) && preg_match('/[0-9]/', $value)) {
 					$valueType = "alphanumeric";
 					if(preg_match('/[^a-zA-Z0-9]/', $value)) {
@@ -206,11 +195,9 @@ class APP {
 						$valueType = "numeric+";
 					}
 				}
-				
 				if($valueType != strtolower($type)) {
 					$value = NULL;
 				}
-				
 			}
 		}
 		return $value;
@@ -241,7 +228,6 @@ class APP {
 	}
 	
 	public static function checkChars($text, $allowed_characters) {
-	
 		for($nr=0; $nr<strlen($text); $nr++) {
 			$str = substr($text,$nr,1);
 			$cate = substr_count($allowed_characters,$str);
@@ -250,9 +236,7 @@ class APP {
 			}
 		}
 		return TRUE;
-
 	}
-	
 	
 	public static function FUNCTION($function, ...$args) {
 		$included = false;
@@ -287,16 +271,12 @@ class APP {
 	}
 	
 	public static function TextIntegrity(string $text) {
-	
 		$text = preg_replace("/^[\t|\s|\r|\n]+/", "", $text);
 		$text = preg_replace("/[\t|\s|\r|\n]+$/", "", $text);
-		
 		return $text;
-		
 	}
 	
 	public static function FINGERPRINT(int $x = NULL) {
-	
 		$string = $_SERVER['HTTP_USER_AGENT'];
 		$bracket_place = 0;
 		$bracket_start = NULL;
@@ -319,7 +299,6 @@ class APP {
 			
 			# Set -1 everytime I find an closing bracket
 			if($split[$i] == ")") { $bracket_place--; }
-			
 		}
 		if(count($return) === 0 || $x < 0 || $x > count($return)-1) {
 			return NULL;
@@ -328,7 +307,6 @@ class APP {
 			return implode(' ~ ', $return);
 		}
 		return $return[$x];
-			
 	}
 	
 	public static function TEXT(string $text,array $params=NULL) {
@@ -376,7 +354,6 @@ class APP {
 	
 	public static function MAIL($to, $subject, $message) {
 		GLOBAL $config;
-	
 		if(filter_var($to, FILTER_VALIDATE_EMAIL)) {
 			$headers = "From: " . $config['email'] . "\r\n";
 			$headers .= "MIME-Version: 1.0\r\n";
@@ -387,7 +364,6 @@ class APP {
 		else{
 			return FALSE;
 		}
-
 	}
 	
 	public static function VAR($var, $value = NULL) {
@@ -398,5 +374,32 @@ class APP {
 			self::$variable[$var] = $value;
 		}
 	}
+
+	public static function CONTAINS(string $haystack = NULL, string $needle = NULL) {
+		if($haystack == NULL || $needle == NULL) {
+			return false;
+		}
+		return function_exists('str_contains') ? (str_contains($haystack, $needle)?true:false) : (strpos($haystack, $needle) ? true : false);
+	}
+	
+    public static function POST_CSRF() {
+		if ($_SERVER['REQUEST_METHOD']==='POST') {
+			$hostname = !is_null($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : NULL;
+			if(APP::CONTAINS($_SERVER['HTTP_ORIGIN'],$hostname)) {
+				return true;
+			}
+        }
+		return false;
+    }
+
+    public static function GET_CSRF() {
+		if ($_SERVER['REQUEST_METHOD']==='GET') {
+			$hostname = !is_null($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : NULL;
+			if(APP::CONTAINS($_SERVER['HTTP_REFERER'],$hostname)) {
+				return true;
+			}
+        }
+		return false;
+    }
 	
 }
