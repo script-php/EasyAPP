@@ -6,7 +6,7 @@
 **
 ** APP::RENDER_PAGES();
 ** APP::HTML($path_file_html, [array]);
-** APP::JSON([array]);
+** APP::JSON([array],boolean); // will return json if 2nd param is false or will print it with text/json header
 ** APP::POST($name, [options]);
 ** APP::GET($name, [options]);
 ** APP::Chars2HTML($text);
@@ -26,6 +26,7 @@
 ** APP::QUERY($servername, $query, $array_params);
 ** APP::VAR('the_name_of_internal_variable', 'value'); to set a value OR
 ** APP::VAR('the_name_of_internal_variable') to get the value
+** APP::CONTAINS(string $haystack, string $needle) : boolean
 ** APP::POST_CSRF() : boolean
 ** APP::GET_CSRF() : boolean
 */
@@ -157,9 +158,15 @@ class APP {
 		return $path;
 	}
 
-	public static function JSON($Response) {
-		header('Content-type: text/json;charset=UTF-8');
-		echo json_encode($Response);
+	public static function JSON($Response, $header=TRUE) {
+		$json = json_encode($Response);
+		if($header) {
+			header('Content-type: text/json;charset=UTF-8');
+			echo $json;
+		}
+		else {
+			return $json;
+		}
 	}
 
 	private static function OPTIONS(string $value, array $options = NULL) {
@@ -388,9 +395,9 @@ class APP {
 			if(APP::CONTAINS($_SERVER['HTTP_ORIGIN'],$hostname)) {
 				return true;
 			}
-        }
+		}
 		return false;
-    }
+	}
 
     public static function GET_CSRF() {
 		if ($_SERVER['REQUEST_METHOD']==='GET') {
@@ -398,8 +405,8 @@ class APP {
 			if(APP::CONTAINS($_SERVER['HTTP_REFERER'],$hostname)) {
 				return true;
 			}
-        }
+		}
 		return false;
-    }
+	}
 	
 }
