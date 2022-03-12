@@ -6,7 +6,7 @@
 **
 ** APP::RENDER_PAGES();
 ** APP::HTML($path_file_html, [array]);
-** APP::JSON([array],boolean); // will return json if 2nd param is false or will print it with text/json header
+** APP::JSON([array],boolean); // will return json if 2nd param is false or will print it with text/json header by default
 ** APP::POST($name, [options]);
 ** APP::GET($name, [options]);
 ** APP::Chars2HTML($text);
@@ -31,29 +31,28 @@
 ** APP::GET_CSRF() : boolean
 */
 
-
 class APP {
-	
+
 	public static $variable = array();
-	
+
 	private static $conn = array();
-	
+
 	private static $queries = 0;
-	
+
 	public static $get_page = "page";
-	
+
 	public static $index_page = "home";
-	
+
 	public static $error_page = "404";
-	
+
 	public static $folder_page = "app/pages";
-	
+
 	public static $folder_functions = "app/functions";
-	
+
 	public static $folder_classes = "app/classes";
-	
+
 	private static $characters = array('\'','-','_','~','`','@','$','^','*','(',')','=','[',']','{','}','"','“','”','\\','|','?','.','>','<',',',':','/','+');
-	
+
 	private static $html = array('&#39;','&#45;','&#95;','&#126;','&#96;','&#64;','&#36;','&#94;','&#42;','&#40;','&#41;','&#61;','&#91;','&#93;','&#123;','&#125;','&#34;','&#8220;','&#8221;','&#92;','&#124;','&#63;','&#46;','&#62;','&#60;','&#44;','&#58;','&#47;','&#43;');
 
 	public static function PDO($servername,$host,$name,$user,$pass,$options=NULL,$encoding='utf8') {
@@ -85,12 +84,10 @@ class APP {
 			exit('PDO is not installed on this server.');
 		}
 	}
-	
-	public static function QUERY($servername, $query, $params=NULL) {
 
+	public static function QUERY($servername, $query, $params=NULL) {
 		if(!isSet($query)){ $query=NULL; }
 		if(!isSet($params)){ $params=NULL; }
-		
 		if(self::$conn[$servername] instanceof PDO) {
 			if($query!=NULL) {
 				$stmt = self::$conn[$servername] -> prepare($query);
@@ -113,21 +110,20 @@ class APP {
 		else {
 			exit('Why you bully this class? That thing you set there is not initiated by the PDO, so I think it\'s not a database. Do something good for this project and put a database ... You Mother Fucker.');
 		}
-
 	}
-	
+
 	//TODO: do it to show the number of queries per server
 	public function QUERIES() {
 		return self::$queries;
 	}
-	
-	
+
 	public static function RENDER_PAGES() {
-		$page = self::GET(self::$get_page, ['type'=>'alphabetic']);
+		$page = self::GET(self::$get_page);
 		if(self::checkChars($page, "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.-_")) {
 			if($page == NULL) {
 				$page = self::$index_page;
 			}
+
 			if(file_exists(self::$folder_page.'/'.$page.'.page.php')) {
 				include self::$folder_page.'/'.$page.'.page.php';
 			}
@@ -209,7 +205,7 @@ class APP {
 		}
 		return $value;
 	}
-	
+
 	public static function POST(string $name, array $options = NULL) {
 		$return = NULL;
 		if(isset($_POST[$name]) && $_POST[$name] != '') {
@@ -217,7 +213,7 @@ class APP {
 		}
 		return $return;
 	}
-	
+
 	public static function GET(string $name, array $options = NULL) {
 		$return = NULL;
 		if(isset($_GET[$name]) && $_GET[$name] != '') {
@@ -225,15 +221,15 @@ class APP {
 		}
 		return $return;
 	}
-	
+
 	public static function Chars2HTML($text) {
 		return str_replace(self::$characters, self::$html, $text);
 	}
-	
+
 	public static function HTML2Chars($text) {
 		return str_replace(self::$html, self::$characters, $text);
 	}
-	
+
 	public static function checkChars($text, $allowed_characters) {
 		for($nr=0; $nr<strlen($text); $nr++) {
 			$str = substr($text,$nr,1);
@@ -244,7 +240,7 @@ class APP {
 		}
 		return TRUE;
 	}
-	
+
 	public static function FUNCTION($function, ...$args) {
 		$included = false;
 		if(!function_exists($function)) {
@@ -260,7 +256,7 @@ class APP {
 		$function = $function(...$args);
 		return $function;
 	}
-	
+
 	public static function CLASS($class, ...$args) {
 		$included = false;
 		if(!class_exists($class)) {
@@ -276,34 +272,29 @@ class APP {
 		$class = new $class(...$args);
 		return $class;
 	}
-	
+
 	public static function TextIntegrity(string $text) {
 		$text = preg_replace("/^[\t|\s|\r|\n]+/", "", $text);
 		$text = preg_replace("/[\t|\s|\r|\n]+$/", "", $text);
 		return $text;
 	}
-	
+
 	public static function FINGERPRINT(int $x = NULL) {
 		$string = $_SERVER['HTTP_USER_AGENT'];
 		$bracket_place = 0;
 		$bracket_start = NULL;
 		$return = array();
-			
 		$split = str_split( $string );
 		for($i=0;$i<count($split);$i++) {
-			
 			# Set +1 everytime I find an opening bracket
 			if($split[$i] == "(") { $bracket_place++; }
-			
 			# Save the position of the first opening bracket
 			if($split[$i] === "(" && $bracket_place === 1) { $bracket_start = $i; }
-
 			# When I find the last closing bracket I store in array the positions of the opening and closing brackets
 			if($split[$i] === ")" && $bracket_place === 1) {
 				$return[] = substr($string, ($bracket_start+1), (($i-$bracket_start)-1));
 				$bracket_start = NULL;
 			}	
-			
 			# Set -1 everytime I find an closing bracket
 			if($split[$i] == ")") { $bracket_place--; }
 		}
@@ -315,7 +306,7 @@ class APP {
 		}
 		return $return[$x];
 	}
-	
+
 	public static function TEXT(string $text,array $params=NULL) {
 		if($params != NULL) {
 			foreach($params as $param => $value) {
@@ -324,7 +315,7 @@ class APP {
 		}
 		return $text;
 	}
-	
+
 	public static function FILE($path) {
 		$patch = NULL;
 		if(file_exists($path)) {
@@ -336,16 +327,16 @@ class APP {
 		}
 		else { exit('File "'.$path.'" does not exist.'); }
 	}
-	
+
 	public static function REDIRECT($address) {
 		header('Location: '.$address);
 		exit;
 	}
-	
+
 	public static function IP() {
 		return $_SERVER['HTTP_CLIENT_IP'] ?? $_SERVER["HTTP_CF_CONNECTING_IP"] ?? $_SERVER['HTTP_X_FORWARDED'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_FORWARDED'] ?? $_SERVER['HTTP_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 	}
-	
+
 	public static function RANDOM($minlength=5, $maxlength=5, $uselower=true, $useupper=true, $usenumbers=true, $usespecial=false) {
 		$charset = '';
 		$key = '';
@@ -358,7 +349,7 @@ class APP {
 		for ($i = 0; $i < $length; $i++) { $key .= $charset[(mt_rand(0, strlen($charset) - 1))]; }
 		return $key;
 	}
-	
+
 	public static function MAIL($to, $subject, $message) {
 		GLOBAL $config;
 		if(filter_var($to, FILTER_VALIDATE_EMAIL)) {
@@ -372,7 +363,7 @@ class APP {
 			return FALSE;
 		}
 	}
-	
+
 	public static function VAR($var, $value = NULL) {
 		if($value === NULL) {
 			return self::$variable[$var];
@@ -388,7 +379,7 @@ class APP {
 		}
 		return function_exists('str_contains') ? (str_contains($haystack, $needle)?true:false) : (strpos($haystack, $needle) ? true : false);
 	}
-	
+
     public static function POST_CSRF() {
 		if ($_SERVER['REQUEST_METHOD']==='POST') {
 			$hostname = !is_null($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : NULL;
