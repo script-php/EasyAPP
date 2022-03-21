@@ -56,7 +56,7 @@ class APP {
 
 	protected static $fileExt = '.class.php';
 	
-    protected static $fileIterator = NULL;
+	protected static $fileIterator = NULL;
 
 	public static function PDO($servername,$host,$name,$user,$pass,$options=NULL,$encoding='utf8') {
 		$conn = '';
@@ -389,23 +389,23 @@ class APP {
 	}
 
 	public static function loader($className) {
-        $directory = new RecursiveDirectoryIterator(self::$folder_classes, RecursiveDirectoryIterator::SKIP_DOTS);
-        if (is_null(static::$fileIterator)) {
-            static::$fileIterator = new RecursiveIteratorIterator($directory, RecursiveIteratorIterator::LEAVES_ONLY);
-        }
-        $filename = $className . static::$fileExt;
-        foreach (static::$fileIterator as $file) {
-            if (strtolower($file->getFilename()) === strtolower($filename)) {
-                if ($file->isReadable()) {
-                    include_once $file->getPathname();
-                }
-                break;
-            }
-        }
-    }
+		$directory = new RecursiveDirectoryIterator(self::$folder_classes, RecursiveDirectoryIterator::SKIP_DOTS);
+		if (is_null(static::$fileIterator)) {
+			static::$fileIterator = new RecursiveIteratorIterator($directory, RecursiveIteratorIterator::LEAVES_ONLY);
+		}
+		$filename = $className . static::$fileExt;
+		foreach (static::$fileIterator as $file) {
+			if (strtolower($file->getFilename()) === strtolower($filename)) {
+			if ($file->isReadable()) {
+					include_once $file->getPathname();
+				}
+				break;
+			}
+		}
+	}
 
-    public static function setFileExt($fileExt) {
-        static::$fileExt = $fileExt;
-    }
-	
+	public static function setFileExt($fileExt) {
+		static::$fileExt = $fileExt;
+	}
+
 }
