@@ -1,7 +1,7 @@
 <?php
 /*
 ** @Name: EasyAPP
-** @Author: Glitch3R(YoYo)
+** @Author: YoYoDeveloper
 ** @Created: 23.01.2022
 ** @Version: 1.0.0
 */
