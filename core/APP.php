@@ -1,9 +1,7 @@
 <?php
 /*
-** @File: APP.php
-** @Author: Glitch3R(YoYo)
-** @Created: 23.01.2022
-**
+** Utils methods from APP:
+** 
 ** APP::RENDER_PAGES();
 ** APP::HTML($path_file_html, [array]);
 ** APP::JSON([array],boolean); // will return json if 2nd param is false or will print it with text/json header by default
