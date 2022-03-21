@@ -21,7 +21,6 @@
 ** APP::RANDOM($minlength=5, $maxlength=5, $uselower=true, $useupper=true, $usenumbers=true, $usespecial=false);
 ** APP::MAIL($to, $subject, $message);
 ** APP::FUNCTION("function_name", $functions_args...);
-** APP::CLASS("class_name", $class_args...);
 ** APP::PDO($servername,$host,$name,$user,$pass,$options,$encoding);
 ** APP::QUERY($servername, $query, $array_params);
 ** APP::VAR('the_name_of_internal_variable', 'value'); to set a value OR
@@ -54,6 +53,10 @@ class APP {
 	private static $characters = array('\'','-','_','~','`','@','$','^','*','(',')','=','[',']','{','}','"','“','”','\\','|','?','.','>','<',',',':','/','+');
 
 	private static $html = array('&#39;','&#45;','&#95;','&#126;','&#96;','&#64;','&#36;','&#94;','&#42;','&#40;','&#41;','&#61;','&#91;','&#93;','&#123;','&#125;','&#34;','&#8220;','&#8221;','&#92;','&#124;','&#63;','&#46;','&#62;','&#60;','&#44;','&#58;','&#47;','&#43;');
+
+	protected static $fileExt = '.class.php';
+	
+    protected static $fileIterator = NULL;
 
 	public static function PDO($servername,$host,$name,$user,$pass,$options=NULL,$encoding='utf8') {
 		$conn = '';
@@ -241,7 +244,7 @@ class APP {
 		return TRUE;
 	}
 
-	public static function FUNCTION($function, ...$args) {
+	public static function FUNCTION($function) {
 		$included = false;
 		if(!function_exists($function)) {
 			if(!file_exists(self::$folder_functions.'/'.$function.'.function.php')) { exit("The \"{$function}\" function file does not exist."); }
@@ -253,24 +256,7 @@ class APP {
 				exit("The \"{$function}\" function file was loaded but probably the function have a different name.");
 			}
 		}
-		$function = $function(...$args);
 		return $function;
-	}
-
-	public static function CLASS($class, ...$args) {
-		$included = false;
-		if(!class_exists($class)) {
-			if(!file_exists(self::$folder_classes.'/'.$class.'.class.php')) { exit("The \"{$class}\" class file does not exist."); }
-			else {
-				$included = true;
-				include self::$folder_classes.'/'.$class.'.class.php';
-			}
-			if(!class_exists($class) && $included) {
-				exit("The \"{$class}\" class file was loaded but probably the class have a different name.");
-			}
-		}
-		$class = new $class(...$args);
-		return $class;
 	}
 
 	public static function TextIntegrity(string $text) {
@@ -382,8 +368,9 @@ class APP {
 
     public static function POST_CSRF() {
 		if ($_SERVER['REQUEST_METHOD']==='POST') {
-			$hostname = !is_null($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : NULL;
-			if(APP::CONTAINS($_SERVER['HTTP_ORIGIN'],$hostname)) {
+			$ORIGIN = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : NULL;
+			$HOSTNAME = !is_null($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : NULL;
+			if($ORIGIN != NULL && APP::CONTAINS($ORIGIN,$HOSTNAME)) {
 				return true;
 			}
 		}
@@ -392,12 +379,33 @@ class APP {
 
     public static function GET_CSRF() {
 		if ($_SERVER['REQUEST_METHOD']==='GET') {
-			$hostname = !is_null($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : NULL;
-			if(APP::CONTAINS($_SERVER['HTTP_REFERER'],$hostname)) {
+			$REFERER = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : NULL;
+			$HOSTNAME = !is_null($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : NULL;
+			if($REFERER != NULL && APP::CONTAINS($REFERER,$HOSTNAME)) {
 				return true;
 			}
 		}
 		return false;
 	}
+
+	public static function loader($className) {
+        $directory = new RecursiveDirectoryIterator(self::$folder_classes, RecursiveDirectoryIterator::SKIP_DOTS);
+        if (is_null(static::$fileIterator)) {
+            static::$fileIterator = new RecursiveIteratorIterator($directory, RecursiveIteratorIterator::LEAVES_ONLY);
+        }
+        $filename = $className . static::$fileExt;
+        foreach (static::$fileIterator as $file) {
+            if (strtolower($file->getFilename()) === strtolower($filename)) {
+                if ($file->isReadable()) {
+                    include_once $file->getPathname();
+                }
+                break;
+            }
+        }
+    }
+
+    public static function setFileExt($fileExt) {
+        static::$fileExt = $fileExt;
+    }
 	
 }

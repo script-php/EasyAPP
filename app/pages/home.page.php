@@ -1,5 +1,5 @@
 <?php
-//write your logical code here
+//write your page logical code here
 //example:
 
 // prevent csrf on get
@@ -24,14 +24,12 @@ echo '<br/>';
 
 
 // do something for logged users
-if(APP::VAR('logged')) {
+if(APP::VAR('we_are_logged')) {
 	$message = "We are logged on our account";
 }
 else {
 	$message = "We are not logged.";
 }
-
-
 
 /*
 How to use a database:
@@ -44,28 +42,21 @@ How to use a different database:
 $files = APP::QUERY("db2", "SELECT * FROM files");
 */
 
-
-
-//use a method of a class 
-$class = APP::CLASS("NameOfTheClass", "123", "321", "aaa");
+$class = new NameOfTheClass("123", "321", "aaa");
 $class->a("using a class");
-echo '<br/>';
 
+$aaaa = new aaaa();
+$aaaa->aaaa();
 
+echo staticClass::a("test static class");
 
-//use a static method of a class
-echo APP::CLASS("staticClass")::a("test static class");
-echo '<br/>';
-
-
+echo "<br/>";
 
 //use a function
-$body = APP::FUNCTION("testFunction", "Home page content");
-
-
+$body = APP::FUNCTION("testFunction")("Home page content");
 
 //populate the template with datas and show it. 
-echo APP::HTML('assets/layout/test/test.html', [
+echo APP::HTML('app/layout/test/test.html', [
 	'title'	=> 'Home page title',
 	'body'	=> $body . ' / ' . $message
 ]);
