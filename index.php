@@ -5,7 +5,7 @@
 ** @Created: 23.01.2022
 ** @Version: 1.0.0
 */
-include 'APP.php';
+include 'core/APP.php';
 include 'app/config.php';
 include 'app/global.php';
 

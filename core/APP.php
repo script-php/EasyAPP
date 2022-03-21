@@ -394,7 +394,7 @@ class APP {
 		$filename = $className . static::$fileExt;
 		foreach (static::$fileIterator as $file) {
 			if (strtolower($file->getFilename()) === strtolower($filename)) {
-			if ($file->isReadable()) {
+				if ($file->isReadable()) {
 					include_once $file->getPathname();
 				}
 				break;
