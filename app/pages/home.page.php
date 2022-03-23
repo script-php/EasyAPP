@@ -3,32 +3,13 @@
 //example:
 
 // prevent csrf on get
-if(APP::GET_CSRF()) {
-	echo 'get ok';
+if(!APP::GET_CSRF()) {
+	// posible not safe 
 }
-else {
-	echo 'get not ok';
-}
-
-echo '<br/>';
 
 // prevent csrf on post
 if(APP::POST_CSRF()) {
-	echo 'post ok';
-}
-else {
-	echo 'post not ok';
-}
-
-echo '<br/>';
-
-
-// do something for logged users
-if(APP::VAR('we_are_logged')) {
-	$message = "We are logged on our account";
-}
-else {
-	$message = "We are not logged.";
+	// 
 }
 
 /*
@@ -42,18 +23,23 @@ How to use a different database:
 $files = APP::QUERY("db2", "SELECT * FROM files");
 */
 
+// all classes from classes folder are autoloaded, ready to be used
 $class = new NameOfTheClass("123", "321", "aaa");
 $class->a("using a class");
 
 $aaaa = new aaaa();
 $aaaa->aaaa();
 
-echo staticClass::a("test static class");
-
-echo "<br/>";
+echo staticClass::a("test static class<br/>");
 
 //use a function
 $body = APP::FUNCTION("testFunction")("Home page content");
+
+// do something for logged users
+$message = "We are not logged.";
+if(APP::VAR('we_are_logged')) {
+	$message = "We are logged on our account";
+}
 
 //populate the template with datas and show it. 
 echo APP::HTML('app/layout/test/test.html', [

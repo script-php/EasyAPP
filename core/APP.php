@@ -335,9 +335,8 @@ class APP {
 	}
 
 	public static function MAIL($to, $subject, $message) {
-		GLOBAL $config;
 		if(filter_var($to, FILTER_VALIDATE_EMAIL)) {
-			$headers = "From: " . $config['email'] . "\r\n";
+			$headers = "From: " . APP::VAR('config')['email'] . "\r\n";
 			$headers .= "MIME-Version: 1.0\r\n";
 			$headers .= "Content-Type: text/html; charset=UTF-8\r\n";
 			mail($to, $subject, $message, $headers);
@@ -350,7 +349,7 @@ class APP {
 
 	public static function VAR($var, $value = NULL) {
 		if($value === NULL) {
-			return self::$variable[$var];
+			return !empty(self::$variable[$var]) ? self::$variable[$var] : NULL;
 		}
 		else {
 			self::$variable[$var] = $value;
