@@ -48,13 +48,13 @@ class APP {
 
 	public static $folder_classes = "app/classes";
 
+	public static $fileExt = '.class.php';
+	
+	public static $fileIterator = NULL;
+
 	private static $characters = array('\'','-','_','~','`','@','$','^','*','(',')','=','[',']','{','}','"','“','”','\\','|','?','.','>','<',',',':','/','+');
 
 	private static $html = array('&#39;','&#45;','&#95;','&#126;','&#96;','&#64;','&#36;','&#94;','&#42;','&#40;','&#41;','&#61;','&#91;','&#93;','&#123;','&#125;','&#34;','&#8220;','&#8221;','&#92;','&#124;','&#63;','&#46;','&#62;','&#60;','&#44;','&#58;','&#47;','&#43;');
-
-	protected static $fileExt = '.class.php';
-	
-	protected static $fileIterator = NULL;
 
 	public static function PDO($servername,$host,$name,$user,$pass,$options=NULL,$encoding='utf8') {
 		$conn = '';
@@ -383,26 +383,6 @@ class APP {
 			}
 		}
 		return false;
-	}
-
-	public static function loader($className) {
-		$directory = new RecursiveDirectoryIterator(self::$folder_classes, RecursiveDirectoryIterator::SKIP_DOTS);
-		if (is_null(static::$fileIterator)) {
-			static::$fileIterator = new RecursiveIteratorIterator($directory, RecursiveIteratorIterator::LEAVES_ONLY);
-		}
-		$filename = $className . static::$fileExt;
-		foreach (static::$fileIterator as $file) {
-			if (strtolower($file->getFilename()) === strtolower($filename)) {
-				if ($file->isReadable()) {
-					include_once $file->getPathname();
-				}
-				break;
-			}
-		}
-	}
-
-	public static function setFileExt($fileExt) {
-		static::$fileExt = $fileExt;
 	}
 
 }
