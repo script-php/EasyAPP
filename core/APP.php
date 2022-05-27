@@ -56,7 +56,7 @@ class APP {
 
 	private static $html = array('&#39;','&#45;','&#95;','&#126;','&#96;','&#64;','&#36;','&#94;','&#42;','&#40;','&#41;','&#61;','&#91;','&#93;','&#123;','&#125;','&#34;','&#8220;','&#8221;','&#92;','&#124;','&#63;','&#46;','&#62;','&#60;','&#44;','&#58;','&#47;','&#43;');
 
-	public static function PDO($servername,$host,$name,$user,$pass,$options=NULL,$encoding='utf8') {
+	public static function PDO(string $servername,string $host,string $name,string $user,string $pass,array $options=NULL,string $encoding='utf8') {
 		$conn = '';
 		if(class_exists('PDO')) {
 			try{
@@ -114,13 +114,13 @@ class APP {
 	}
 
 	//TODO: do it to show the number of queries per server
-	public function QUERIES() {
+	public static function QUERIES() {
 		return self::$queries;
 	}
 
 	public static function RENDER_PAGES() {
 		$page = self::GET(self::$get_page);
-		if(self::checkChars($page, "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.-_")) {
+		if(self::checkChars($page, "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.-_/")) {
 			if($page == NULL) {
 				$page = self::$index_page;
 			}
