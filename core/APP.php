@@ -137,22 +137,33 @@ class APP {
 		}
 	}
 
-	public static function HTML($path,$array=NULL) {
-		if(file_exists($path)) {
-			ob_start();
-			include $path;
-			$path = ob_get_contents();
-			ob_end_clean();
+	public static function HTML(string $filename, array $data = [], bool $code = false) {
+		if(file_exists($filename)) {
+			if($code) {
+				ob_start();
+				extract($data);
+				include $filename;
+				$content = ob_get_contents();
+				ob_end_clean();
+			}
+			else {
+				$content = file_get_contents($filename);
+				if($data != NULL) {
+					foreach($data as $key => $value) {
+						$content = str_replace('{'.strtoupper($key).'}', $value, $content); 
+					}
+				}
+			}
+			$content = str_replace("\t", "", $content);
+			if(preg_match('/(\s){2,}/s', $content) === 1) {
+				$content = preg_replace('/(\s){2,}/s', '', $content);
+			}
+			$content = preg_replace("/[\n\r]/","",$content);
+			return $content;
 		}
-		else { exit('File "'.$path.'" does not exist.'); }
-		if($array != NULL) {
-			foreach($array as $key => $value) { $path = str_replace('{'.strtoupper($key).'}',$value,$path); }
-			$path = $path;
+		else {
+			exit('File "'.$filename.'" does not exist.');
 		}
-		$path = str_replace("\t", "", $path);
-		if(preg_match('/(\s){2,}/s', $path) === 1) { $path = preg_replace('/(\s){2,}/s', '', $path); }
-		$path = preg_replace("/[\n\r]/","",$path);
-		return $path;
 	}
 
 	public static function JSON($Response, $header=TRUE) {
