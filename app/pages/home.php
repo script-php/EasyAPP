@@ -8,7 +8,7 @@
 * @link         https://smehh.ro
 */
 
-class page_home {
+class PageHome {
 	
 
 	private $settings = [];

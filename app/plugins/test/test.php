@@ -9,7 +9,7 @@
 * @see          https://docs.phpdoc.org/3.0/guide/references/phpdoc/tags/index.html
 */
 
-class plugin_test {
+class PluginTest {
 
     private $settings = [];
     

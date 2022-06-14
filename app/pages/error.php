@@ -8,7 +8,7 @@
 * @link         https://smehh.ro
 */
 
-class page_error {
+class PageError {
 
     private $settings = [];
 

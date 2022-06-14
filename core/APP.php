@@ -38,9 +38,9 @@ class APP {
 
 	public static $route = "route";
 
-	public static $home_page = "page_home";
+	public static $home_page = "PageHome";
 
-	public static $error_page = "page_error";
+	public static $error_page = "PageError";
 
 	public static $folder_functions = "app/functions";
 
@@ -405,6 +405,28 @@ class APP {
 		return false;
 	}
 
+	public static function File2Class($file, $add='') {
+		$file = preg_replace('/[^a-zA-Z0-9_]/', '', $file); // Sanitize it
+		$explode = explode('_', $file);
+		$parts = $file;
+		if(count($explode) > 0) {
+			$parts = '';
+			foreach($explode as $part) {
+				$parts .= ucfirst($part);
+			}
+		}
+		return ucfirst($add).$parts;
+	}
+	
+	public static function Class2File($class, $delete='') {
+		$class = preg_replace('/[^a-zA-Z0-9]/', '', $class); // Sanitize it
+		$class = preg_replace("/^{$delete}/","",$class);
+		$class = preg_replace("/([A-Z])/","_$1",$class);
+		$class = preg_replace("/^_/","",$class);
+		$class = strtolower($class);
+		return $class;
+	}
+
 	####################
 	# PLUGIN SYSTEM
 
@@ -468,11 +490,11 @@ class APP {
 			if($route != NULL) {
 				$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route); // clean the route
 				$route_exploded = explode('/', $route); // explode it
-				$class = 'page_'.$route_exploded[0]; // get the class
+				$class = APP::File2Class($route_exploded[0], 'Page'); // get the class
 			}
 			$method = (!empty($route_exploded[1])) ? $route_exploded[1] : 'index'; // get the method
 
-			if (substr($method, 0, 2) == '__') { $method = str_replace('__', '', $route); } // don't let magic methods to be called from url
+			if (substr($method, 0, 2) == '__') { $method = str_replace('__', '', $method); } // don't let magic methods to be called from url
 
 			$not_found = true;
 			if (class_exists($class)) {

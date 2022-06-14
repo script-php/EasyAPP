@@ -31,7 +31,7 @@ spl_autoload_register(function($className) {
     $iterator = NULL;
     if (is_null($iterator)) { $iterator = new RecursiveIteratorIterator($directory, RecursiveIteratorIterator::LEAVES_ONLY); }
     foreach ($iterator as $file) {
-        if (strtolower($file->getFilename()) === strtolower($className . '.php')) {
+        if (strtolower($file->getFilename()) === strtolower(APP::Class2File($className, 'Plugin') . '.php')) {
             if ($file->isReadable()) { include_once $file->getPathname(); }
             break;
         }
@@ -44,7 +44,7 @@ spl_autoload_register(function($className) {
     $iterator = NULL;
     if (is_null($iterator)) { $iterator = new RecursiveIteratorIterator($directory, RecursiveIteratorIterator::LEAVES_ONLY); }
     foreach ($iterator as $file) {
-        if (strtolower($file->getFilename()) === strtolower($className . '.php')) {
+        if (strtolower($file->getFilename()) === strtolower(APP::Class2File($className, 'Page') . '.php')) {
             if ($file->isReadable()) { include_once $file->getPathname(); }
             break;
         }
