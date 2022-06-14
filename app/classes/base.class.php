@@ -10,5 +10,8 @@
 
 class base {
 	
-    
+    public function __construct() {
+
+    }
+
 }
