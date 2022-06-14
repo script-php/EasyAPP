@@ -36,21 +36,23 @@ class APP {
 
 	private static $queries = 0;
 
-	public static $get_page = "page";
+	public static $route = "route";
 
-	public static $index_page = "home";
+	public static $home_page = "page_home";
 
-	public static $error_page = "404";
-
-	public static $folder_page = "app/pages";
+	public static $error_page = "page_error";
 
 	public static $folder_functions = "app/functions";
 
-	public static $folder_classes = "app/classes";
+	public static $folder_classes = "app/classes"; # autoloader classes
 
-	public static $fileExt = '.class.php';
-	
-	public static $fileIterator = NULL;
+	public static $folder_plugins = 'app/plugins'; # autoloader plugins
+
+	public static $folder_pages = 'app/pages'; # autoloader pages
+
+	public static $hooks = [];
+	public static $actions = [];
+	private static $registry = []; // register new hooks
 
 	private static $characters = array('\'','-','_','~','`','@','$','^','*','(',')','=','[',']','{','}','"','“','”','\\','|','?','.','>','<',',',':','/','+');
 
@@ -119,22 +121,29 @@ class APP {
 	}
 
 	public static function RENDER_PAGES() {
-		$page = self::GET(self::$get_page);
-		if(self::checkChars($page, "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.-_/")) {
-			if($page == NULL) {
-				$page = self::$index_page;
-			}
+		$route = APP::GET(APP::$route);
+		if($route == NULL) {
+			$route = self::$home_page;
+		}
 
-			if(file_exists(self::$folder_page.'/'.$page.'.page.php')) {
-				include self::$folder_page.'/'.$page.'.page.php';
-			}
-			else {
-				include self::$folder_page.'/'.self::$error_page.'.page.php';
+		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route);
+
+		$route_exploded = explode('/', $route);
+
+		$class = 'page_'.$route_exploded[0];
+		$method = (!empty($route_exploded[1])) ? $route_exploded[1] : 'index';
+
+		if (substr($method, 0, 2) == '__') {
+			$method = str_replace('__', '', $route);
+		}
+
+		if (class_exists($class)) {
+			$page_class = new $class();
+			if (is_callable([$page_class, $method])) {
+				call_user_func_array([$page_class, $method], []); # args
 			}
 		}
-		else {
-			exit();
-		}
+
 	}
 
 	public static function HTML(string $filename, array $data = [], bool $code = false) {
@@ -395,5 +404,124 @@ class APP {
 		}
 		return false;
 	}
+
+	####################
+	# PLUGIN SYSTEM
+
+	// get a list of plugins
+	// used just for admin.
+	static function GET_PLUGINS() {
+		$get_plugins = null;
+		$directory = new RecursiveDirectoryIterator('app/plugins', RecursiveDirectoryIterator::SKIP_DOTS);
+		if (is_null($get_plugins)) {
+			$get_plugins = new RecursiveIteratorIterator($directory, RecursiveIteratorIterator::LEAVES_ONLY);
+		}
+		$contains = '.plugin.php';
+		$plugins = array();
+		foreach ($get_plugins as $file_plugin) {
+			if (APP::CONTAINS(strtolower($file_plugin), $contains)) {
+				if ($file_plugin->isReadable()) {
+					include_once $file_plugin->getPathname();
+				}
+				$plugin = str_replace($contains, '', $file_plugin->getFilename()); // get the name of the class
+				$plugin_info = NULL;
+				if (class_exists($plugin)) { // check if the class exists. Maybe the name of the class is different than the name of file.
+					$plugin_class = new $plugin(); // execute the class
+					//if (is_callable([$plugin_class])) { // check if the class have the method called "plugin" 
+						//$register = call_user_func_array([$plugin_class, 'register'], []); // get the register actions and hooks
+						$class = new ReflectionClass($plugin_class);
+						$doc = $class->getDocComment();
+						
+						preg_match_all('/@([a-z]+?)\s+(.*?)\n/i', $doc, $info); // https://stackoverflow.com/questions/11461800/how-to-parse-doc-comments
+						
+						if(isset($info[1]) || count($info[1]) !== 0){
+							$plugin_info = array_combine(array_map("trim",$info[1]), array_map("trim",$info[2]));
+						}
+					//}
+				}
+				if($plugin_info !== NULL) { // if everything is ok, show the details about the plugin
+					$plugins[] = $plugin_info; // show the info about plugin
+				}
+				// break;
+			}
+		}
+		return $plugins;
+	}
+
+	public static function REGISTRY(array $actions = []) {
+		if(is_array($actions) && count($actions) > 0) {
+			foreach($actions as $action) {
+				self::$registry[] = $action;
+			}
+		}
+	}
+
+	static function HOOK($name) {
+		$name = strtoupper($name);
+		// TODO: move everything into an predefined action in START
+		#####################
+		if($name == 'START') {
+			// if its start, load the pages
+			$route = APP::GET(APP::$route);
+
+			$class = self::$home_page;
+			if($route != NULL) {
+				$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route); // clean the route
+				$route_exploded = explode('/', $route); // explode it
+				$class = 'page_'.$route_exploded[0]; // get the class
+			}
+			$method = (!empty($route_exploded[1])) ? $route_exploded[1] : 'index'; // get the method
+
+			if (substr($method, 0, 2) == '__') { $method = str_replace('__', '', $route); } // don't let magic methods to be called from url
+
+			$not_found = true;
+			if (class_exists($class)) {
+				$page_class = new $class();
+				if (is_callable([$page_class, $method])) {
+					$not_found = false;
+					call_user_func_array([$page_class, $method], []); # args
+				}
+			}
+			if($not_found) {
+				if (class_exists(self::$error_page)) {
+					$page_class = new self::$error_page();
+					if (is_callable([$page_class, 'index'])) {
+						call_user_func_array([$page_class, 'index'], []); # args
+					}
+				}
+				else {
+					exit('Page not found!');
+				}
+			}
+		}
+		#####################
+		// load and execute plugins for this hook from cache or db
+	}
+
+	static function HOOK_TEST($hook) {
+		$json = file_get_contents('storage/hooks/'.$hook.'.json');
+		$array = json_decode($json);
+		foreach($array as $action) {
+			list($plugin_name, $plugin_method) = explode('/',$action);
+			if (class_exists($plugin_name)) {
+				$plugin = new $plugin_name();
+				if (is_callable([$plugin, $plugin_method])) {
+					call_user_func_array([$plugin, $plugin_method], []); # args
+				}
+			}
+		} 
+	}
+
+	static function ADD_ACTION(array $arr) {
+
+	}
+
+    public static function Settings($plugin) {
+		$module_id = md5(get_class($plugin)); // maybe add the version too: md5(get_class($plugin).$plugin->version)
+		return ['status' => true]; // example
+    }
+	
+	# PLUGIN SYSTEM
+	####################
 
 }

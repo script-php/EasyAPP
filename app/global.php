@@ -14,6 +14,11 @@ else {
 	APP::VAR('we_are_logged', false);
 }
 
+function pre($var, $exit = false) {
+	echo "<pre>".print_r($var, true)."</pre>\n";
+	if(!empty($exit)) exit();
+}
+
 
 
 
