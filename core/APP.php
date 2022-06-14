@@ -438,14 +438,14 @@ class APP {
 		if (is_null($get_plugins)) {
 			$get_plugins = new RecursiveIteratorIterator($directory, RecursiveIteratorIterator::LEAVES_ONLY);
 		}
-		$contains = '.plugin.php';
+		$contains = '.php';
 		$plugins = array();
 		foreach ($get_plugins as $file_plugin) {
 			if (APP::CONTAINS(strtolower($file_plugin), $contains)) {
 				if ($file_plugin->isReadable()) {
 					include_once $file_plugin->getPathname();
 				}
-				$plugin = str_replace($contains, '', $file_plugin->getFilename()); // get the name of the class
+				$plugin = APP::File2Class(str_replace($contains, '', $file_plugin->getFilename()), 'Plugin'); // get the name of the class
 				$plugin_info = NULL;
 				if (class_exists($plugin)) { // check if the class exists. Maybe the name of the class is different than the name of file.
 					$plugin_class = new $plugin(); // execute the class
