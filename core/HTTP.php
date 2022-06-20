@@ -1,0 +1,89 @@
+<?php
+
+class HTTP {
+
+    public static function POST(string $name, array $options = NULL) {
+		$return = NULL;
+		if(isset($_POST[$name]) && $_POST[$name] != '') {
+			$return = self::OPTIONS($_POST[$name], $options);
+		}
+		return $return;
+	}
+
+	public static function GET(string $name, array $options = NULL) {
+		$return = NULL;
+		if(isset($_GET[$name]) && $_GET[$name] != '') {
+			$return = self::OPTIONS($_GET[$name], $options);
+		}
+		return $return;
+	}
+
+    public static function POST_CSRF() {
+		if ($_SERVER['REQUEST_METHOD']==='POST') {
+			$ORIGIN = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : NULL;
+			$HOSTNAME = !is_null($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : NULL;
+			if($ORIGIN != NULL && APP::CONTAINS($ORIGIN,$HOSTNAME)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+    public static function GET_CSRF() {
+		if ($_SERVER['REQUEST_METHOD']==='GET') {
+			$REFERER = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : NULL;
+			$HOSTNAME = !is_null($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : NULL;
+			if($REFERER != NULL && APP::CONTAINS($REFERER,$HOSTNAME)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static function REDIRECT($address) {
+		header('Location: '.$address);
+		exit;
+	}
+
+    private static function OPTIONS(string $value, array $options = NULL) {
+		if($options != NULL) {
+			$filter = array_key_exists('filter', $options) ? $options['filter'] : NULL;
+			$type = array_key_exists('type', $options) ? $options['type'] : NULL;
+			$HTML = array_key_exists('html', $options) ? $options['html'] : NULL;
+				
+			if($HTML) {
+				$value = self::Chars2HTML($value);
+			}
+			if($filter != NULL) {
+				if(!self::checkChars($value, $filter)) {
+					$value = NULL;
+				}
+			}
+			if($type != NULL) {
+				if (preg_match('/[a-zA-Z]/', $value) && preg_match('/[0-9]/', $value)) {
+					$valueType = "alphanumeric";
+					if(preg_match('/[^a-zA-Z0-9]/', $value)) {
+						$valueType = "alphanumeric+";
+					}
+				}
+				else if (preg_match('/[a-zA-Z]/', $value) && preg_match('/[^0-9]/', $value)) {
+					$valueType = "alphabetic";
+					if(preg_match('/[^a-zA-Z]/', $value)) {
+						$valueType = "alphabetic+";
+					}
+				}
+				else if (preg_match('/[0-9]/', $value) && preg_match('/[^a-zA-Z]/', $value)) {
+					$valueType = "numeric";
+					if(preg_match('/[^0-9]/', $value)) {
+						$valueType = "numeric+";
+					}
+				}
+				if($valueType != strtolower($type)) {
+					$value = NULL;
+				}
+			}
+		}
+		return $value;
+	}
+
+}

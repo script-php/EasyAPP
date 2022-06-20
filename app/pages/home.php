@@ -16,7 +16,7 @@ class PageHome {
     
 	// do something when the page is loaded 
 	function __construct() {
-		$settings = APP::Settings($this); // load settings
+		//$settings = APP::Settings($this); // load settings
 	}
 
 
@@ -32,12 +32,12 @@ class PageHome {
 		//example:
 
 		// prevent csrf on get
-		if(!APP::GET_CSRF()) {
+		if(!HTTP::GET_CSRF()) {
 			// posible not safe 
 		}
 
 		// prevent csrf on post
-		if(APP::POST_CSRF()) {
+		if(HTTP::POST_CSRF()) {
 			// posible not safe
 		}
 
@@ -117,7 +117,7 @@ class PageHome {
 
 	// show or do something something when index.php?route=home/plugins its accessed
 	function plugins() {
-		$plugins = APP::GET_PLUGINS();
+		$plugins = PLUGINS::GET_PLUGINS();
 
 		foreach($plugins as $plugin) {
 			$package = (isset($plugin['package']) ? $plugin['package'] : 'Unknown');

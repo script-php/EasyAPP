@@ -3,9 +3,7 @@
 APP::$route                 = "route"; //query parameter name which its use to select the page
 APP::$home_page             = "PageHome"; //the page that it will be showed like home page if there is no page selected
 APP::$error_page            = "PageError"; //the error page showed when its selected a page that doesn't exists
-APP::$folder_pages          = "app/pages"; //the location of the page files folder
 APP::$folder_functions      = "app/functions"; //the location of the functions files folder
-APP::$folder_classes	    = "app/classes"; //the location of the classes files folder
 
 //set a connection to a database called "main" or whatever name you want to have.
 // APP::PDO('main','localhost','main','root','');

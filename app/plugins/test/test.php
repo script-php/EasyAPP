@@ -14,7 +14,7 @@ class PluginTest {
     private $settings = [];
     
     function __construct() {
-        $settings = APP::Settings($this); // load settings
+        // $settings = APP::Settings($this); // load settings
         // do something when the class is initialized
     }
 

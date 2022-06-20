@@ -14,7 +14,7 @@ class PluginTwo {
     private $settings = [];
     
     function __construct() {
-        $settings = APP::Settings($this);
+        // $settings = APP::Settings($this);
         // do something when the class is initialized
     }
 

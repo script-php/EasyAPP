@@ -2,11 +2,11 @@
 /*
 ** Utils methods from APP:
 ** 
-** APP::RENDER_PAGES();
+** // ! APP::RENDER_PAGES(); 
 ** APP::HTML($path_file_html, [array]);
 ** APP::JSON([array],boolean); // will return json if 2nd param is false or will print it with text/json header by default
-** APP::POST($name, [options]);
-** APP::GET($name, [options]);
+** // ! APP::POST($name, [options]); => HTML::POST($name, [options]);
+** // ! APP::GET($name, [options]); => HTTP::GET($name, [options]);
 ** APP::Chars2HTML($text);
 ** APP::HTML2Chars($text);
 ** APP::checkChars($text,"allowed characters");
@@ -14,7 +14,7 @@
 ** APP::FINGERPRINT();
 ** APP::TEXT(string $text,array $params=NULL);
 ** APP::FILE($path);
-** APP::REDIRECT($address);
+** // ! APP::REDIRECT($address); => HTTP::REDIRECT($address);
 ** APP::IP();
 ** APP::RANDOM($minlength=5, $maxlength=5, $uselower=true, $useupper=true, $usenumbers=true, $usespecial=false);
 ** APP::MAIL($to, $subject, $message);
@@ -24,8 +24,8 @@
 ** APP::VAR('the_name_of_internal_variable', 'value'); to set a value OR
 ** APP::VAR('the_name_of_internal_variable') to get the value
 ** APP::CONTAINS(string $haystack, string $needle) : boolean
-** APP::POST_CSRF() : boolean
-** APP::GET_CSRF() : boolean
+** // ! APP::POST_CSRF() : boolean => HTTP::POST_CSRF() : boolean
+** // ! APP::GET_CSRF() : boolean => HTTP::GET_CSRF() : boolean
 */
 
 class APP {
@@ -44,19 +44,38 @@ class APP {
 
 	public static $folder_functions = "app/functions";
 
-	public static $folder_classes = "app/classes"; # autoloader classes
-
-	public static $folder_plugins = 'app/plugins'; # autoloader plugins
-
-	public static $folder_pages = 'app/pages'; # autoloader pages
-
-	public static $hooks = [];
-	public static $actions = [];
-	private static $registry = []; // register new hooks
-
 	private static $characters = array('\'','-','_','~','`','@','$','^','*','(',')','=','[',']','{','}','"','“','”','\\','|','?','.','>','<',',',':','/','+');
 
 	private static $html = array('&#39;','&#45;','&#95;','&#126;','&#96;','&#64;','&#36;','&#94;','&#42;','&#40;','&#41;','&#61;','&#91;','&#93;','&#123;','&#125;','&#34;','&#8220;','&#8221;','&#92;','&#124;','&#63;','&#46;','&#62;','&#60;','&#44;','&#58;','&#47;','&#43;');
+
+
+	public static function LOADER($dir, $callback = NULL) {
+		spl_autoload_register(function($className) use ($dir, $callback) {
+			$directory = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
+			$iterator = NULL;
+			if (is_null($iterator)) { $iterator = new RecursiveIteratorIterator($directory, RecursiveIteratorIterator::LEAVES_ONLY); }
+			foreach ($iterator as $file) {
+				if($callback != NULL) {
+					if($callback($file, $className)) {
+						break;
+					}
+				}
+				else {
+					if (strtolower($file->getFilename()) === strtolower($className . '.php')) {
+						if ($file->isReadable()) {
+							include_once $file->getPathname();
+							break;
+						}
+					}
+				}
+			}
+		});
+	}
+
+
+
+
+
 
 	public static function PDO(string $servername,string $host,string $name,string $user,string $pass,array $options=NULL,string $encoding='utf8') {
 		$conn = '';
@@ -120,31 +139,6 @@ class APP {
 		return self::$queries;
 	}
 
-	public static function RENDER_PAGES() {
-		$route = APP::GET(APP::$route);
-		if($route == NULL) {
-			$route = self::$home_page;
-		}
-
-		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route);
-
-		$route_exploded = explode('/', $route);
-
-		$class = 'page_'.$route_exploded[0];
-		$method = (!empty($route_exploded[1])) ? $route_exploded[1] : 'index';
-
-		if (substr($method, 0, 2) == '__') {
-			$method = str_replace('__', '', $route);
-		}
-
-		if (class_exists($class)) {
-			$page_class = new $class();
-			if (is_callable([$page_class, $method])) {
-				call_user_func_array([$page_class, $method], []); # args
-			}
-		}
-
-	}
 
 	public static function HTML(string $filename, array $data = [], bool $code = false) {
 		if(file_exists($filename)) {
@@ -186,62 +180,9 @@ class APP {
 		}
 	}
 
-	private static function OPTIONS(string $value, array $options = NULL) {
-		if($options != NULL) {
-			$filter = array_key_exists('filter', $options) ? $options['filter'] : NULL;
-			$type = array_key_exists('type', $options) ? $options['type'] : NULL;
-			$HTML = array_key_exists('html', $options) ? $options['html'] : NULL;
-				
-			if($HTML) {
-				$value = self::Chars2HTML($value);
-			}
-			if($filter != NULL) {
-				if(!self::checkChars($value, $filter)) {
-					$value = NULL;
-				}
-			}
-			if($type != NULL) {
-				if (preg_match('/[a-zA-Z]/', $value) && preg_match('/[0-9]/', $value)) {
-					$valueType = "alphanumeric";
-					if(preg_match('/[^a-zA-Z0-9]/', $value)) {
-						$valueType = "alphanumeric+";
-					}
-				}
-				else if (preg_match('/[a-zA-Z]/', $value) && preg_match('/[^0-9]/', $value)) {
-					$valueType = "alphabetic";
-					if(preg_match('/[^a-zA-Z]/', $value)) {
-						$valueType = "alphabetic+";
-					}
-				}
-				else if (preg_match('/[0-9]/', $value) && preg_match('/[^a-zA-Z]/', $value)) {
-					$valueType = "numeric";
-					if(preg_match('/[^0-9]/', $value)) {
-						$valueType = "numeric+";
-					}
-				}
-				if($valueType != strtolower($type)) {
-					$value = NULL;
-				}
-			}
-		}
-		return $value;
-	}
+	
 
-	public static function POST(string $name, array $options = NULL) {
-		$return = NULL;
-		if(isset($_POST[$name]) && $_POST[$name] != '') {
-			$return = self::OPTIONS($_POST[$name], $options);
-		}
-		return $return;
-	}
-
-	public static function GET(string $name, array $options = NULL) {
-		$return = NULL;
-		if(isset($_GET[$name]) && $_GET[$name] != '') {
-			$return = self::OPTIONS($_GET[$name], $options);
-		}
-		return $return;
-	}
+	
 
 	public static function Chars2HTML($text) {
 		return str_replace(self::$characters, self::$html, $text);
@@ -332,10 +273,7 @@ class APP {
 		else { exit('File "'.$path.'" does not exist.'); }
 	}
 
-	public static function REDIRECT($address) {
-		header('Location: '.$address);
-		exit;
-	}
+	
 
 	public static function IP() {
 		return $_SERVER['HTTP_CLIENT_IP'] ?? $_SERVER["HTTP_CF_CONNECTING_IP"] ?? $_SERVER['HTTP_X_FORWARDED'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_FORWARDED'] ?? $_SERVER['HTTP_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
@@ -383,29 +321,7 @@ class APP {
 		return function_exists('str_contains') ? (str_contains($haystack, $needle)?true:false) : (strpos($haystack, $needle) ? true : false);
 	}
 
-    public static function POST_CSRF() {
-		if ($_SERVER['REQUEST_METHOD']==='POST') {
-			$ORIGIN = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : NULL;
-			$HOSTNAME = !is_null($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : NULL;
-			if($ORIGIN != NULL && APP::CONTAINS($ORIGIN,$HOSTNAME)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-    public static function GET_CSRF() {
-		if ($_SERVER['REQUEST_METHOD']==='GET') {
-			$REFERER = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : NULL;
-			$HOSTNAME = !is_null($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : NULL;
-			if($REFERER != NULL && APP::CONTAINS($REFERER,$HOSTNAME)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	public static function File2Class($file, $add='') {
+	public static function File2Class(string $file, string $add='') {
 		$file = preg_replace('/[^a-zA-Z0-9_]/', '', $file); // Sanitize it
 		$explode = explode('_', $file);
 		$parts = $file;
@@ -418,7 +334,7 @@ class APP {
 		return ucfirst($add).$parts;
 	}
 	
-	public static function Class2File($class, $delete='') {
+	public static function Class2File(string $class, string $delete='') {
 		$class = preg_replace('/[^a-zA-Z0-9]/', '', $class); // Sanitize it
 		$class = preg_replace("/^{$delete}/","",$class);
 		$class = preg_replace("/([A-Z])/","_$1",$class);
@@ -426,124 +342,5 @@ class APP {
 		$class = strtolower($class);
 		return $class;
 	}
-
-	####################
-	# PLUGIN SYSTEM
-
-	// get a list of plugins
-	// used just for admin.
-	static function GET_PLUGINS() {
-		$get_plugins = null;
-		$directory = new RecursiveDirectoryIterator('app/plugins', RecursiveDirectoryIterator::SKIP_DOTS);
-		if (is_null($get_plugins)) {
-			$get_plugins = new RecursiveIteratorIterator($directory, RecursiveIteratorIterator::LEAVES_ONLY);
-		}
-		$contains = '.php';
-		$plugins = array();
-		foreach ($get_plugins as $file_plugin) {
-			if (APP::CONTAINS(strtolower($file_plugin), $contains)) {
-				if ($file_plugin->isReadable()) {
-					include_once $file_plugin->getPathname();
-				}
-				$plugin = APP::File2Class(str_replace($contains, '', $file_plugin->getFilename()), 'Plugin'); // get the name of the class
-				$plugin_info = NULL;
-				if (class_exists($plugin)) { // check if the class exists. Maybe the name of the class is different than the name of file.
-					$plugin_class = new $plugin(); // execute the class
-					//if (is_callable([$plugin_class])) { // check if the class have the method called "plugin" 
-						//$register = call_user_func_array([$plugin_class, 'register'], []); // get the register actions and hooks
-						$class = new ReflectionClass($plugin_class);
-						$doc = $class->getDocComment();
-						
-						preg_match_all('/@([a-z]+?)\s+(.*?)\n/i', $doc, $info); // https://stackoverflow.com/questions/11461800/how-to-parse-doc-comments
-						
-						if(isset($info[1]) || count($info[1]) !== 0){
-							$plugin_info = array_combine(array_map("trim",$info[1]), array_map("trim",$info[2]));
-						}
-					//}
-				}
-				if($plugin_info !== NULL) { // if everything is ok, show the details about the plugin
-					$plugins[] = $plugin_info; // show the info about plugin
-				}
-				// break;
-			}
-		}
-		return $plugins;
-	}
-
-	public static function REGISTRY(array $actions = []) {
-		if(is_array($actions) && count($actions) > 0) {
-			foreach($actions as $action) {
-				self::$registry[] = $action;
-			}
-		}
-	}
-
-	static function HOOK($name) {
-		$name = strtoupper($name);
-		// TODO: move everything into an predefined action in START
-		#####################
-		if($name == 'START') {
-			// if its start, load the pages
-			$route = APP::GET(APP::$route);
-
-			$class = self::$home_page;
-			if($route != NULL) {
-				$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route); // clean the route
-				$route_exploded = explode('/', $route); // explode it
-				$class = APP::File2Class($route_exploded[0], 'Page'); // get the class
-			}
-			$method = (!empty($route_exploded[1])) ? $route_exploded[1] : 'index'; // get the method
-
-			if (substr($method, 0, 2) == '__') { $method = str_replace('__', '', $method); } // don't let magic methods to be called from url
-
-			$not_found = true;
-			if (class_exists($class)) {
-				$page_class = new $class();
-				if (is_callable([$page_class, $method])) {
-					$not_found = false;
-					call_user_func_array([$page_class, $method], []); # args
-				}
-			}
-			if($not_found) {
-				if (class_exists(self::$error_page)) {
-					$page_class = new self::$error_page();
-					if (is_callable([$page_class, 'index'])) {
-						call_user_func_array([$page_class, 'index'], []); # args
-					}
-				}
-				else {
-					exit('Page not found!');
-				}
-			}
-		}
-		#####################
-		// load and execute plugins for this hook from cache or db
-	}
-
-	static function HOOK_TEST($hook) {
-		$json = file_get_contents('storage/hooks/'.$hook.'.json');
-		$array = json_decode($json);
-		foreach($array as $action) {
-			list($plugin_name, $plugin_method) = explode('/',$action);
-			if (class_exists($plugin_name)) {
-				$plugin = new $plugin_name();
-				if (is_callable([$plugin, $plugin_method])) {
-					call_user_func_array([$plugin, $plugin_method], []); # args
-				}
-			}
-		} 
-	}
-
-	static function ADD_ACTION(array $arr) {
-
-	}
-
-    public static function Settings($plugin) {
-		$module_id = md5(get_class($plugin)); // maybe add the version too: md5(get_class($plugin).$plugin->version)
-		return ['status' => true]; // example
-    }
-	
-	# PLUGIN SYSTEM
-	####################
 
 }
