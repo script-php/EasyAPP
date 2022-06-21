@@ -2,7 +2,7 @@
 
 /**
 * @package      EasyAPP
-* @version      1.1.1
+* @version      v1.1.2
 * @author       YoYoDeveloper / Smehh
 * @copyright    2022 SMEHH - Web Software Development Company
 * @link         https://smehh.ro
@@ -52,9 +52,13 @@ APP::LOADER('app/pages', function($file, $classname) {
     }
 });
 
-// TODO: register default actions in registry
-// TODO: set default actions in hook
+// Register a hook to be able to use it later
+HOOK::REGISTER('START');
 
-PLUGINS::HOOK('START');
+// Attach the loading page action to this hook.
+HOOK::SET('START', 'ROUTER/LOAD'); // here LOAD is a class & PAGE is a method from this class
+
+// Run the hook
+HOOK::RUN('START');
 
 ?>

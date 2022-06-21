@@ -117,7 +117,7 @@ class PageHome {
 
 	// show or do something something when index.php?route=home/plugins its accessed
 	function plugins() {
-		$plugins = PLUGINS::GET_PLUGINS();
+		$plugins = HOOK::GET_PLUGINS();
 
 		foreach($plugins as $plugin) {
 			$package = (isset($plugin['package']) ? $plugin['package'] : 'Unknown');

@@ -36,11 +36,9 @@ class APP {
 
 	private static $queries = 0;
 
-	public static $route = "route";
-
-	public static $home_page = "PageHome";
-
-	public static $error_page = "PageError";
+	public static $route = "route"; // Router name of URL parameter
+	public static $home_page = "PageHome"; // Router default home page
+	public static $error_page = "PageError"; // Router default error page
 
 	public static $folder_functions = "app/functions";
 

@@ -1,15 +1,34 @@
 <?php
 
-class PAGE {
+/**
+* @package      ROUTER
+* @version      1.0.0
+* @author       YoYoDeveloper
+* @copyright    2022 SMEHH - Web Software Development Company
+* @link         https://smehh.ro
+* 
+* This class determines which class page and methods are executed based on the URL requested.
+* URL request examples: 
+* 1. index.php?route=home
+* 2. index.php?route=home/method
+*/
 
-    function __construct() {
-        // do something? ...maybe later?
+class ROUTER {
+
+    public $route;
+    public $home_page;
+	public $error_page;
+
+    public function __construct() {
+        $this->route = (isset(APP::$route) && !empty(APP::$route)) ? APP::$route : 'route';
+        $this->home_page = (isset(APP::$home_page) && !empty(APP::$home_page)) ? APP::$home_page : 'PageHome';
+        $this->error_page = (isset(APP::$error_page) && !empty(APP::$error_page)) ? APP::$error_page : 'PageError';
     }
 
-    function LOAD() {
-        $route = HTTP::GET(APP::$route);
+    public function LOAD() {
+        $route = HTTP::GET($this->route);
 
-        $class = APP::$home_page;
+        $class = $this->home_page;
         if($route != NULL) {
             $route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route); // clean the route
             $route_exploded = explode('/', $route); // explode it
@@ -28,8 +47,9 @@ class PAGE {
             }
         }
         if($not_found) {
-            if (class_exists(self::$error_page)) {
-                $page_class = new self::$error_page();
+            if (class_exists($this->error_page)) {
+                $error_page = $this->error_page;
+                $page_class = new $error_page();
                 if (is_callable([$page_class, 'index'])) {
                     call_user_func_array([$page_class, 'index'], []); # args
                 }
