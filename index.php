@@ -55,8 +55,8 @@ APP::LOADER('app/pages', function($file, $classname) {
 // Register a hook to be able to use it later
 HOOK::REGISTER('START');
 
-// Attach the loading page action to this hook.
-HOOK::SET('START', 'ROUTER/LOAD'); // here LOAD is a class & PAGE is a method from this class
+// Attach the ROUTER action to this hook.
+HOOK::SET('START', 'ROUTER/LOAD'); // here ROUTER is a class & LOAD is a method from ROUTER class
 
 // Run the hook
 HOOK::RUN('START');

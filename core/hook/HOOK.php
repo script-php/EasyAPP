@@ -76,19 +76,6 @@ class HOOK {
 		}
 	}
 	
-	
-
-
-
-    // public static function Settings($plugin) {
-	// 	$module_id = md5(get_class($plugin)); // maybe add the version too: md5(get_class($plugin).$plugin->version)
-	// 	return ['status' => true]; // example
-    // }
-
-	
-
-    
-
 
     // static function GET_PLUGINS() {
     static function GET_PLUGINS() {
@@ -128,18 +115,5 @@ class HOOK {
 		}
 		return $plugins;
 	}
-
-	/**
-	 * Add a list of actions to registry.
-	 */
-	public static function REGISTRY(array $actions = []) {
-		if(is_array($actions) && count($actions) > 0) {
-			foreach($actions as $action) {
-				self::$registry[] = $action;
-			}
-		}
-	}
-
-	
 
 }
