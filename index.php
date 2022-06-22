@@ -8,9 +8,8 @@
 * @link         https://smehh.ro
 */
 
+# base of the framework
 include 'APP.php';
-include 'app/config.php';
-include 'app/global.php';
 
 # auto load core classes
 APP::LOADER('core', function($file, $classname) {
@@ -31,6 +30,9 @@ APP::LOADER('app/classes', function($file, $classname) {
         }
     }
 });
+
+include 'app/config.php';
+include 'app/global.php';
 
 # auto load plugins
 APP::LOADER('app/plugins', function($file, $classname) {

@@ -19,8 +19,8 @@
 ** APP::RANDOM($minlength=5, $maxlength=5, $uselower=true, $useupper=true, $usenumbers=true, $usespecial=false);
 ** APP::MAIL($to, $subject, $message);
 ** APP::FUNCTION("function_name", $functions_args...);
-** APP::PDO($servername,$host,$name,$user,$pass,$options,$encoding);
-** APP::QUERY($servername, $query, $array_params);
+** // ! APP::PDO($servername,$host,$name,$user,$pass,$options,$encoding); => DB::CONNECT($servername,$host,$name,$user,$pass,$options,$encoding);
+** // ! APP::QUERY($servername, $query, $array_params); => DB::QUERY($servername, $query, $array_params);
 ** APP::VAR('the_name_of_internal_variable', 'value'); to set a value OR
 ** APP::VAR('the_name_of_internal_variable') to get the value
 ** APP::CONTAINS(string $haystack, string $needle) : boolean
@@ -32,9 +32,8 @@ class APP {
 
 	public static $variable = array();
 
-	private static $conn = array();
-
-	private static $queries = 0;
+	// private static $conn = array(); 
+	// private static $queries = 0;
 
 	public static $route = "route"; // Router name of URL parameter
 	public static $home_page = "PageHome"; // Router default home page
@@ -75,67 +74,67 @@ class APP {
 
 
 
-	public static function PDO(string $servername,string $host,string $name,string $user,string $pass,array $options=NULL,string $encoding='utf8') {
-		$conn = '';
-		if(class_exists('PDO')) {
-			try{
-				if($options == NULL) {
-					$options = [
-						PDO::MYSQL_ATTR_INIT_COMMAND        => "SET NAMES {$encoding}",
-						PDO::ATTR_PERSISTENT                => true, // Long connection
-						PDO::ATTR_EMULATE_PREPARES          => false, // turn off emulation mode for "real" prepared statements
-						PDO::ATTR_DEFAULT_FETCH_MODE        => PDO::FETCH_ASSOC, //make the default fetch be an associative array
-						PDO::MYSQL_ATTR_USE_BUFFERED_QUERY  => true,
-						PDO::ATTR_ERRMODE                   => PDO::ERRMODE_EXCEPTION, //turn on errors in the form of exceptions
-					];
-				}
-				else {
-					$options = $options;
-				}
-				$conn = new PDO("mysql:host={$host};dbname={$name}",$user,$pass,$options);
-				$conn -> exec("SET character_set_client='{$encoding}',character_set_connection='{$encoding}',character_set_results='{$encoding}';");
-				return self::$conn[$servername] = $conn;
-			}
-			catch(PDOException $e) {
-				exit($e->getMessage());
-			}
-		}
-		else {
-			exit('PDO is not installed on this server.');
-		}
-	}
+	// public static function PDO(string $servername,string $host,string $name,string $user,string $pass,array $options=NULL,string $encoding='utf8') {
+	// 	$conn = '';
+	// 	if(class_exists('PDO')) {
+	// 		try{
+	// 			if($options == NULL) {
+	// 				$options = [
+	// 					PDO::MYSQL_ATTR_INIT_COMMAND        => "SET NAMES {$encoding}",
+	// 					PDO::ATTR_PERSISTENT                => true, // Long connection
+	// 					PDO::ATTR_EMULATE_PREPARES          => false, // turn off emulation mode for "real" prepared statements
+	// 					PDO::ATTR_DEFAULT_FETCH_MODE        => PDO::FETCH_ASSOC, //make the default fetch be an associative array
+	// 					PDO::MYSQL_ATTR_USE_BUFFERED_QUERY  => true,
+	// 					PDO::ATTR_ERRMODE                   => PDO::ERRMODE_EXCEPTION, //turn on errors in the form of exceptions
+	// 				];
+	// 			}
+	// 			else {
+	// 				$options = $options;
+	// 			}
+	// 			$conn = new PDO("mysql:host={$host};dbname={$name}",$user,$pass,$options);
+	// 			$conn -> exec("SET character_set_client='{$encoding}',character_set_connection='{$encoding}',character_set_results='{$encoding}';");
+	// 			return self::$conn[$servername] = $conn;
+	// 		}
+	// 		catch(PDOException $e) {
+	// 			exit($e->getMessage());
+	// 		}
+	// 	}
+	// 	else {
+	// 		exit('PDO is not installed on this server.');
+	// 	}
+	// }
 
-	public static function QUERY($servername, $query, $params=NULL) {
-		if(!isSet($query)){ $query=NULL; }
-		if(!isSet($params)){ $params=NULL; }
-		if(self::$conn[$servername] instanceof PDO) {
-			if($query!=NULL) {
-				$stmt = self::$conn[$servername] -> prepare($query);
-				if($params != NULL) {
-					foreach($params as $param => &$value) {
+	// public static function QUERY($servername, $query, $params=NULL) {
+	// 	if(!isSet($query)){ $query=NULL; }
+	// 	if(!isSet($params)){ $params=NULL; }
+	// 	if(self::$conn[$servername] instanceof PDO) {
+	// 		if($query!=NULL) {
+	// 			$stmt = self::$conn[$servername] -> prepare($query);
+	// 			if($params != NULL) {
+	// 				foreach($params as $param => &$value) {
 						
-						$varType = ((is_null($value) ? \PDO::PARAM_NULL : is_bool($value)) ? \PDO::PARAM_BOOL : is_int($value)) ? \PDO::PARAM_INT : \PDO::PARAM_STR;
+	// 					$varType = ((is_null($value) ? \PDO::PARAM_NULL : is_bool($value)) ? \PDO::PARAM_BOOL : is_int($value)) ? \PDO::PARAM_INT : \PDO::PARAM_STR;
 						
-						$stmt -> bindParam($param, $value, $varType);
-					}
-				}
-				$stmt -> execute();
-				self::$queries++;
-				return  $stmt; 
-			}
-			else {
-				exit("Ohh, come on! Really? What do you want to do with this function if you not make a query?");
-			}
-		}
-		else {
-			exit('Why you bully this class? That thing you set there is not initiated by the PDO, so I think it\'s not a database. Do something good for this project and put a database ... You Mother Fucker.');
-		}
-	}
+	// 					$stmt -> bindParam($param, $value, $varType);
+	// 				}
+	// 			}
+	// 			$stmt -> execute();
+	// 			self::$queries++;
+	// 			return  $stmt; 
+	// 		}
+	// 		else {
+	// 			exit("Ohh, come on! Really? What do you want to do with this function if you not make a query?");
+	// 		}
+	// 	}
+	// 	else {
+	// 		exit('Why you bully this class? That thing you set there is not initiated by the PDO, so I think it\'s not a database. Do something good for this project and put a database ... You Mother Fucker.');
+	// 	}
+	// }
 
-	//TODO: do it to show the number of queries per server
-	public static function QUERIES() {
-		return self::$queries;
-	}
+	// //TODO: do it to show the number of queries per server
+	// public static function QUERIES() {
+	// 	return self::$queries;
+	// }
 
 
 	public static function HTML(string $filename, array $data = [], bool $code = false) {
