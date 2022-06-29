@@ -8,15 +8,15 @@
 * @link         https://smehh.ro
 */
 
-// namespace System\Database;
+namespace System\Database;
 
 class DB {
 
-    private static $connect = array();
+    private $connect = array();
 
-	private static $queries = 0;
+	private $queries = 0;
 
-    public static function CONNECT(string $servername,string $host,string $name,string $user,string $pass,array $options=NULL,string $encoding='utf8') {
+    public function CONNECT(string $servername,string $host,string $name,string $user,string $pass,array $options=NULL,string $encoding='utf8') {
         $servername = strtolower($servername);
         $hash = md5($servername);
 		$conn = '';
@@ -49,7 +49,7 @@ class DB {
 	}
 
 
-    public static function QUERY($servername, $query, $params=NULL) {
+    public function QUERY($servername, $query, $params=NULL) {
 		if(!isSet($query)){ $query=NULL; }
 		if(!isSet($params)){ $params=NULL; }
 		if(self::$conn[$servername] instanceof PDO) {
@@ -77,7 +77,7 @@ class DB {
 	}
 
 	//TODO: do it to show the number of queries per server
-	public static function QUERIES() {
+	public function QUERIES() {
 		return self::$queries;
 	}
 

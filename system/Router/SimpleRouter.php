@@ -1,7 +1,7 @@
 <?php
 
 /**
-* @package      ROUTER
+* @package      SimpleRouter
 * @version      1.0.0
 * @author       YoYoDeveloper
 * @copyright    2022 SMEHH - Web Software Development Company

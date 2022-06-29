@@ -53,10 +53,10 @@ class Http {
 			$HTML = array_key_exists('html', $options) ? $options['html'] : NULL;
 				
 			if($HTML) {
-				$value = self::Chars2HTML($value);
+				$value = APP::Chars2HTML($value);
 			}
 			if($filter != NULL) {
-				if(!self::checkChars($value, $filter)) {
+				if(!APP::checkChars($value, $filter)) {
 					$value = NULL;
 				}
 			}
