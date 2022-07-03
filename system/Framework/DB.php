@@ -8,36 +8,38 @@
 * @link         https://smehh.ro
 */
 
-namespace System\Database;
+namespace System\Framework;
 
 class DB {
 
-    private $connect = array();
+    // private $connect = array();
+    private $connect;
 
 	private $queries = 0;
-
-    public function CONNECT(string $servername,string $host,string $name,string $user,string $pass,array $options=NULL,string $encoding='utf8') {
-        $servername = strtolower($servername);
-        $hash = md5($servername);
+	
+    public function connect(/*string $servername,*/string $host,string $name,string $user,string $pass,string $port,array $options=NULL,string $encoding='utf8') {
+        // $servername = strtolower($servername);
+        // $hash = md5($servername);
 		$conn = '';
 		if(class_exists('PDO')) {
 			try{
 				if($options == NULL) {
 					$options = [
-						PDO::MYSQL_ATTR_INIT_COMMAND        => "SET NAMES {$encoding}",
-						PDO::ATTR_PERSISTENT                => true, // Long connection
-						PDO::ATTR_EMULATE_PREPARES          => false, // turn off emulation mode for "real" prepared statements
-						PDO::ATTR_DEFAULT_FETCH_MODE        => PDO::FETCH_ASSOC, //make the default fetch be an associative array
-						PDO::MYSQL_ATTR_USE_BUFFERED_QUERY  => true,
-						PDO::ATTR_ERRMODE                   => PDO::ERRMODE_EXCEPTION, //turn on errors in the form of exceptions
+						\PDO::MYSQL_ATTR_INIT_COMMAND        => "SET NAMES {$encoding}",
+						\PDO::ATTR_PERSISTENT                => true, // Long connection
+						\PDO::ATTR_EMULATE_PREPARES          => false, // turn off emulation mode for "real" prepared statements
+						\PDO::ATTR_DEFAULT_FETCH_MODE        => \PDO::FETCH_ASSOC, //make the default fetch be an associative array
+						\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY  => true,
+						\PDO::ATTR_ERRMODE                   => \PDO::ERRMODE_EXCEPTION, //turn on errors in the form of exceptions
 					];
 				}
 				else {
 					$options = $options;
 				}
-				$conn = new PDO("mysql:host={$host};dbname={$name}",$user,$pass,$options);
+				$conn = new \PDO("mysql:host={$host};dbname={$name}",$user,$pass,$options);
 				$conn -> exec("SET character_set_client='{$encoding}',character_set_connection='{$encoding}',character_set_results='{$encoding}';");
-				return self::$connect[$hash] = $conn;
+				// return self::$connect[$hash] = $conn;
+				return $this->connect = $conn;
 			}
 			catch(PDOException $e) {
 				exit($e->getMessage());
@@ -48,13 +50,12 @@ class DB {
 		}
 	}
 
-
-    public function QUERY($servername, $query, $params=NULL) {
+    public function query(/*$servername, */$query, $params=NULL) {
 		if(!isSet($query)){ $query=NULL; }
 		if(!isSet($params)){ $params=NULL; }
-		if(self::$conn[$servername] instanceof PDO) {
+		if($this->connect instanceof PDO) {
 			if($query!=NULL) {
-				$stmt = self::$conn[$servername] -> prepare($query);
+				$stmt = $this->connect -> prepare($query);
 				if($params != NULL) {
 					foreach($params as $param => &$value) {
 						
@@ -64,7 +65,7 @@ class DB {
 					}
 				}
 				$stmt -> execute();
-				self::$queries++;
+				$this->$queries++;
 				return  $stmt; 
 			}
 			else {
@@ -77,8 +78,8 @@ class DB {
 	}
 
 	//TODO: do it to show the number of queries per server
-	public function QUERIES() {
-		return self::$queries;
+	public function queries() {
+		return $this->$queries;
 	}
 
 }

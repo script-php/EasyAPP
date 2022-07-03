@@ -7,8 +7,8 @@
 * @copyright    2022 SMEHH - Web Software Development Company
 * @link         https://smehh.ro
 */
-namespace App\Pages;
-class PageError {
+
+class ControllerError extends Controller {
 
     private $settings = [];
 

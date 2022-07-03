@@ -13,9 +13,13 @@ namespace App;
 class Autoloader {
 
     public $path = '';
+
     public $namespace = '';
+    
     public $directory = '';
+    
     public $extension = '.php';
+    
     public $recursive = false;
 
     public function load(array $extra = []) {
@@ -23,6 +27,8 @@ class Autoloader {
         if(!empty($extra['directory'])) {
 
             spl_autoload_register(function($class) use ($extra) {
+
+                // pre($class);
 
                 $namespace = !empty($extra['namespace']) ? $extra['namespace'] : $this->namespace; 
                 $directory = !empty($extra['directory']) ? $extra['directory'] : $this->directory; 
@@ -52,13 +58,16 @@ class Autoloader {
                 if (isset($file) && is_file($file)) {
                     include_once($file);
                 } else {
+                    
                     if($recursive) {
+                        // pre('recursive');
                         $dir = new \RecursiveDirectoryIterator($directory, \RecursiveDirectoryIterator::SKIP_DOTS);
                         $iterator = NULL;
                         if (is_null($iterator)) {
                             $iterator = new \RecursiveIteratorIterator($dir, \RecursiveIteratorIterator::LEAVES_ONLY);
                         }
                         foreach ($iterator as $file) {
+                            // pre($file);
                             if (strtolower($file->getFilename()) === strtolower($class . $extension)) {
                                 if ($file->isReadable()) {
                                     $file = str_replace('\\', '/', $file->getPathname());

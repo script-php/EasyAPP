@@ -8,7 +8,7 @@
 * @link         https://smehh.ro
 */
 
-namespace System\Hooks;
+namespace System\Framework;
 
 class Hook {
 

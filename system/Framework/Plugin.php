@@ -1,5 +1,14 @@
 <?php
-namespace System\Plugins;
+
+/**
+* @package      Plugin
+* @version      1.0.0
+* @author       YoYoDeveloper
+* @copyright    2022 SMEHH - Web Software Development Company
+* @link         https://smehh.ro
+*/
+
+namespace System\Framework;
 
 class Plugin {
     static function GET_PLUGINS() {

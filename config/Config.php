@@ -6,8 +6,9 @@
 
 define('APP_QUERY', 'route');
 define('APP_SYSTEM_DIR', 'system');
-define('APP_HOME_PAGE', 'PageHome');
-define('APP_ERROR_PAGE', 'PageError');
+define('APP_MAIN_CONTROLLER', 'home');
+define('APP_ERROR_CONTROLLER', 'error');
 define('APP_STORAGE_DIR', 'storage');
 define('APP_DIR', 'app');
-define('APP_PAGES', 'app/pages');
+define('APP_CONTROLLER', 'app/controller');
+define('APP_MODEL', 'app/model');
