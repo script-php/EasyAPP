@@ -36,6 +36,7 @@ class Paths {
         $this->error_controller = (defined('APP_ERROR_CONTROLLER')) ? $path.APP_ERROR_CONTROLLER : '';
         $this->storage_dir = (defined('APP_STORAGE_DIR')) ? $path.APP_STORAGE_DIR : '';
         $this->app_dir = (defined('APP_DIR')) ? $path.APP_DIR : '';
+        $this->app_classes = (defined('APP_CLASSES')) ? $path.APP_CLASSES : '';
         $this->app_controller = (defined('APP_CONTROLLER')) ? $path.APP_CONTROLLER : '';
         $this->app_model = (defined('APP_MODEL')) ? $path.APP_MODEL : '';
         

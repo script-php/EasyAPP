@@ -108,43 +108,19 @@ class ControllerHome extends Controller {
 		]);
 
 		//How to use a different database:
-		$files = $this->db->query("SELECT * FROM files");
+		$files = $this->db->query("SELECT * FROM users");
 	}
 
 
 	// show or do something something when index.php?route=home/classes its accessed
 	function classes() {
 		// all classes from classes folder are autoloaded, ready to be used
-		$my_class = new MyOwnClass();
-		$my_class->method();
+		$my_class = new my_class();
+		echo $my_class->test();
 
 		// OR
 
-		MyOwnClass::method();
-	}
-
-
-	// show or do something something when index.php?route=home/functions its accessed
-	function functions() {
-		// if you have a function and you use it just in few pages but you dont want to write it everytime in these pages,
-		// you can put it into sa file called "my_function_name.function.php" in functions folder
-		// usage example: 
-		$body = APP::FUNCTION("my_function_name")("String", 123, false);
-	}
-
-
-	// show or do something something when index.php?route=home/app_variable its accessed
-	function app_variable() {
-		// set a variable:
-		$value = 'variable value';
-		APP::VAR('variable', $value);
-
-		// rewrite
-		APP::VAR('variable', 'set other value');
-
-		// use it
-		$test = APP::VAR('variable');
-		echo APP::VAR('variable');
+		echo my_other_class::test();
 	}
 
 
@@ -155,7 +131,7 @@ class ControllerHome extends Controller {
 		// first one is when you just want to populate the template with data, 
 		// the template will be like this: <div>{CONTENT}</div>
 		$data['content'] = 'Show you content!';
-		echo APP::HTML('app/layout/test/test.html', $data);
+		echo $this->show->html('app/layout/base.html', $data);
 
 		// OR
 		// when you need to use variables in the template
@@ -165,14 +141,14 @@ class ControllerHome extends Controller {
 			<?php } ?></div>
 		*/
 		$data['posts'] = array('post 1', 'post 2');
-		echo APP::HTML('app/layout/test/test.html', $data, true);
+		echo $this->show->html('app/layout/base2.html', $data, true);
 
 	}
 
 
 	// show or do something something when index.php?route=home/plugins its accessed
 	function plugins() {
-		$plugins = HOOK::GET_PLUGINS();
+		$plugins = $this->plugin->list();
 
 		foreach($plugins as $plugin) {
 			$package = (isset($plugin['package']) ? $plugin['package'] : 'Unknown');

@@ -26,6 +26,11 @@ $loader->load([
     'directory' => $paths->system_dir,
     'recursive' => true
 ]);
+$loader->load([
+    'namespace' => 'App/Classes',
+    'directory' => $paths->app_classes,
+    'recursive' => true
+]);
 // print_r($paths->app_controller);
 // $loader->load([
 //     'namespace' => 'App\Controller',
@@ -53,6 +58,7 @@ $registry->set('show', new System\Framework\Show());
 $registry->set('util', new System\Framework\Util());
 $registry->set('mail', new System\Framework\Mail());
 $registry->set('path', $paths);
+$registry->set('plugin', new System\Framework\Plugin($registry));
 $registry->set('load', new System\Framework\Load($registry));
 
 $router = new System\Framework\SimpleRouter($registry);

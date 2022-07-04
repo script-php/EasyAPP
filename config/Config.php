@@ -10,5 +10,6 @@ define('APP_MAIN_CONTROLLER', 'home');
 define('APP_ERROR_CONTROLLER', 'error');
 define('APP_STORAGE_DIR', 'storage');
 define('APP_DIR', 'app');
+define('APP_CLASSES', 'app/classes');
 define('APP_CONTROLLER', 'app/controller');
 define('APP_MODEL', 'app/model');
