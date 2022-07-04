@@ -8,7 +8,7 @@
 * @link         https://smehh.ro
 */
 
-class ControllerHome extends Controller {
+class ControllerMyFolderHome extends Controller {
 
 	private $settings = [];
 
@@ -146,8 +146,36 @@ class ControllerHome extends Controller {
 	}
 
 
+	// show or do something something when index.php?route=home/plugins its accessed
+	function plugins() {
+		$plugins = $this->plugin->list();
+
+		foreach($plugins as $plugin) {
+			$package = (isset($plugin['package']) ? $plugin['package'] : 'Unknown');
+			$version = (isset($plugin['version']) ? $plugin['version'] : 'Unknown');
+			$author = (isset($plugin['author']) ? $plugin['author'] : 'Unknown');
+			$copyright = (isset($plugin['copyright']) ? $plugin['copyright'] : 'Unknown');
+			$link = (isset($plugin['link']) ? $plugin['link'] : 'Unknown');
+
+			echo 'Name: ' . $package.'<br>';
+			echo 'Author: ' . $author.'<br>';
+			echo 'Website: ' . $link.'<br>';
+			echo 'Version: ' . $version.'<br>';
+			echo 'Copyright: ' . $copyright.'<br>';
+			echo '<a href="#">Install</a> | <a href="#">Uninstall</a>';
+			echo '<hr>';
+		}
+	}
 
 
+	// this method is used to register all custom hooks used in the page
+	// all hooks will be visible in admin panel when the admin can atach action to each hook.
+	function __hooks() {
+		return [
+			'MY_OWN_HOOK',
+			'another_custom_hook'
+		];
+	}
 
 
 }

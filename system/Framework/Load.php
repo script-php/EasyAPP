@@ -13,17 +13,15 @@ class Load {
     function controller($route) {
         $util = new Util();
         $route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
-        $registry = 'controller_' . str_replace('/', '_', $route);
-		if (!$this->registry->has($registry)) {
-            $exploded = explode('/', $route);
-            $controller = 'controller_' . str_replace('/', '_', $exploded[count($exploded)-1]);
+        $controller = 'controller_' . str_replace('/', '_', $route);
+		if (!$this->registry->has($controller)) {
             $file = APP_CONTROLLER . '/' . $route . '.php';
             if (is_file($file)) {
                 include_once($file);
                 $class = $util->file2Class($controller);
                 if (class_exists($class)) {
                     $load_controller = new $class($this->registry);
-                    $this->registry->set($registry, $load_controller);
+                    $this->registry->set($controller, $load_controller);
                 }
             }
 		}
@@ -32,17 +30,15 @@ class Load {
     function model($route) {
         $util = new Util();
         $route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
-        $registry = 'model_' . str_replace('/', '_', $route);
-		if (!$this->registry->has($registry)) {
-            $exploded = explode('/', $route);
-            $model = 'model_' . str_replace('/', '_', $exploded[count($exploded)-1]);
+        $model = 'model_' . str_replace('/', '_', $route);
+		if (!$this->registry->has($model)) {
             $file = APP_MODEL . '/' . $route . '.php';
             if (is_file($file)) {
                 include_once($file);
                 $class = $util->file2Class($model);
                 if (class_exists($class)) {
                     $load_model = new $class($this->registry);
-                    $this->registry->set($registry, $load_model);
+                    $this->registry->set($model, $load_model);
                 }
             }
 		}

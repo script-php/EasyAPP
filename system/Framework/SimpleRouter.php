@@ -40,18 +40,16 @@ class SimpleRouter {
 
         // load page
         $query = $http->get($this->query);
+
         $query = preg_replace('/[^a-zA-Z0-9_\/|]/', '', (string)$query);
         $query_exploded = explode('|', $query); // explode it 
         $route = (!empty($query_exploded[0]) && $query != NULL) ? $query_exploded[0] : $this->main_controller;
         $method = !empty($query_exploded[1]) ? $query_exploded[1] : 'index';
         $file = $this->app_controller . '/' . $route . '.php';
-
         $not_found = true;
         if(is_file($file)) {
             include_once($file);
-            $route_exploded = explode('/', $route);
-            $class = $route_exploded[count($route_exploded)-1];
-            $class_name = 'Controller' . $util->file2Class($class);
+            $class_name = 'Controller' . $util->file2Class(str_replace('/', '_', $route));
             if (class_exists($class_name)) {
                 $page_class = new $class_name($this->registry);
                 if (is_callable([$page_class, $method])) {
@@ -70,9 +68,7 @@ class SimpleRouter {
             $file = $this->app_controller . '/' . $route . '.php';
             if(is_file($file)) {
                 include_once($file);
-                $route_exploded = explode('/', $route);
-                $class = $route_exploded[count($route_exploded)-1];
-                $class_name = 'Controller' . $util->file2Class($class);
+                $class_name = 'Controller' . $util->file2Class(str_replace('/', '_', $route));
                 if (class_exists($class_name)) {
                     $page_class = new $class_name($this->registry);
                     if (is_callable([$page_class, $method])) {

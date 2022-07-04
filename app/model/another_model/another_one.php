@@ -1,6 +1,6 @@
 <?php
 
-class ModelAnotherOne extends Model {
+class ModelAnotherModelAnotherOne extends Model {
 
     function test() {
 

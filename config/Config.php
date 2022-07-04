@@ -6,8 +6,8 @@
 
 define('APP_QUERY', 'route');
 define('APP_SYSTEM_DIR', 'system');
-define('APP_MAIN_CONTROLLER', 'home');
-define('APP_ERROR_CONTROLLER', 'error');
+define('APP_MAIN_CONTROLLER', 'my_folder/home');
+define('APP_ERROR_CONTROLLER', 'error_folder/error');
 define('APP_STORAGE_DIR', 'storage');
 define('APP_DIR', 'app');
 define('APP_CLASSES', 'app/classes');
