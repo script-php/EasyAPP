@@ -5,11 +5,17 @@
  */
 
 define('APP_QUERY', 'route');
-define('APP_SYSTEM_DIR', 'system');
-define('APP_MAIN_CONTROLLER', 'my_folder/home');
-define('APP_ERROR_CONTROLLER', 'error_folder/error');
-define('APP_STORAGE_DIR', 'storage');
-define('APP_DIR', 'app');
-define('APP_CLASSES', 'app/classes');
-define('APP_CONTROLLER', 'app/controller');
-define('APP_MODEL', 'app/model');
+define('MAIN_CONTROLLER', 'home');
+define('ERROR_CONTROLLER', 'error');
+
+define('DIR_APP', 'app');
+define('DIR_CONTROLLER', 'app/controller');
+define('DIR_MODEL', 'app/model');
+define('DIR_VIEW', 'app/view');
+define('DIR_LANGUAGE', 'app/language');
+
+define('DIR_SYSTEM', 'system');
+define('DIR_FRAMEWORK', 'system/Framework');
+define('DIR_LIBRARY', 'system/Library');
+define('DIR_STORAGE', 'storage');
+

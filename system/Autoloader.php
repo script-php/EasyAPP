@@ -60,7 +60,8 @@ class Autoloader {
                 } else {
                     
                     if($recursive) {
-                        // pre('recursive');
+                        pre('recursive');
+                        pre($directory);
                         $dir = new \RecursiveDirectoryIterator($directory, \RecursiveDirectoryIterator::SKIP_DOTS);
                         $iterator = NULL;
                         if (is_null($iterator)) {

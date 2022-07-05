@@ -4,6 +4,8 @@
 	<title><?php echo $title; ?></title>
 </head>
 <body>
-	<?php echo $body; ?>
+	<?php foreach($posts as $post) { ?>
+		<?php echo $post; ?>
+	<?php } ?>
 </body>
 </html>

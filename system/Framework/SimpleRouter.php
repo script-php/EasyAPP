@@ -10,27 +10,25 @@
 * This class determines which class page and methods are executed based on the URL requested.
 * URL request examples: 
 * 1. index.php?route=home
-* 2. index.php?route=home/method
+* 2. index.php?route=home|method
 */
 
 namespace System\Framework;
-
-// use \App\Controller;
 
 class SimpleRouter {
 
     public $registry;
     public $query;
-    public $app_controller;
+    public $dir_controller;
     public $main_controller;
 	public $error_controller;
 
     public function __construct($registry) {
         $this->registry = $registry;
         $this->query = (defined('APP_QUERY')) ? APP_QUERY : '';
-        $this->app_controller = (defined('APP_CONTROLLER')) ? APP_CONTROLLER : '';
-        $this->main_controller = (defined('APP_MAIN_CONTROLLER')) ? APP_MAIN_CONTROLLER : '';
-        $this->error_controller = (defined('APP_ERROR_CONTROLLER')) ? APP_ERROR_CONTROLLER : '';
+        $this->dir_controller = (defined('DIR_CONTROLLER')) ? DIR_CONTROLLER : '';
+        $this->main_controller = (defined('MAIN_CONTROLLER')) ? MAIN_CONTROLLER : '';
+        $this->error_controller = (defined('ERROR_CONTROLLER')) ? ERROR_CONTROLLER : '';
     }
 
     // TODO: remake this shit using autoloader & namespace.
@@ -45,7 +43,7 @@ class SimpleRouter {
         $query_exploded = explode('|', $query); // explode it 
         $route = (!empty($query_exploded[0]) && $query != NULL) ? $query_exploded[0] : $this->main_controller;
         $method = !empty($query_exploded[1]) ? $query_exploded[1] : 'index';
-        $file = $this->app_controller . '/' . $route . '.php';
+        $file = $this->dir_controller . '/' . $route . '.php';
         $not_found = true;
         if(is_file($file)) {
             include_once($file);
@@ -65,7 +63,7 @@ class SimpleRouter {
             $query_exploded = explode('|', $query); // explode it 
             $route = (!empty($query_exploded[0]) && $query != NULL) ? $query_exploded[0] : $this->main_controller;
             $method = !empty($query_exploded[1]) ? $query_exploded[1] : 'index';
-            $file = $this->app_controller . '/' . $route . '.php';
+            $file = $this->dir_controller . '/' . $route . '.php';
             if(is_file($file)) {
                 include_once($file);
                 $class_name = 'Controller' . $util->file2Class(str_replace('/', '_', $route));

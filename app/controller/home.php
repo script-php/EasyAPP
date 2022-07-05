@@ -20,11 +20,13 @@ class ControllerHome extends Controller {
 	function index() {
 		// show or do something something when index.php?route=home or index.php?route=home/index its accessed
 
-		$data['title'] = 'Title page';
-		$data['body'] = 'Content page';
+		$this->load->language('my_language'); // load the language
 
-		//echo $this->show->html('app/layout/base.html', $data); // valid, working
-		echo $this->show->html('app/layout/base_v2.html', $data, true);
+		$data['title'] = $this->language->get('title');
+		$data['body'] = $this->language->get('text');;
+
+		echo $this->load->view('my_folder/my_view.html', $data);
+		
 	}
 	
 
@@ -112,18 +114,6 @@ class ControllerHome extends Controller {
 	}
 
 
-	// show or do something something when index.php?route=home/classes its accessed
-	function classes() {
-		// all classes from classes folder are autoloaded, ready to be used
-		$my_class = new my_class();
-		echo $my_class->test();
-
-		// OR
-
-		echo my_other_class::test();
-	}
-
-
 	// show or do something something when index.php?route=home/show_template its accessed
 	function show_template() {
 		// here you have two options:
@@ -131,7 +121,7 @@ class ControllerHome extends Controller {
 		// first one is when you just want to populate the template with data, 
 		// the template will be like this: <div>{CONTENT}</div>
 		$data['body'] = 'Show you content!';
-		echo $this->show->html('app/layout/base.html', $data);
+		echo $this->load->view('base.html', $data, false);
 
 		// OR
 		// when you need to use variables in the template
@@ -140,15 +130,10 @@ class ControllerHome extends Controller {
 				<div><?php echo $post; ?>
 			<?php } ?></div>
 		*/
-		$data['body'] = array('post 1', 'post 2');
-		echo $this->show->html('app/layout/base_v2.html', $data, true);
+		$data['posts'] = array('post 1', 'post 2');
+		echo $this->load->view('base_v2.html', $data);
 
 	}
-
-
-
-
-
 
 }
 

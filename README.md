@@ -1,5 +1,5 @@
 # EasyAPP
- v1.2.2
+ v1.2.3
 
 # About EasyAPP
 EasyAPP is a different type of Framework. EasyAPP script aims to help you in the easy development of any type of website, without consuming resources in vain. 
@@ -11,7 +11,7 @@ With EasyAPP your codes are clean and you can easy develop your project, since e
  - Download on your computer
  - Extract the files
  - Put all on your public_html
- - Edit the file /app/config.php (optional, just if you want to add more variables for your project or/and change the location of project classes and functions or name of some url parameters)
+ - Edit the file /app/config.php
  - It's alive!
 
 # Requires
