@@ -32,7 +32,7 @@ index.php?route=my_page|method
 ## View 
 The second required file for your page's interface is the view file. This will be created in the app/view/ folder, and will have what suffix you want (.tpl, .html, ...).
 In this file you will create the HTML template for your website output.
-In the view, you will be able to access the text from the language that the controller file stored as a PHP variable. See the example below how you it works.
+In the view, you will be able to access the text from the language that the controller file stored as a PHP variable. See the example below how it works.
 
 #### Show output of you page
 If you want to display a view in your page you should use the following code:
@@ -43,8 +43,8 @@ Where 'my_folder/my_view.html' is the path of your view file and $data is the ar
 
 
 ## Language
-The third file you will usually need to create for any page is the language file(s). You can create one file that store all texts per language for all pages OR you can create a language file for each page. All depends by how you want to structure the project. The language file will live in the admin/language/ folder. It simply contains a PHP associative array called $_, which contains the internal name as the key and the translation as the value. 
-See the example above how you can use it.
+The third file you will usually need to create for any page is the language file(s). You can create one file that store all texts per language for all pages OR you can create a language file for each page. All depends by how you want to structure the project. The language file will live in the app/language/ folder. It simply contains a PHP associative array called $_, which contains the internal name as the key and the translation as the value. 
+See the example below how you can use it.
 
 #### Language usage 
 The controller file is the place where you can load the language files to convert text into variables to be utilized in the view file.
@@ -65,7 +65,7 @@ The $this->language->get('text') will grab the text from the $_['text'] variable
 ```
 
 ## Model
-The model is the file where you have all database queries. If one of your pages need to use a query used into other page you can just load that model page and use it. You dont have to write same query two times in your project. Just share the model between pages. See the example above how you it works.
+The model is the file where you have all database queries. If one of your pages need to use a query used into other page you can just load that model page and use it. You dont have to write same query two times in your project. Just share the model between pages. See the example below how it works.
 
 #### Loading model files
 Loading model files into your controller file will allow your page to utilize database queries from other pages instead of repeating same queries for multiple pages.
