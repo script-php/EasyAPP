@@ -1,6 +1,6 @@
 # Documentation EasyAPP
 
-Basic directory structure
+## Basic directory structure
 The basic file structure for your project will follow the MVCL framework structure.
 The structure looks like:
 - controller
