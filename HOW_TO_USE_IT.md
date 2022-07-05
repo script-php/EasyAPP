@@ -12,7 +12,7 @@ Every controller name class should have this form:
 
 The class of controller will be like this:
 
-
+```
 class ControllerMyFolderMySubfolderOtherPage extends Controller {
     public $registry;
 
@@ -24,4 +24,4 @@ class ControllerMyFolderMySubfolderOtherPage extends Controller {
         echo 'this is my page';
     }
 }
-
+```
