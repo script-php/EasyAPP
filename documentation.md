@@ -19,7 +19,11 @@ The first file you make will be the controller for your page.
 The controller is the only file to be accessed by URL in EasyAPP 
 The URL will look like: 
 ```
-index.php?route=my_page OR index.php?route=my_folder/my_page.
+index.php?route=my_page
+```
+OR 
+```
+index.php?route=my_folder/my_page.
 ```
 As a result, the controller file will have a function defined as public function index(). This is a publicly accessible 'page' that is loaded by the URL.
 You can have more functions defined as public and you can access them in this way:
