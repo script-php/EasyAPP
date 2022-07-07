@@ -23,7 +23,7 @@ class ControllerHome extends Controller {
 		$this->load->language('my_language'); // load the language
 
 		$data['title'] = $this->language->get('title');
-		$data['body'] = $this->language->get('text');;
+		$data['body'] = $this->language->get('text');
 
 		echo $this->load->view('my_folder/my_view.html', $data);
 		

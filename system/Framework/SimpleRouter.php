@@ -22,8 +22,12 @@ class SimpleRouter {
     public $dir_controller;
     public $main_controller;
 	public $error_controller;
+    public $request;
+    public $util;
 
     public function __construct($registry) {
+        $this->request = $registry->get('request');
+        $this->util = $registry->get('util');
         $this->registry = $registry;
         $this->query = (defined('APP_QUERY')) ? APP_QUERY : '';
         $this->dir_controller = (defined('DIR_CONTROLLER')) ? DIR_CONTROLLER : '';
@@ -33,11 +37,8 @@ class SimpleRouter {
 
     // TODO: remake this shit using autoloader & namespace.
     public function loadPage() {
-        $http = new Http();
-        $util = new Util();
 
-        // load page
-        $query = $http->get($this->query);
+        $query = !empty($this->request->get[$this->query]) ? $this->request->get[$this->query] : NULL;
 
         $query = preg_replace('/[^a-zA-Z0-9_\/|]/', '', (string)$query);
         $query_exploded = explode('|', $query); // explode it 
@@ -47,7 +48,7 @@ class SimpleRouter {
         $not_found = true;
         if(is_file($file)) {
             include_once($file);
-            $class_name = 'Controller' . $util->file2Class(str_replace('/', '_', $route));
+            $class_name = 'Controller' . $this->util->file2Class(str_replace('/', '_', $route));
             if (class_exists($class_name)) {
                 $page_class = new $class_name($this->registry);
                 if (is_callable([$page_class, $method])) {
@@ -66,7 +67,7 @@ class SimpleRouter {
             $file = $this->dir_controller . '/' . $route . '.php';
             if(is_file($file)) {
                 include_once($file);
-                $class_name = 'Controller' . $util->file2Class(str_replace('/', '_', $route));
+                $class_name = 'Controller' . $this->util->file2Class(str_replace('/', '_', $route));
                 if (class_exists($class_name)) {
                     $page_class = new $class_name($this->registry);
                     if (is_callable([$page_class, $method])) {

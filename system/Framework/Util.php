@@ -85,7 +85,6 @@ class Util {
 
 	public function filter(string $value, array $options = NULL) {
 
-		$util = new Util();
 
 		if($options != NULL) {
 			$filter = array_key_exists('filter', $options) ? $options['filter'] : NULL;
@@ -93,11 +92,11 @@ class Util {
 			$HTML = array_key_exists('html', $options) ? $options['html'] : NULL;
 				
 			if($HTML) {
-				$value = $util->chars2Html($value);
+				$value = $this->chars2Html($value);
 			}
 			if($filter != NULL) {
 
-				if(!$util->checkChars($value, $filter)) {
+				if(!$this->checkChars($value, $filter)) {
 					$value = NULL;
 				}
 			}

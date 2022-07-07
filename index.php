@@ -2,7 +2,7 @@
 
 /**
 * @package      EasyAPP
-* @version      v1.2.1
+* @version      v1.2.4
 * @author       YoYoDeveloper / Smehh
 * @copyright    2022 SMEHH - Web Software Development Company
 * @link         https://smehh.ro
@@ -48,6 +48,7 @@ $registry->set('util', new System\Framework\Util());
 $registry->set('mail', new System\Framework\Mail());
 $registry->set('load', new System\Framework\Load($registry));
 $registry->set('language', new System\Framework\Language('ro-ro'));
+$registry->set('request', new System\Framework\Request($registry));
 
 $router = new System\Framework\SimpleRouter($registry);
 $router->loadPage();
