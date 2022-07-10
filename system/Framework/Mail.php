@@ -2,7 +2,7 @@
 
 /**
 * @package      Mail
-* @version      v1.0.0
+* @version      v1.0.1
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
@@ -12,42 +12,21 @@ namespace System\Framework;
 
 class Mail {
 
-    // public static function MAIL($to, $subject, $message) {
-	// 	if(filter_var($to, FILTER_VALIDATE_EMAIL)) {
-	// 		$headers = "From: " . APP::VAR('config')['email'] . "\r\n";
-	// 		$headers .= "MIME-Version: 1.0\r\n";
-	// 		$headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-	// 		mail($to, $subject, $message, $headers);
-	// 		return TRUE;
-	// 	}
-	// 	else{
-	// 		return FALSE;
-	// 	}
-	// }
+	public function send(array $data = []) {
 
-    protected string $to = '';
-	protected string $from = '';
-	protected string $sender = '';
-	protected string $reply_to = '';
-	protected string $subject = '';
-	protected string $text = '';
-	protected string $html = '';
-	protected array $attachments = [];
-	protected string $parameter;
+		$data_to = !empty($data['to']) ? $data['to'] : NULL;
+		$data_from = !empty($data['from']) ? $data['from'] : NULL;
+		$data_sender = !empty($data['sender']) ? $data['sender'] : NULL;
+		$data_reply_to = !empty($data['reply_to']) ? $data['reply_to'] : NULL;
+		$data_subject = !empty($data['subject']) ? $data['subject'] : NULL;
+		$data_text = !empty($data['text']) ? $data['text'] : NULL;
+		$data_html = !empty($data['html']) ? $data['html'] : NULL;
+		$data_attachments = !empty($data['attachments']) ? $data['attachments'] : NULL;
 
-	public function __construct(/*array $args*/) {
-		// foreach ($args as $key => $value) {
-		// 	if (property_exists($this, $key)) {
-		// 		$this->{$key} = $value;
-		// 	}
-		// }
-	}
-
-	public function send(): bool {
-		if (is_array($this->to)) {
-			$to = implode(',', $this->to);
+		if (is_array($data_to)) {
+			$to = implode(',', $data_to);
 		} else {
-			$to = $this->to;
+			$to = $data_to;
 		}
 
 		if (version_compare(phpversion(), '8.0', '>=') || substr(PHP_OS, 0, 3) == 'WIN') {
@@ -57,73 +36,58 @@ class Mail {
 		}
 
 		$boundary = '----=_NextPart_' . md5(time());
-
 		$header  = 'MIME-Version: 1.0' . $eol;
 		$header .= 'Date: ' . date('D, d M Y H:i:s O') . $eol;
-		$header .= 'From: =?UTF-8?B?' . base64_encode($this->sender) . '?= <' . $this->from . '>' . $eol;
-
-		if (!$this->reply_to) {
-			$header .= 'Reply-To: =?UTF-8?B?' . base64_encode($this->sender) . '?= <' . $this->from . '>' . $eol;
+		$header .= 'From: =?UTF-8?B?' . base64_encode($data_sender) . '?= <' . $data_from . '>' . $eol;
+		if (!$data_reply_to) {
+			$header .= 'Reply-To: =?UTF-8?B?' . base64_encode($data_sender) . '?= <' . $data_from . '>' . $eol;
 		} else {
-			$header .= 'Reply-To: =?UTF-8?B?' . base64_encode($this->reply_to) . '?= <' . $this->reply_to . '>' . $eol;
+			$header .= 'Reply-To: =?UTF-8?B?' . base64_encode($data_reply_to) . '?= <' . $data_reply_to . '>' . $eol;
 		}
-
-		$header .= 'Return-Path: ' . $this->from . $eol;
+		$header .= 'Return-Path: ' . $data_from . $eol;
 		$header .= 'X-Mailer: PHP/' . phpversion() . $eol;
 		$header .= 'Content-Type: multipart/mixed; boundary="' . $boundary . '"' . $eol . $eol;
-
-		if (!$this->html) {
+		if (!$data_html) {
 			$message  = '--' . $boundary . $eol;
 			$message .= 'Content-Type: text/plain; charset="utf-8"' . $eol;
 			$message .= 'Content-Transfer-Encoding: base64' . $eol . $eol;
-			$message .= base64_encode($this->text) . $eol;
+			$message .= base64_encode($data_text) . $eol;
 		} else {
 			$message  = '--' . $boundary . $eol;
 			$message .= 'Content-Type: multipart/alternative; boundary="' . $boundary . '_alt"' . $eol . $eol;
 			$message .= '--' . $boundary . '_alt' . $eol;
 			$message .= 'Content-Type: text/plain; charset="utf-8"' . $eol;
 			$message .= 'Content-Transfer-Encoding: base64' . $eol . $eol;
-
-			if ($this->text) {
-				$message .= base64_encode($this->text) . $eol;
+			if ($data_text) {
+				$message .= base64_encode($data_text) . $eol;
 			} else {
 				$message .= base64_encode('This is a HTML email and your email client software does not support HTML email!') . $eol;
 			}
-
 			$message .= '--' . $boundary . '_alt' . $eol;
 			$message .= 'Content-Type: text/html; charset="utf-8"' . $eol;
 			$message .= 'Content-Transfer-Encoding: base64' . $eol . $eol;
-			$message .= base64_encode($this->html) . $eol;
+			$message .= base64_encode($data_html) . $eol;
 			$message .= '--' . $boundary . '_alt--' . $eol;
 		}
-
-		foreach ($this->attachments as $attachment) {
-			if (is_file($attachment)) {
-				$handle = fopen($attachment, 'r');
-
-				$content = fread($handle, filesize($attachment));
-
-				fclose($handle);
-
-				$message .= '--' . $boundary . $eol;
-				$message .= 'Content-Type: application/octet-stream; name="' . basename($attachment) . '"' . $eol;
-				$message .= 'Content-Transfer-Encoding: base64' . $eol;
-				$message .= 'Content-Disposition: attachment; filename="' . basename($attachment) . '"' . $eol;
-				$message .= 'Content-ID: <' . urlencode(basename($attachment)) . '>' . $eol;
-				$message .= 'X-Attachment-Id: ' . urlencode(basename($attachment)) . $eol . $eol;
-				$message .= chunk_split(base64_encode($content));
+		if(!empty($data_attachments)) {
+			foreach ($data_attachments as $attachment) {
+				if (is_file($attachment)) {
+					$handle = fopen($attachment, 'r');
+					$content = fread($handle, filesize($attachment));
+					fclose($handle);
+					$message .= '--' . $boundary . $eol;
+					$message .= 'Content-Type: application/octet-stream; name="' . basename($attachment) . '"' . $eol;
+					$message .= 'Content-Transfer-Encoding: base64' . $eol;
+					$message .= 'Content-Disposition: attachment; filename="' . basename($attachment) . '"' . $eol;
+					$message .= 'Content-ID: <' . urlencode(basename($attachment)) . '>' . $eol;
+					$message .= 'X-Attachment-Id: ' . urlencode(basename($attachment)) . $eol . $eol;
+					$message .= chunk_split(base64_encode($content));
+				}
 			}
 		}
-
 		$message .= '--' . $boundary . '--' . $eol;
-
-		ini_set('sendmail_from', $this->from);
-
-		if ($this->parameter) {
-			return mail($to, '=?UTF-8?B?' . base64_encode($this->subject) . '?=', $message, $header, $this->parameter);
-		} else {
-			return mail($to, '=?UTF-8?B?' . base64_encode($this->subject) . '?=', $message, $header);
-		}
+		ini_set('sendmail_from', $data_from);
+		return mail($to, '=?UTF-8?B?' . base64_encode($data_subject) . '?=', $message, $header);
 	}
 
 }

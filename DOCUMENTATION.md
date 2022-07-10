@@ -124,3 +124,16 @@ $this->files;
 ```
 $this->ip;
 ```
+## Mails
+```
+$this->mail->send([
+    'to'            => '', // string or array with mail/s
+    'from'          => '', // string
+    'sender'        => '', // string
+    'reply_to'      => '', // string
+    'subject'       => '', // string
+    'text'          => '', // string
+    'html'          => '', // string
+    'attachments'   => [] // array with files
+]);
+```
