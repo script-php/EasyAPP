@@ -91,3 +91,36 @@ Attention: Instead of using spaces in file names for your module, use underscore
 The name of controllers and models should follow this simple rules:
 1. if the file of your file is "my_page.php" then the name of the class page it will be "ControllerMyPage" / "ModelMyPage"
 2. if the file of your file is into a folder "my_folder/my_page.php" then the name of the class page it will be "ControllerMyFolderMyPage" / "ModelMyFolderMyPage"
+
+
+# Utils
+
+## Requests
+GET:
+```
+$this->request->get['name'];
+```
+POST:
+```
+$this->request->post['name'];
+```
+## Cookie
+```
+$this->request->cookie['name'];
+```
+## All requests
+```
+$this->request;
+```
+## Server
+```
+$this->server;
+```
+## Files
+```
+$this->files;
+```
+## IP
+```
+$this->ip;
+```
