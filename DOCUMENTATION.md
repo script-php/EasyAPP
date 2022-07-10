@@ -89,8 +89,8 @@ Attention: Instead of using spaces in file names for your module, use underscore
 
 # Class naming
 The name of controllers and models should follow this simple rules:
-1. if the file of your file is "my_page.php" then the name of the class page it will be "ControllerMyPage" / "ModelMyPage"
-2. if the file of your file is into a folder "my_folder/my_page.php" then the name of the class page it will be "ControllerMyFolderMyPage" / "ModelMyFolderMyPage"
+1. if the file of your page is "my_page.php" then the name of the class page it will be "ControllerMyPage" / "ModelMyPage"
+2. if the file of your page is into a folder "my_folder/my_page.php" then the name of the class page it will be "ControllerMyFolderMyPage" / "ModelMyFolderMyPage"
 
 
 # Utils

@@ -16,3 +16,6 @@ With EasyAPP your codes are clean and you can easy develop your project, since e
 
 # Requires
  - PHP 7.0+
+
+# Documentation
+You can read a basic documentation here: [click for documentation](DOCUMENTATION.md)
