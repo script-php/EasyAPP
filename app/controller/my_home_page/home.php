@@ -2,13 +2,13 @@
 
 /**
 * @package      Home page example
-* @version      1.0.0
-* @author       Smehh
-* @copyright    2022 SMEHH - Web Software Development Company
-* @link         https://smehh.ro
+* @version      v1.0.0
+* @author       YoYo
+* @copyright    Copyright (c) 2022, script-php.ro
+* @link         https://script-php.ro
 */
 
-class ControllerHome extends Controller {
+class ControllerMyHomePageHome extends Controller {
 
 	private $settings = [];
 
@@ -24,6 +24,12 @@ class ControllerHome extends Controller {
 
 		$data['title'] = $this->language->get('title');
 		$data['body'] = $this->language->get('text');
+
+		$this->load->controller('my_error_page/error');
+		$this->load->model('another_model/another_one');
+
+		echo $this->controller_my_error_page_error->test();
+		echo $this->model_another_model_another_one->test();
 
 		echo $this->load->view('my_folder/my_view.html', $data);
 		

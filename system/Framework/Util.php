@@ -2,10 +2,10 @@
 
 /**
 * @package      Util
-* @version      1.0.0
-* @author       YoYoDeveloper
-* @copyright    2022 SMEHH - Web Software Development Company
-* @link         https://smehh.ro
+* @version      v1.0.0
+* @author       YoYo
+* @copyright    Copyright (c) 2022, script-php.ro
+* @link         https://script-php.ro
 */
 
 namespace System\Framework;

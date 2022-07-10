@@ -2,52 +2,55 @@
 
 /**
 * @package      EasyAPP
-* @version      v1.2.4
-* @author       YoYoDeveloper / Smehh
-* @copyright    2022 SMEHH - Web Software Development Company
-* @link         https://smehh.ro
+* @version      v1.2.5
+* @author       YoYo
+* @copyright    Copyright (c) 2022, script-php.ro
+* @link         https://script-php.ro
 */
 
 define('PATH', __DIR__ . DIRECTORY_SEPARATOR);
 
 chdir(PATH);
 
-require PATH . 'Config/Config.php'; // framework config
-require PATH . 'Config/Paths.php'; // framework paths
+require PATH . 'System/Config.php'; // framework config
 
-$paths = new Config\Paths(PATH);
+$config = new System\Config(PATH);
 
-include rtrim($paths->dir_system, '\\/ ') . DIRECTORY_SEPARATOR . 'Autoloader.php';
+include rtrim($config->dir_system, '\\/ ') . DIRECTORY_SEPARATOR . 'Autoloader.php';
 
-$loader = new App\Autoloader();
+$loader = new System\Autoloader();
 
 $loader->load([
     'namespace' => 'System\Framework',
-    'directory' => $paths->dir_framework,
+    'directory' => $config->dir_framework,
     'recursive' => true
 ]);
 
 $loader->load([
     'namespace' => 'System\Library',
-    'directory' => $paths->dir_library,
+    'directory' => $config->dir_library,
     'recursive' => true
 ]);
 
-require $paths->dir_app . '/config.php'; // app config
-require $paths->dir_app . '/helper.php'; // custom functions
+include $config->dir_system . 'Controller.php';
+include $config->dir_system . 'Model.php';
 
-include $paths->dir_system . '/Controller.php';
+require $config->dir_app . 'config.php'; // app config
+require $config->dir_app . 'helper.php'; // custom functions
 
 $registry = new System\Framework\Registry();
 $database   = new System\Framework\DB(); // database connection
 
-$registry->set('db', $database->connect(DB_HOSTNAME,DB_DATABASE,DB_USERNAME,DB_PASSWORD,DB_PORT));
-$registry->set('path', $paths);
-$registry->set('hooks', new System\Framework\Hook());
-$registry->set('util', new System\Framework\Util());
-$registry->set('mail', new System\Framework\Mail());
+$registry->set('config', $config);
+$registry->set('db', $database->connect($config->db_hostname,$config->db_database,$config->db_username,$config->db_password,$config->db_port));
+$registry->set('hooks', new System\Framework\Hook($registry));
+$registry->set('util', new System\Framework\Util($registry));
+$registry->set('mail', new System\Framework\Mail($registry));
 $registry->set('load', new System\Framework\Load($registry));
-$registry->set('language', new System\Framework\Language('ro-ro'));
+
+$language = new System\Framework\Language($registry);
+$language->directory('ro-ro');
+$registry->set('language', $language);
 $registry->set('request', new System\Framework\Request($registry));
 
 $router = new System\Framework\SimpleRouter($registry);

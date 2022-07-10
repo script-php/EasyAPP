@@ -2,24 +2,20 @@
 
 /**
 * @package      DB
-* @version      1.0.0
-* @author       YoYoDeveloper
-* @copyright    2022 SMEHH - Web Software Development Company
-* @link         https://smehh.ro
+* @version      v1.0.0
+* @author       YoYo
+* @copyright    Copyright (c) 2022, script-php.ro
+* @link         https://script-php.ro
 */
 
 namespace System\Framework;
 
 class DB {
 
-    // private $connect = array();
     private $connect;
-
 	private $queries = 0;
 	
-    public function connect(/*string $servername,*/string $host,string $name,string $user,string $pass,string $port,array $options=NULL,string $encoding='utf8') {
-        // $servername = strtolower($servername);
-        // $hash = md5($servername);
+    public function connect(string $host,string $name,string $user,string $pass,string $port,array $options=NULL,string $encoding='utf8') {
 		$conn = '';
 		if(class_exists('PDO')) {
 			try{
@@ -38,7 +34,6 @@ class DB {
 				}
 				$conn = new \PDO("mysql:host={$host};dbname={$name}",$user,$pass,$options);
 				$conn -> exec("SET character_set_client='{$encoding}',character_set_connection='{$encoding}',character_set_results='{$encoding}';");
-				// return self::$connect[$hash] = $conn;
 				return $this->connect = $conn;
 			}
 			catch(PDOException $e) {
@@ -50,7 +45,7 @@ class DB {
 		}
 	}
 
-    public function query(/*$servername, */$query, $params=NULL) {
+    public function query($query, $params=NULL) {
 		if(!isSet($query)){ $query=NULL; }
 		if(!isSet($params)){ $params=NULL; }
 		if($this->connect instanceof PDO) {
@@ -68,12 +63,9 @@ class DB {
 				$this->$queries++;
 				return  $stmt; 
 			}
-			else {
-				exit("Ohh, come on! Really? What do you want to do with this function if you not make a query?");
-			}
 		}
 		else {
-			exit('Why you bully this class? That thing you set there is not initiated by the PDO, so I think it\'s not a database. Do something good for this project and put a database ... You Mother Fucker.');
+			exit('Is not initiated by PDO.');
 		}
 	}
 

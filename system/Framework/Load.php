@@ -2,32 +2,37 @@
 
 /**
 * @package      Load
-* @version      1.0.0
-* @author       YoYoDeveloper
-* @copyright    2022 SMEHH - Web Software Development Company
-* @link         https://smehh.ro
+* @version      v1.0.0
+* @author       YoYo
+* @copyright    Copyright (c) 2022, script-php.ro
+* @link         https://script-php.ro
 */
 
 namespace System\Framework;
 
 class Load {
 
-    public $registry;
+    public $config;
+    public $util;
+	public $registry;
 
     public function __construct($registry) {
 		$this->registry = $registry;
+		$this->config = $registry->get('config');
+		$this->util = $registry->get('util');
 	}
 
 
     function controller($route) {
-        $util = new Util();
+        // $util = new Util();
         $route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
         $controller = 'controller_' . str_replace('/', '_', $route);
 		if (!$this->registry->has($controller)) {
-            $file = DIR_CONTROLLER . '/' . $route . '.php';
+            $file = $this->config->dir_controller . $route . '.php';
+			// pre($file);
             if (is_file($file)) {
                 include_once($file);
-                $class = $util->file2Class($controller);
+                $class = $this->util->file2Class($controller);
                 if (class_exists($class)) {
                     $load_controller = new $class($this->registry);
                     $this->registry->set($controller, $load_controller);
@@ -38,14 +43,14 @@ class Load {
 
 
     function model($route) {
-        $util = new Util();
+        // $util = new Util();
         $route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
         $model = 'model_' . str_replace('/', '_', $route);
 		if (!$this->registry->has($model)) {
-            $file = DIR_MODEL . '/' . $route . '.php';
+            $file = $this->config->dir_model . $route . '.php';
             if (is_file($file)) {
                 include_once($file);
-                $class = $util->file2Class($model);
+                $class = $this->util->file2Class($model);
                 if (class_exists($class)) {
                     $load_model = new $class($this->registry);
                     $this->registry->set($model, $load_model);
@@ -64,7 +69,7 @@ class Load {
 
     public function view(string $route, array $data = [], bool $code = true) {
 		$route = preg_replace('/[^a-zA-Z0-9_\/.]/', '', (string)$route); // Sanitize the call
-        $route = DIR_VIEW . '/' . $route;
+        $route = $this->config->dir_view . '/' . $route;
         if(file_exists($route)) {
 			if($code) {
 				ob_start();

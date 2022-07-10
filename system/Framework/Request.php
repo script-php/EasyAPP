@@ -1,5 +1,12 @@
 <?php
 
+/**
+* @package      Request
+* @version      v1.0.0
+* @author       YoYo
+* @copyright    Copyright (c) 2022, script-php.ro
+* @link         https://script-php.ro
+*/
 
 namespace System\Framework;
 class Request {
@@ -26,13 +33,11 @@ class Request {
 		if (is_array($data)) {
 			foreach ($data as $key => $value) {
 				unset($data[$key]);
-
 				$data[$this->clean($key)] = $this->clean($value);
 			}
 		} else {
 			$data = htmlspecialchars($data, ENT_COMPAT, 'UTF-8');
 		}
-
 		return $data;
 	}
 
@@ -41,26 +46,20 @@ class Request {
 	}
 
     public function csrf($method='get') {
-
         $util = $this->registry->get('util');
-
         $request_method = strtolower($this->server['REQUEST_METHOD']);
         $method = strtolower($method);
-
 		if ($request_method===$method) {
-
             if($method == 'get') {
                 $origin = !empty($this->server['HTTP_REFERER']) ? $this->server['HTTP_REFERER'] : NULL;
             }
             else if($method == 'post') {
                 $origin = !empty($this->server['HTTP_ORIGIN']) ? $this->server['HTTP_ORIGIN'] : NULL;
             }
-
 			$hostname = !is_null($this->server['HTTP_HOST']) ? $this->server['HTTP_HOST'] : NULL;
 			if($origin != NULL && $util->contains($origin,$hostname)) {
 				return true;
 			}
-
 		}
 		return false;
 	}
