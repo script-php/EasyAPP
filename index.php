@@ -12,9 +12,17 @@ define('PATH', __DIR__ . DIRECTORY_SEPARATOR);
 
 chdir(PATH);
 
+
+
 require PATH . 'System/Config.php'; // framework config
 
 $config = new System\Config(PATH);
+
+if($config->debug) {
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+}
 
 include rtrim($config->dir_system, '\\/ ') . DIRECTORY_SEPARATOR . 'Autoloader.php';
 
@@ -39,10 +47,9 @@ require $config->dir_app . 'config.php'; // app config
 require $config->dir_app . 'helper.php'; // custom functions
 
 $registry = new System\Framework\Registry();
-$database   = new System\Framework\DB(); // database connection
 
 $registry->set('config', $config);
-$registry->set('db', $database->connect($config->db_hostname,$config->db_database,$config->db_username,$config->db_password,$config->db_port));
+$registry->set('db', new System\Framework\DB($config->db_hostname,$config->db_database,$config->db_username,$config->db_password,$config->db_port)); // database connection
 $registry->set('hooks', new System\Framework\Hook($registry));
 $registry->set('util', new System\Framework\Util($registry));
 $registry->set('mail', new System\Framework\Mail($registry));

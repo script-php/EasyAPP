@@ -31,6 +31,8 @@ class Config {
     public $dir_library         = 'system/Library/';
     public $dir_storage         = 'storage/'; # system/Storage
 
+    public $debug               = false;
+
     public function __construct(string $path = '') {
 
         $this->main_controller      = $path . $this->main_controller;

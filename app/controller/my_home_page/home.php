@@ -28,9 +28,6 @@ class ControllerMyHomePageHome extends Controller {
 		$this->load->controller('my_error_page/error');
 		$this->load->model('another_model/another_one');
 
-		echo $this->controller_my_error_page_error->test();
-		echo $this->model_another_model_another_one->test();
-
 		echo $this->load->view('my_folder/my_view.html', $data);
 		
 	}
