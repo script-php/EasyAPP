@@ -1,8 +1,9 @@
 <?php
+session_start();
 
 /**
 * @package      EasyAPP
-* @version      v1.2.5
+* @version      v1.2.6
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
@@ -11,7 +12,6 @@
 define('PATH', __DIR__ . DIRECTORY_SEPARATOR);
 
 chdir(PATH);
-
 
 
 require PATH . 'System/Config.php'; // framework config
@@ -58,7 +58,9 @@ $registry->set('load', new System\Framework\Load($registry));
 $language = new System\Framework\Language($registry);
 $language->directory('ro-ro');
 $registry->set('language', $language);
-$registry->set('request', new System\Framework\Request($registry));
+$request = new System\Framework\Request($registry);
+$registry->set('request', $request);
 
 $router = new System\Framework\SimpleRouter($registry);
 $router->loadPage();
+$request->end_session();

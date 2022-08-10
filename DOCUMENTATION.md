@@ -108,6 +108,15 @@ $this->request->post['name'];
 ```
 $this->request->cookie['name'];
 ```
+## Session
+See sessions:
+```
+$this->request->session;
+```
+Set a new session:
+```
+$this->request->session['session_key'] = 'value';
+```
 ## All requests
 ```
 $this->request;

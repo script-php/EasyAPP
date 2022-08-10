@@ -12,6 +12,7 @@ namespace System\Framework;
 class Request {
 	public $get = array();
 	public $post = array();
+	public $session = array();
 	public $cookie = array();
 	public $files = array();
 	public $server = array();
@@ -22,6 +23,7 @@ class Request {
         $this->registry = $registry;
 		$this->get = $this->clean($_GET);
 		$this->post = $this->clean($_POST);
+		$this->session = $this->clean($_SESSION);
 		$this->request = $this->clean($_REQUEST);
 		$this->cookie = $this->clean($_COOKIE);
 		$this->files = $this->clean($_FILES);
@@ -62,6 +64,13 @@ class Request {
 			}
 		}
 		return false;
+	}
+
+	public function end_session() {
+		$request = $this->registry->get('request');
+		foreach($request->session as $key => $value) {
+			$_SESSION[$key] = $value;
+		}
 	}
 
 }
