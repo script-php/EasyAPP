@@ -123,15 +123,15 @@ $this->request;
 ```
 ## Server
 ```
-$this->server;
+$this->request->server;
 ```
 ## Files
 ```
-$this->files;
+$this->request->files;
 ```
 ## IP
 ```
-$this->ip;
+$this->request->ip;
 ```
 ## Mails
 ```
