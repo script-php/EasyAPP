@@ -2,7 +2,7 @@
 
 /**
 * @package      EasyAPP Framework
-* @version      v1.2.6
+* @version      v1.2.7
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
@@ -51,8 +51,6 @@ include $config->dir_system . 'Model.php';
 
 require $config->dir_app . 'config.php'; // app config
 require $config->dir_app . 'helper.php'; // custom functions
-
-pre($config);
 
 $registry = new System\Framework\Registry();
 

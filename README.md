@@ -1,5 +1,5 @@
 # EasyAPP
- v1.2.6
+ v1.2.7
 
 # About EasyAPP
 EasyAPP is a different type of Framework. EasyAPP script aims to help you in the easy development of any type of website, without consuming resources in vain. 
