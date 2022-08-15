@@ -60,6 +60,7 @@ $registry->set('hooks', new System\Framework\Hook($registry));
 $registry->set('util', new System\Framework\Util($registry));
 $registry->set('mail', new System\Framework\Mail($registry));
 $registry->set('load', new System\Framework\Load($registry));
+$registry->set('settings', new System\Framework\Settings($registry));
 
 $language = new System\Framework\Language($registry);
 $language->directory('ro-ro');

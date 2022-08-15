@@ -10,8 +10,7 @@
 
 class ControllerMyHomePageHome extends Controller {
 
-	private $settings = [];
-
+	
 	function __construct($registry) {
 		$this->registry = $registry;
 	}
@@ -28,6 +27,28 @@ class ControllerMyHomePageHome extends Controller {
 		$this->load->controller('my_error_page/error');
 		$this->load->model('another_model/another_one');
 
+		$this->settings->edit('general_website', [
+			'key' => [1,2,3],
+			'key2' => 123,
+			'key3' => '123'
+		]);
+
+		$this->settings->delete('general');
+
+		$settings = $this->settings->all('general');
+
+		$this->settings->add('general', [
+			'general_url' => 'https://smehh.com',
+			'general_website' => 'Smehh',
+			'general_serialize' => [
+				'ceva'=>'da',
+				'altceva'
+			]
+		]);
+		
+		$this->settings->deleteKey('general_website');
+		$this->settings->delete('general');
+		
 		echo $this->load->view('my_folder/my_view.html', $data);
 		
 	}
