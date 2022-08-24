@@ -7,7 +7,7 @@ $config->error_controller = 'my_error_page/error'; // the name of controller fil
 
 $config->db_driver = 'PDO'; // database driver used (Just PDO for now)
 $config->db_hostname = 'localhost'; 
-$config->db_database = '';
+$config->db_database = 'muzica';
 $config->db_username = 'root';
 $config->db_password = '';
 $config->db_port = '3306';

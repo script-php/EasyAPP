@@ -47,7 +47,7 @@ class ControllerMyHomePageHome extends Controller {
 		]);
 		
 		$this->settings->deleteKey('general_website');
-		$this->settings->delete('general');
+		// $this->settings->delete('general');
 		
 		echo $this->load->view('my_folder/my_view.html', $data);
 		
@@ -160,7 +160,3 @@ class ControllerMyHomePageHome extends Controller {
 	}
 
 }
-
-?>
-
-

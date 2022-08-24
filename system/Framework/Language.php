@@ -31,6 +31,7 @@ class Language {
 	}
 
     public function directory($directory) {
+		// TODO: get language from cookie
 		$this->directory = $directory;
     }
 	
