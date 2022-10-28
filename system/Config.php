@@ -13,7 +13,8 @@ namespace System;
 class Config {
 
     // App config
-    public $url     = NULL;
+    public $url                 = NULL;
+    public $base_url            = NULL;
     public $main_controller     = NULL;
     public $error_controller    = NULL;
     public $session             = true;

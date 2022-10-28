@@ -15,11 +15,18 @@ class Language {
 	private $directory;
 	public $registry;
 	private $config;
+	private $request;
 	public $data = array();
 	
 	public function __construct($registry) {
 		$this->registry = $registry;
-		$this->config = $registry->get('config');
+		$this->config = $this->registry->get('config');
+		$this->request = $this->registry->get('request');
+
+		$this->default = !empty($config->default_language) ? $config->default_language : $this->default;
+		$language = !empty($this->request->cookie['language']) ? $this->request->cookie['language'] : $this->default;
+		$this->directory($language);
+
 	}
 	
 	public function get($key) {
@@ -31,7 +38,6 @@ class Language {
 	}
 
     public function directory($directory) {
-		// TODO: get language from cookie
 		$this->directory = $directory;
     }
 	

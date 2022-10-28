@@ -2,7 +2,7 @@
 
 /**
 * @package      EasyAPP Framework
-* @version      v1.2.7
+* @version      v1.2.8
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
@@ -60,14 +60,16 @@ $registry->set('hooks', new System\Framework\Hook($registry));
 $registry->set('util', new System\Framework\Util($registry));
 $registry->set('mail', new System\Framework\Mail($registry));
 $registry->set('load', new System\Framework\Load($registry));
-$registry->set('settings', new System\Framework\Settings($registry));
+$registry->set('url', new System\Framework\Url($registry));
 
-$language = new System\Framework\Language($registry);
-$language->directory('ro-ro');
-$registry->set('language', $language);
 $request = new System\Framework\Request($registry);
 $registry->set('request', $request);
 
+$language = new System\Framework\Language($registry);
+// $language->directory('ro-ro');
+$registry->set('language', $language);
+
 $router = new System\Framework\SimpleRouter($registry);
 $router->loadPage();
+
 $request->end_session();

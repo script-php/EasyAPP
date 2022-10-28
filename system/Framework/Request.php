@@ -72,5 +72,10 @@ class Request {
 			$_SESSION[$key] = $value;
 		}
 	}
+	
+	public function redirect($url) {
+		header('Location: ' . $url);
+		exit();
+	}
 
 }
