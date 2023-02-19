@@ -12,24 +12,21 @@ namespace System\Framework;
 
 class Load {
 
-    public $config;
+    // public $config;
     public $util;
 	public $registry;
 
     public function __construct($registry) {
 		$this->registry = $registry;
-		$this->config = $registry->get('config');
 		$this->util = $registry->get('util');
 	}
 
 
     function controller($route) {
-        // $util = new Util();
         $route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
         $controller = 'controller_' . str_replace('/', '_', $route);
 		if (!$this->registry->has($controller)) {
-            $file = $this->config->dir_controller . $route . '.php';
-			// pre($file);
+            $file = CONFIG_DIR_CONTROLLER . $route . '.php';
             if (is_file($file)) {
                 include_once($file);
                 $class = $this->util->file2Class($controller);
@@ -43,11 +40,10 @@ class Load {
 
 
     function model($route) {
-        // $util = new Util();
         $route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
         $model = 'model_' . str_replace('/', '_', $route);
 		if (!$this->registry->has($model)) {
-            $file = $this->config->dir_model . $route . '.php';
+            $file = CONFIG_DIR_MODEL . $route . '.php';
             if (is_file($file)) {
                 include_once($file);
                 $class = $this->util->file2Class($model);
@@ -69,7 +65,7 @@ class Load {
 
     public function view(string $route, array $data = [], bool $code = true) {
 		$route = preg_replace('/[^a-zA-Z0-9_\/.]/', '', (string)$route); // Sanitize the call
-        $route = $this->config->dir_view . '/' . $route;
+        $route = CONFIG_DIR_VIEW . $route;
         if(file_exists($route)) {
 			if($code) {
 				ob_start();

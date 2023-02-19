@@ -2,60 +2,66 @@
 
 /**
 * @package      EasyAPP Framework
-* @version      v1.2.8
+* @version      v1.3.0
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
 */
 
-require PATH . 'System/Config.php'; // framework config
+session_start();
 
-$config = new System\Config(PATH);
+// helper
+include PATH . 'system/helper.php';
 
-if($config->session) {
-    session_start();
-}
+// config
+include PATH . 'system/Default.php'; // Framework default config.
 
 if(defined('DIR_APP')) {
-    $config->dir_app = DIR_APP;
-    $config->dir_controller = $config->dir_app . 'controller/';
-    $config->dir_model = $config->dir_app . 'model/';
-    $config->dir_language = $config->dir_app . 'language/';
-    $config->dir_view = $config->dir_app . 'view/';
+    $config['dir_app'] = DIR_APP;
+    $config['dir_controller'] = $config['dir_app'] . $config['dir_controller'];
+    $config['dir_model'] = $config['dir_app'] . $config['dir_model'];
+    $config['dir_language'] = $config['dir_app'] . $config['dir_language'];
+    $config['dir_view'] = $config['dir_app'] . $config['dir_view'];
 }
 
-if($config->debug) {
+include $config['dir_app'] . 'config.php'; // app config
+include $config['dir_app'] . 'helper.php'; // custom functions
+
+$config['dir_framework'] = $config['dir_system'] . $config['dir_framework'];
+$config['dir_library'] = $config['dir_system'] . $config['dir_library'];
+
+foreach($config as $key => $value) {
+    define("CONFIG_" . strtoupper($key), $value);
+}
+
+if($config['debug']) {
     ini_set('display_errors', 1);
     ini_set('display_startup_errors', 1);
     error_reporting(E_ALL);
 }
 
-include rtrim($config->dir_system, '\\/ ') . DIRECTORY_SEPARATOR . 'Autoloader.php';
+include rtrim($config['dir_system'], '\\/ ') . DIRECTORY_SEPARATOR . 'Autoloader.php';
 
 $loader = new System\Autoloader();
 
 $loader->load([
     'namespace' => 'System\Framework',
-    'directory' => $config->dir_framework,
+    'directory' => CONFIG_DIR_FRAMEWORK,
     'recursive' => true
 ]);
 
 $loader->load([
     'namespace' => 'System\Library',
-    'directory' => $config->dir_library,
+    'directory' => $config['dir_library'],
     'recursive' => true
 ]);
 
-include $config->dir_system . 'Controller.php';
-include $config->dir_system . 'Model.php';
-
-require $config->dir_app . 'config.php'; // app config
-require $config->dir_app . 'helper.php'; // custom functions
+include $config['dir_system'] . 'Controller.php';
+include $config['dir_system'] . 'Model.php';
 
 $registry = new System\Framework\Registry();
 
-$registry->set('config', $config);
-$registry->set('db', new System\Framework\DB($config->db_hostname,$config->db_database,$config->db_username,$config->db_password,$config->db_port)); // database connection
+$registry->set('db', new System\Framework\DB(CONFIG_DB_HOSTNAME,CONFIG_DB_DATABASE,CONFIG_DB_USERNAME,CONFIG_DB_PASSWORD,CONFIG_DB_PORT)); // database connection
 $registry->set('hooks', new System\Framework\Hook($registry));
 $registry->set('util', new System\Framework\Util($registry));
 $registry->set('mail', new System\Framework\Mail($registry));
@@ -66,10 +72,15 @@ $request = new System\Framework\Request($registry);
 $registry->set('request', $request);
 
 $language = new System\Framework\Language($registry);
-// $language->directory('ro-ro');
 $registry->set('language', $language);
 
-$router = new System\Framework\SimpleRouter($registry);
-$router->loadPage();
+$route = new System\Framework\Router($registry);
+if (CONFIG_PRE_ACTION) {
+	foreach (CONFIG_PRE_ACTION as $value) {
+		$route->addPreAction(new System\Framework\Action($value));
+	}
+}
+
+$route->dispatch(new System\Framework\Action(CONFIG_ACTION_ROUTER), new System\Framework\Action(CONFIG_ACTION_ERROR));
 
 $request->end_session();

@@ -12,13 +12,11 @@ namespace System\Framework;
 
 class Url {
 
-    private $config;
 	private $registry;
     private array $rewrite = [];
 
     public function __construct($registry) {
 		$this->registry = $registry;
-		$this->config = $registry->get('config');
 	}
 
     public function addRewrite($rewrite): void {
@@ -26,7 +24,7 @@ class Url {
 	}
 
 	public function link(string $route, array $args = [], bool $js = false): string {
-		$url = $this->config->url . 'index.php?route=' . $route;
+		$url = CONFIG_URL . 'index.php?route=' . $route;
 
 		if ($args) {
 			if (is_array($args)) {
@@ -46,5 +44,7 @@ class Url {
 			return $url;
 		// }
 	}
+
+
 
 }

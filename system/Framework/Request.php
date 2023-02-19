@@ -43,8 +43,36 @@ class Request {
 		return $data;
 	}
 
-    private function ip() {
+    public function ip() {
 		return $this->server['HTTP_CLIENT_IP'] ?? $this->server["HTTP_CF_CONNECTING_IP"] ?? $this->server['HTTP_X_FORWARDED'] ?? $this->server['HTTP_X_FORWARDED_FOR'] ?? $this->server['HTTP_FORWARDED'] ?? $this->server['HTTP_FORWARDED_FOR'] ?? $this->server['REMOTE_ADDR'] ?? '0.0.0.0';
+	}
+
+	public static function fingerprint(int $x = NULL) {
+		$string = $_SERVER['HTTP_USER_AGENT'];
+		$bracket_place = 0;
+		$bracket_start = NULL;
+		$return = array();
+		$split = str_split( $string );
+		for($i=0;$i<count($split);$i++) {
+			# Set +1 everytime I find an opening bracket
+			if($split[$i] == "(") { $bracket_place++; }
+			# Save the position of the first opening bracket
+			if($split[$i] === "(" && $bracket_place === 1) { $bracket_start = $i; }
+			# When I find the last closing bracket I store in array the positions of the opening and closing brackets
+			if($split[$i] === ")" && $bracket_place === 1) {
+				$return[] = substr($string, ($bracket_start+1), (($i-$bracket_start)-1));
+				$bracket_start = NULL;
+			}	
+			# Set -1 everytime I find an closing bracket
+			if($split[$i] == ")") { $bracket_place--; }
+		}
+		if(count($return) === 0 || $x < 0 || $x > count($return)-1) {
+			return NULL;
+		}
+		if($x === NULL) {
+			return implode(' ~ ', $return);
+		}
+		return $return[$x];
 	}
 
     public function csrf($method='get') {
@@ -76,6 +104,11 @@ class Request {
 	public function redirect($url) {
 		header('Location: ' . $url);
 		exit();
+	}
+
+	public function setcookie($name, $value, $time, $path, $domain) {
+		setcookie($name, $value, $time, $path, $domain);
+		$this->cookie[$name] = $value;
 	}
 
 }

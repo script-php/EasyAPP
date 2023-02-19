@@ -14,19 +14,15 @@ class Language {
 	private $default = 'en-gb';
 	private $directory;
 	public $registry;
-	private $config;
 	private $request;
 	public $data = array();
 	
 	public function __construct($registry) {
 		$this->registry = $registry;
-		$this->config = $this->registry->get('config');
 		$this->request = $this->registry->get('request');
-
-		$this->default = !empty($config->default_language) ? $config->default_language : $this->default;
+		$this->default = !empty(CONFIG_DEFAULT_LANGUAGE) ? CONFIG_DEFAULT_LANGUAGE : $this->default;
 		$language = !empty($this->request->cookie['language']) ? $this->request->cookie['language'] : $this->default;
 		$this->directory($language);
-
 	}
 	
 	public function get($key) {
@@ -45,13 +41,13 @@ class Language {
 
         $_ = array();
 
-        $file = $this->config->dir_language . $this->default . '/' . $filename . '.php';
+        $file = CONFIG_DIR_LANGUAGE . $this->default . '/' . $filename . '.php';
 
         if (is_file($file)) {
             require($file);
         }
 
-        $file = $this->config->dir_language . $this->directory . '/' . $filename . '.php';
+        $file = CONFIG_DIR_LANGUAGE . $this->directory . '/' . $filename . '.php';
         
         if (is_file($file)) {
         	require($file);

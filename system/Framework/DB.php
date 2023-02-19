@@ -1,7 +1,7 @@
 <?php
 
 /**
-* @package      DB
+* @package      DB - PDO Connection
 * @version      v1.0.1
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
@@ -19,6 +19,7 @@ class DB {
 	private $rows;
 	private $count;
 	private $time_query = 0;
+	private $last_insert_id;
 	
     public function __construct(string $host,string $name,string $user,string $pass,string $port,array $options=[],string $encoding='utf8') {
 		$conn = '';
@@ -36,6 +37,7 @@ class DB {
 				}
 				$conn = new \PDO("mysql:host={$host};dbname={$name}",$user,$pass,$options);
 				$conn -> exec("SET character_set_client='{$encoding}',character_set_connection='{$encoding}',character_set_results='{$encoding}';");
+				$conn -> exec("SET time_zone='+03:00';");
 				$this->connect = $conn;
 			}
 			catch(PDOException $e) {
@@ -65,6 +67,7 @@ class DB {
 				$this->count = count($this->fetchAll) ? $stmt->rowCount() : 0;
 				$this->queries++;
 				$this->time_query = microtime(true) - $time_start;
+				$this->last_insert_id = $this->connect->lastInsertId();
 				return  $execute; 
 			}
 		}
@@ -91,6 +94,10 @@ class DB {
 
 	public function queries() {
 		return $this->queries;
+	}
+
+	public function lastId() {
+		return $this->connect->lastInsertId();
 	}
 
 }
