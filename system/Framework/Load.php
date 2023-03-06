@@ -18,15 +18,18 @@ class Load {
 
     public function __construct($registry) {
 		$this->registry = $registry;
+		// $this->config = $registry->get('config');
 		$this->util = $registry->get('util');
 	}
 
 
     function controller($route) {
+        // $util = new Util();
         $route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
         $controller = 'controller_' . str_replace('/', '_', $route);
 		if (!$this->registry->has($controller)) {
             $file = CONFIG_DIR_CONTROLLER . $route . '.php';
+			// pre($file);
             if (is_file($file)) {
                 include_once($file);
                 $class = $this->util->file2Class($controller);
@@ -44,6 +47,7 @@ class Load {
         $model = 'model_' . str_replace('/', '_', $route);
 		if (!$this->registry->has($model)) {
             $file = CONFIG_DIR_MODEL . $route . '.php';
+			// pre($file);
             if (is_file($file)) {
                 include_once($file);
                 $class = $this->util->file2Class($model);
@@ -91,6 +95,29 @@ class Load {
 		}
 		else {
 			exit('Error: Could not load template ' . $route . '!');
+		}
+	}
+
+
+	public function library($route) {
+		// Sanitize the call
+		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
+			
+		
+		$file = CONFIG_DIR_SYSTEM . 'library/' . $route . '.php';
+		$class = str_replace('/', '\\', $route);
+
+
+		// pre($class);
+		
+
+		if (is_file($file)) {
+			// pre('is file');
+			include_once($file);
+
+			// $this->registry->set(basename($route), new $class($this->registry));
+		// } else {
+		// 	throw new \Exception('Error: Could not load library ' . $route . '!');
 		}
 	}
 

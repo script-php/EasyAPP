@@ -1,5 +1,5 @@
 # EasyAPP
- v1.3.0
+ v1.4.0
 
 # About EasyAPP
 EasyAPP is a different type of Framework. EasyAPP script aims to help you in the easy development of any type of website, without consuming resources in vain. 
@@ -11,6 +11,7 @@ With EasyAPP your codes are clean and you can easy develop your project, since e
  - Download on your computer
  - Extract the files
  - Put all on your public_html
+ - composer install
  - Edit the file /app/config.php
  - It's alive!
 

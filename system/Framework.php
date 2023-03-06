@@ -2,7 +2,7 @@
 
 /**
 * @package      EasyAPP Framework
-* @version      v1.3.0
+* @version      v1.2.7
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
@@ -10,25 +10,23 @@
 
 session_start();
 
-// helper
-include PATH . 'system/helper.php';
-
 // config
 include PATH . 'system/Default.php'; // Framework default config.
+include PATH . 'system/Helper.php'; // Helper functions - some functions that will help you to develope your app fast.
 
 if(defined('DIR_APP')) {
     $config['dir_app'] = DIR_APP;
-    $config['dir_controller'] = $config['dir_app'] . $config['dir_controller'];
-    $config['dir_model'] = $config['dir_app'] . $config['dir_model'];
-    $config['dir_language'] = $config['dir_app'] . $config['dir_language'];
-    $config['dir_view'] = $config['dir_app'] . $config['dir_view'];
 }
+
+$config['dir_controller'] = $config['dir_app'] . $config['dir_controller'];
+$config['dir_model'] = $config['dir_app'] . $config['dir_model'];
+$config['dir_language'] = $config['dir_app'] . $config['dir_language'];
+$config['dir_view'] = $config['dir_app'] . $config['dir_view'];
+$config['dir_framework'] = $config['dir_system'] . $config['dir_framework'];
+$config['dir_library'] = $config['dir_system'] . $config['dir_library'];
 
 include $config['dir_app'] . 'config.php'; // app config
 include $config['dir_app'] . 'helper.php'; // custom functions
-
-$config['dir_framework'] = $config['dir_system'] . $config['dir_framework'];
-$config['dir_library'] = $config['dir_system'] . $config['dir_library'];
 
 foreach($config as $key => $value) {
     define("CONFIG_" . strtoupper($key), $value);
@@ -40,22 +38,24 @@ if($config['debug']) {
     error_reporting(E_ALL);
 }
 
-include rtrim($config['dir_system'], '\\/ ') . DIRECTORY_SEPARATOR . 'Autoloader.php';
+// include rtrim($config['dir_system'], '\\/ ') . DIRECTORY_SEPARATOR . 'Autoloader.php';
 
-$loader = new System\Autoloader();
+// $loader = new System\Autoloader();
 
-$loader->load([
-    'namespace' => 'System\Framework',
-    'directory' => CONFIG_DIR_FRAMEWORK,
-    'recursive' => true
-]);
+// $loader->load([
+//     'namespace' => 'System\Framework',
+//     'directory' => CONFIG_DIR_FRAMEWORK,
+//     'recursive' => true
+// ]);
 
-$loader->load([
-    'namespace' => 'System\Library',
-    'directory' => $config['dir_library'],
-    'recursive' => true
-]);
+// $loader->load([
+//     'namespace' => 'System\Library',
+//     'directory' => $config['dir_library'],
+//     'recursive' => true
+// ]);
 
+
+require 'vendor/autoload.php';
 include $config['dir_system'] . 'Controller.php';
 include $config['dir_system'] . 'Model.php';
 
@@ -72,6 +72,7 @@ $request = new System\Framework\Request($registry);
 $registry->set('request', $request);
 
 $language = new System\Framework\Language($registry);
+// $language->directory('ro-ro');
 $registry->set('language', $language);
 
 $route = new System\Framework\Router($registry);

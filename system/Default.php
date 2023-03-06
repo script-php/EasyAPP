@@ -3,6 +3,8 @@
 // App config
 $config['url'] = NULL;
 $config['base_url'] = NULL;
+// $config['main_controller'] = NULL;
+// $config['error_controller'] = NULL;
 $config['session'] = NULL;
 $config['pre_action'] = [];
 
@@ -20,10 +22,10 @@ $config['db_port'] = '3306';
 // Framework config
 $config['query'] = 'route';
 $config['dir_app'] = 'app/';
-$config['dir_controller'] = $config['dir_app'] . 'controller/';
-$config['dir_model'] = $config['dir_app'] . 'model/';
-$config['dir_view'] = $config['dir_app'] . 'view/';
-$config['dir_language'] = $config['dir_app'] . 'language/';
+$config['dir_controller'] = 'controller/';
+$config['dir_model'] = 'model/';
+$config['dir_view'] = 'view/';
+$config['dir_language'] = 'language/';
 
 // System
 $config['dir_system'] = 'system/';
