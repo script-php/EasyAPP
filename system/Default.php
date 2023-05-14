@@ -3,8 +3,6 @@
 // App config
 $config['url'] = NULL;
 $config['base_url'] = NULL;
-// $config['main_controller'] = NULL;
-// $config['error_controller'] = NULL;
 $config['session'] = NULL;
 $config['pre_action'] = [];
 
@@ -32,5 +30,8 @@ $config['dir_system'] = 'system/';
 $config['dir_framework'] = 'Framework/';
 $config['dir_library'] = 'Library/';
 $config['dir_storage'] = 'storage/';
+
+//output compression
+$config['compression'] = 0;
 
 $config['debug'] = false;

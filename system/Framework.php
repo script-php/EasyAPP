@@ -2,7 +2,7 @@
 
 /**
 * @package      EasyAPP Framework
-* @version      v1.2.7
+* @version      v1.4.2
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
@@ -38,35 +38,43 @@ if($config['debug']) {
     error_reporting(E_ALL);
 }
 
-// include rtrim($config['dir_system'], '\\/ ') . DIRECTORY_SEPARATOR . 'Autoloader.php';
+if (is_file(PATH . 'vendor/autoload.php')) {
+    require 'vendor/autoload.php';
+    include $config['dir_system'] . 'Controller.php';
+    include $config['dir_system'] . 'Model.php';
+}
+else {
+    include rtrim($config['dir_system'], '\\/ ') . DIRECTORY_SEPARATOR . 'Autoloader.php';
 
-// $loader = new System\Autoloader();
-
-// $loader->load([
-//     'namespace' => 'System\Framework',
-//     'directory' => CONFIG_DIR_FRAMEWORK,
-//     'recursive' => true
-// ]);
-
-// $loader->load([
-//     'namespace' => 'System\Library',
-//     'directory' => $config['dir_library'],
-//     'recursive' => true
-// ]);
-
-
-require 'vendor/autoload.php';
-include $config['dir_system'] . 'Controller.php';
-include $config['dir_system'] . 'Model.php';
+    $loader = new System\Autoloader();
+    
+    $loader->load([
+        'namespace' => 'System\Framework',
+        'directory' => CONFIG_DIR_FRAMEWORK,
+        'recursive' => true
+    ]);
+    
+    $loader->load([
+        'namespace' => 'System\Library',
+        'directory' => $config['dir_library'],
+        'recursive' => true
+    ]);
+}
 
 $registry = new System\Framework\Registry();
 
 $registry->set('db', new System\Framework\DB(CONFIG_DB_HOSTNAME,CONFIG_DB_DATABASE,CONFIG_DB_USERNAME,CONFIG_DB_PASSWORD,CONFIG_DB_PORT)); // database connection
-$registry->set('hooks', new System\Framework\Hook($registry));
+// $registry->set('hooks', new System\Framework\Hook($registry));
 $registry->set('util', new System\Framework\Util($registry));
 $registry->set('mail', new System\Framework\Mail($registry));
 $registry->set('load', new System\Framework\Load($registry));
 $registry->set('url', new System\Framework\Url($registry));
+$registry->set('event', new System\Framework\Event($registry));
+
+$response = new System\Framework\Response();
+$response->addHeader('Content-Type: text/html; charset=utf-8');
+$response->setCompression(CONFIG_COMPRESSION);
+$registry->set('response', $response);
 
 $request = new System\Framework\Request($registry);
 $registry->set('request', $request);
@@ -85,3 +93,5 @@ if (CONFIG_PRE_ACTION) {
 $route->dispatch(new System\Framework\Action(CONFIG_ACTION_ROUTER), new System\Framework\Action(CONFIG_ACTION_ERROR));
 
 $request->end_session();
+
+$response->output();

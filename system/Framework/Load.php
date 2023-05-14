@@ -12,53 +12,108 @@ namespace System\Framework;
 
 class Load {
 
-    // public $config;
+	public $load = false;
     public $util;
 	public $registry;
+	
 
     public function __construct($registry) {
 		$this->registry = $registry;
-		// $this->config = $registry->get('config');
 		$this->util = $registry->get('util');
 	}
 
+	public function __get(string $key) {
+		return $this->registry->get($key);
+	}
 
-    function controller($route) {
-        // $util = new Util();
-        $route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
-        $controller = 'controller_' . str_replace('/', '_', $route);
-		if (!$this->registry->has($controller)) {
-            $file = CONFIG_DIR_CONTROLLER . $route . '.php';
-			// pre($file);
-            if (is_file($file)) {
-                include_once($file);
-                $class = $this->util->file2Class($controller);
-                if (class_exists($class)) {
-                    $load_controller = new $class($this->registry);
-                    $this->registry->set($controller, $load_controller);
-                }
-            }
+	public function __set(string $key, $value): void {
+		$this->registry->set($key, $value);
+	}
+
+	public function controller(string $route, ...$args) {
+		
+		$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', $route); // Sanitize the call
+
+		$trigger = $route;
+
+		$result = $this->event->trigger('controller/' . $trigger . '/before', [&$route, &$args]);
+
+		if ($result != null && !$result instanceof \Exception) {
+			$output = $result;
+		} else {
+			$action = new Action($route);
+			$output = $action->execute($this->registry, $args);
 		}
-    }
 
+		$result = $this->event->trigger('controller/' . $trigger . '/after', [&$route, &$args, &$output]);
 
-    function model($route) {
-        $route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
-        $model = 'model_' . str_replace('/', '_', $route);
+		if ($result && !$result instanceof \Exception) {
+			$output = $result;
+		}
+
+		
+
+		if (!$output instanceof \Exception) {
+			return $output;
+		}
+
+		return '';
+	}
+
+	public function var_controller(string $route, ...$args) {
+		
+		$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', $route); // Sanitize the call
+
+		$trigger = $route;
+
+		$result = $this->event->trigger('controller/' . $trigger . '/before', [&$route, &$args]);
+
+		if ($result != null && !$result instanceof \Exception) {
+			$output = $result;
+		} else {
+			$action = new Action($route);
+			$action->load = true;
+			$output = $action->execute($this->registry, $args);
+			$action->load = false;
+		}
+
+		$result = $this->event->trigger('controller/' . $trigger . '/after', [&$route, &$args, &$output]);
+
+		if ($result && !$result instanceof \Exception) {
+			$output = $result;
+		}
+
+		if (!$output instanceof \Exception) {
+			return $output;
+		}
+
+		return '';
+	}
+
+	public function model(string $route): void {
+
+		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route);
+		$model = 'model_' . str_replace('/', '_', $route);
+
 		if (!$this->registry->has($model)) {
-            $file = CONFIG_DIR_MODEL . $route . '.php';
-			// pre($file);
-            if (is_file($file)) {
-                include_once($file);
-                $class = $this->util->file2Class($model);
-                if (class_exists($class)) {
-                    $load_model = new $class($this->registry);
-                    $this->registry->set($model, $load_model);
-                }
-            }
-		}
-    }
+			$file = CONFIG_DIR_MODEL . $route . '.php';
 
+			if (is_file($file)) {
+				include_once($file);
+
+				$class = $this->util->file2Class($model);
+
+				if (class_exists($class)) {
+					$load_model = new $class($this->registry);
+					$this->registry->set($model, $load_model);
+				} else {
+					throw new \Exception('Error: Could not load model ' . $class . '!');
+				}
+
+			}
+			
+		}
+	}
 
     public function language($route) {
 		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route); // Sanitize the call
@@ -98,41 +153,17 @@ class Load {
 		}
 	}
 
-
-	public function library($route) {
-		// Sanitize the call
-		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
-			
-		
-		$file = CONFIG_DIR_SYSTEM . 'library/' . $route . '.php';
-		$class = str_replace('/', '\\', $route);
-
-
-		// pre($class);
-		
-
-		if (is_file($file)) {
-			// pre('is file');
-			include_once($file);
-
-			// $this->registry->set(basename($route), new $class($this->registry));
-		// } else {
-		// 	throw new \Exception('Error: Could not load library ' . $route . '!');
-		}
-	}
-
-
     public function json($Response, $header=TRUE) {
 		$json = json_encode($Response);
 		if($header) {
 			header('Content-type: text/json;charset=UTF-8');
 			echo $json;
+			//$this->response->setOutput()
 		}
 		else {
 			return $json;
 		}
 	}
-
 
     public function text(string $text,array $params=NULL) {
 		if($params != NULL) {

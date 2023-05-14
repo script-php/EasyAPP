@@ -24,7 +24,7 @@ class ControllerMyHomePageHome extends Controller {
 		$data['title'] = $this->language->get('title');
 		$data['body'] = $this->language->get('text');
 
-		$this->load->controller('my_error_page/error');
+		// $this->load->controller('my_error_page/error');
 		$this->load->model('another_model/another_one');
 
 		// $this->settings->edit('general_website', [
@@ -49,8 +49,22 @@ class ControllerMyHomePageHome extends Controller {
 		// $this->settings->deleteKey('general_website');
 		// $this->settings->delete('general');
 		
-		echo $this->load->view('my_folder/my_view.html', $data);
+		$this->response->setOutput($this->load->view('my_folder/my_view.html', $data));
 		
+	}
+
+
+	function controllers() {
+		// you cann use call controllers in other controller in 2 ways:
+		$data = []; 
+
+		// in this way we use index method
+		$this->load->controller('path/controller', $data); 
+
+		// or
+		// if we want to use any method from controller
+		$this->load->var_controller('path/controller');
+		$this->controller_path_controller->method();
 	}
 	
 

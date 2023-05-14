@@ -13,6 +13,14 @@ namespace System\Framework;
  class Registry {
 	private $data = array();
 
+	public function __get(string $key) {
+		return $this->get($key);
+	}
+
+	public function __set(string $key, object $value) {
+		$this->set($key, $value);
+	}
+
 	public function get($key) {
 		return (isset($this->data[$key]) ? $this->data[$key] : null);
 	}

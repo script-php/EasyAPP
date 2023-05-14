@@ -7,6 +7,7 @@
  * We will leve here some functions you can use for debugging your app.
  */
 
+
 function pre($var, $exit = false) {
 	echo "<pre>".print_r($var, true)."</pre>\n";
 	if(!empty($exit)) exit();

@@ -127,4 +127,8 @@ class Util {
 		return $value;
 	}
 
+	function hash($data) {
+		return hash('sha256', $data);
+	}
+
 }

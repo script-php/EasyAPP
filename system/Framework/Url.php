@@ -38,11 +38,11 @@ class Url {
 			$url = $rewrite->rewrite($url);
 		}
 
-		// if (!$js) {
-		// 	return str_replace('&', '&amp;', $url);
-		// } else {
+		if (!$js) {
+			return str_replace('&', '&amp;', $url);
+		} else {
 			return $url;
-		// }
+		}
 	}
 
 
