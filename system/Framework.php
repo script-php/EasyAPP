@@ -2,7 +2,7 @@
 
 /**
 * @package      EasyAPP Framework
-* @version      v1.2.7
+* @version      v1.4.3
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
