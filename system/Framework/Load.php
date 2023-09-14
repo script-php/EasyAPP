@@ -26,7 +26,7 @@ class Load {
 		return $this->registry->get($key);
 	}
 
-	public function __set(string $key, $value): void {
+	public function __set(string $key, $value) {
 		$this->registry->set($key, $value);
 	}
 
@@ -90,7 +90,7 @@ class Load {
 		return '';
 	}
 
-	public function model(string $route): void {
+	public function model(string $route) {
 
 		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route);
 		$model = 'model_' . str_replace('/', '_', $route);
@@ -141,11 +141,11 @@ class Load {
 					}
 				}
 			}
-			$output = str_replace("\t", "", $output);
-			if(preg_match('/(\s){2,}/s', $output) === 1) {
-				$output = preg_replace('/(\s){2,}/s', '', $output);
-			}
-			$output = preg_replace("/[\n\r]/","",$output);
+			// $output = str_replace("\t", "", $output);
+			// if(preg_match('/(\s){2,}/s', $output) === 1) {
+			// 	$output = preg_replace('/(\s){2,}/s', '', $output);
+			// }
+			// $output = preg_replace("/[\n\r]/","",$output);
 			return $output;
 		}
 		else {
@@ -158,7 +158,6 @@ class Load {
 		if($header) {
 			header('Content-type: text/json;charset=UTF-8');
 			echo $json;
-			//$this->response->setOutput()
 		}
 		else {
 			return $json;

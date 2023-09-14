@@ -11,7 +11,7 @@
 namespace System\Framework;
 class Event {
 	protected $registry;
-	protected array $data = [];
+	protected $data = [];
 	
 	public function __construct(Registry $registry) {
         $this->registry = $registry;

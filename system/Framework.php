@@ -2,7 +2,7 @@
 
 /**
 * @package      EasyAPP Framework
-* @version      v1.4.2
+* @version      v1.2.7
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
@@ -24,6 +24,8 @@ $config['dir_language'] = $config['dir_app'] . $config['dir_language'];
 $config['dir_view'] = $config['dir_app'] . $config['dir_view'];
 $config['dir_framework'] = $config['dir_system'] . $config['dir_framework'];
 $config['dir_library'] = $config['dir_system'] . $config['dir_library'];
+$config['dir_assets'] = PATH . $config['dir_assets'];
+$config['dir_storage'] = PATH . $config['dir_storage'];
 
 include $config['dir_app'] . 'config.php'; // app config
 include $config['dir_app'] . 'helper.php'; // custom functions
@@ -64,7 +66,6 @@ else {
 $registry = new System\Framework\Registry();
 
 $registry->set('db', new System\Framework\DB(CONFIG_DB_HOSTNAME,CONFIG_DB_DATABASE,CONFIG_DB_USERNAME,CONFIG_DB_PASSWORD,CONFIG_DB_PORT)); // database connection
-// $registry->set('hooks', new System\Framework\Hook($registry));
 $registry->set('util', new System\Framework\Util($registry));
 $registry->set('mail', new System\Framework\Mail($registry));
 $registry->set('load', new System\Framework\Load($registry));
@@ -80,7 +81,6 @@ $request = new System\Framework\Request($registry);
 $registry->set('request', $request);
 
 $language = new System\Framework\Language($registry);
-// $language->directory('ro-ro');
 $registry->set('language', $language);
 
 $route = new System\Framework\Router($registry);
@@ -92,6 +92,6 @@ if (CONFIG_PRE_ACTION) {
 
 $route->dispatch(new System\Framework\Action(CONFIG_ACTION_ROUTER), new System\Framework\Action(CONFIG_ACTION_ERROR));
 
-$request->end_session();
+$request->sessions();
 
 $response->output();

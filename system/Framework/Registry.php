@@ -11,7 +11,7 @@
 namespace System\Framework;
 
  class Registry {
-	private $data = array();
+	private $data = [];
 
 	public function __get(string $key) {
 		return $this->get($key);

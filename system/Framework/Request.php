@@ -18,6 +18,8 @@ class Request {
 	public $server = array();
 	public $ip;
     public $registry;
+	private $rewrite_url = [];
+	private $rewrite_url_direct = [];
 
 	public function __construct($registry) {
         $this->registry = $registry;
@@ -29,6 +31,25 @@ class Request {
 		$this->files = $this->clean($_FILES);
 		$this->server = $this->clean($_SERVER);
         $this->ip = $this->ip();
+	}
+
+	function rewrite($url) {
+		$rewrite_url = (!empty($url) ? array_merge(CONFIG_REWRITE_URL,$url) : (!empty(CONFIG_REWRITE_URL) ? CONFIG_REWRITE_URL : []));
+		if(isset($this->get['rewrite']) && !empty($rewrite_url)) {
+            $seo_url = rtrim($this->get['rewrite'], "/");
+            foreach($rewrite_url as $regex => $rewrite) {
+                preg_match('/^'.$regex.'$/',$seo_url,$match);
+                if(!empty($match)) {
+                    $rewr = preg_replace("/^" .$regex. "$/", $rewrite, $seo_url);
+                    $parse_url = parse_url($rewr);
+                    if(!empty($parse_url['query'])) {
+                        parse_str($parse_url['query'], $parse_str);
+                        $this->get = $parse_str;
+                    }
+                    break;
+                }
+            }
+        }
 	}
 	
 	public function clean($data) {
@@ -94,7 +115,7 @@ class Request {
 		return false;
 	}
 
-	public function end_session() {
+	public function sessions() {
 		$request = $this->registry->get('request');
 		foreach($request->session as $key => $value) {
 			$_SESSION[$key] = $value;
@@ -102,6 +123,7 @@ class Request {
 	}
 	
 	public function redirect($url) {
+		$this->sessions(); //  save the sessions before redirect otherwise, the redirect function is executed before the sessions are saved
 		header('Location: ' . $url);
 		exit();
 	}

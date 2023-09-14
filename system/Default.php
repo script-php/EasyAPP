@@ -30,8 +30,17 @@ $config['dir_system'] = 'system/';
 $config['dir_framework'] = 'Framework/';
 $config['dir_library'] = 'Library/';
 $config['dir_storage'] = 'storage/';
+$config['dir_assets'] = 'assets/';
 
 //output compression
 $config['compression'] = 0;
 
 $config['debug'] = false;
+
+$config['default_language'] = 'en-gb';
+
+// rewrite URL on incoming requests
+$config['rewrite_url'] = [];
+
+// rewrite the URLs displayed in the pages
+$config['system_rewrite_url'] = [];

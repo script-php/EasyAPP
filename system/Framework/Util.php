@@ -127,8 +127,28 @@ class Util {
 		return $value;
 	}
 
+	public static function textTemplate(string $text,array $params=NULL) {
+		if($params != NULL) {
+			foreach($params as $param => $value) {
+				$text = str_replace('{{'.strtoupper($param).'}}',$value,$text);
+			}
+		}
+		return $text;
+	}
+
 	function hash($data) {
 		return hash('sha256', $data);
+	}
+
+	function seo($text) {
+		$text = strtolower($text);
+		$text = preg_replace('/[^a-zA-Z0-9]/', ' ', $text);
+		$text = preg_replace("/[\s\W]+/", " ", $text);
+		$text = preg_replace("/\s[\s]+/", " ", $text);
+		$text = str_replace(" ", "-", $text);
+		$text = ltrim($text,'-');
+		$text = rtrim($text,'-');
+		return $text;
 	}
 
 }

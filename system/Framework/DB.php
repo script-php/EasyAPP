@@ -2,7 +2,7 @@
 
 /**
 * @package      DB - PDO Connection
-* @version      v1.0.1
+* @version      v1.1.1
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
@@ -12,17 +12,12 @@ namespace System\Framework;
 
 class DB {
 
-    private $connect;
 	private $queries = 0;
-	private $fetchAll;
-	private $row;
-	private $rows;
-	private $count;
-	private $time_query = 0;
-	private $last_insert_id;
+	private $connection;
+	private $data = [];
+	private $affected;
 	
     public function __construct(string $host,string $name,string $user,string $pass,string $port,array $options=[],string $encoding='utf8') {
-		$conn = '';
 		if(class_exists('PDO')) {
 			try{
 				if(empty($options)) {
@@ -35,10 +30,10 @@ class DB {
 						\PDO::ATTR_ERRMODE                   => \PDO::ERRMODE_EXCEPTION, //turn on errors in the form of exceptions
 					];
 				}
-				$conn = new \PDO("mysql:host={$host};dbname={$name}",$user,$pass,$options);
+				$conn = new \PDO("mysql:host={$host};port={$port};dbname={$name}",$user,$pass,$options);
 				$conn -> exec("SET character_set_client='{$encoding}',character_set_connection='{$encoding}',character_set_results='{$encoding}';");
 				$conn -> exec("SET time_zone='+03:00';");
-				$this->connect = $conn;
+				$this->connection = $conn;
 			}
 			catch(PDOException $e) {
 				exit($e->getMessage());
@@ -49,55 +44,75 @@ class DB {
 		}
 	}
 
-    public function query($query, $params=NULL) {
-		if(!isSet($query)){ $query=NULL; }
-		if(!isSet($params)){ $params=NULL; }
-		if(is_a($this->connect, 'PDO')) {
-			$time_start = microtime(true);
-			if($query!=NULL) {
-				$stmt = $this->connect -> prepare($query);
-				if($params != NULL) {
-					foreach($params as $param => &$value) {
-						$varType = ((is_null($value) ? \PDO::PARAM_NULL : is_bool($value)) ? \PDO::PARAM_BOOL : is_int($value)) ? \PDO::PARAM_INT : \PDO::PARAM_STR;
-						$stmt -> bindParam($param, $value, $varType);
-					}
+	public function query(string $sql, $params=[]) {
+
+		if(is_a($this->connection, 'PDO')) {
+			$statement = $this->connection->prepare($sql);
+			if(!empty($params)) {
+				foreach($params as $param => &$value) {
+					$varType = ((is_null($value) ? \PDO::PARAM_NULL : is_bool($value)) ? \PDO::PARAM_BOOL : is_int($value)) ? \PDO::PARAM_INT : \PDO::PARAM_STR;
+					$statement -> bindParam($param, $value, $varType);
 				}
-				$execute = $stmt->execute();
-				$this->fetchAll = $stmt->fetchAll();
-				$this->count = count($this->fetchAll) ? $stmt->rowCount() : 0;
-				$this->queries++;
-				$this->time_query = microtime(true) - $time_start;
-				$this->last_insert_id = $this->connect->lastInsertId();
-				return  $execute; 
 			}
+
+			try {
+				if ($statement && $statement->execute()) {
+					$this->queries++;
+					if ($statement->columnCount()) {
+
+						$data = $statement->fetchAll();
+
+						$result = new \stdClass();
+						$result->row = isset($data[0]) ? $data[0] : [];
+						$result->rows = $data;
+						$result->num_rows = count($data);
+						$this->affected = 0;
+	
+						return $result;
+					} else {
+						$this->affected = $statement->rowCount();
+	
+						return true;
+					}
+	
+					$statement->closeCursor();
+				} else {
+					return true;
+				}
+			} catch (\PDOException $e) {
+				throw new \Exception('Error: ' . $e->getMessage() . ' <br/>Error Code : ' . $e->getCode() . ' <br/>' . $sql);
+			}
+
 		}
 		else {
 			exit('Is not initiated by PDO.');
 		}
+
+		return FALSE;
 	}
 
-	public function row() {
-		return !empty($this->fetchAll[0]) ? $this->fetchAll[0] : [];
+	public function countAffected(): int {
+		return $this->affected;
 	}
 
-	public function rows() {
-		return $this->fetchAll;
+	public function getLastId(): int {
+		return $this->connection->lastInsertId();
 	}
 
-	public function count() {
-		return $this->count;
-	}
-
-	public function time() {
-		return $this->time_query;
+	public function isConnected(): bool {
+		if ($this->connection) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	public function queries() {
 		return $this->queries;
 	}
 
-	public function lastId() {
-		return $this->connect->lastInsertId();
+	public function __destruct() {
+		unset($this->connection);
 	}
 
 }
