@@ -33,6 +33,18 @@ class Request {
         $this->ip = $this->ip();
 	}
 
+	public function clean($data) {
+		if (is_array($data)) {
+			foreach ($data as $key => $value) {
+				unset($data[$key]);
+				$data[$this->clean($key)] = $this->clean($value);
+			}
+		} else {
+			$data = htmlspecialchars($data, ENT_COMPAT, 'UTF-8');
+		}
+		return $data;
+	}
+
 	function rewrite($url) {
 		$rewrite_url = (!empty($url) ? array_merge(CONFIG_REWRITE_URL,$url) : (!empty(CONFIG_REWRITE_URL) ? CONFIG_REWRITE_URL : []));
 		if(isset($this->get['rewrite']) && !empty($rewrite_url)) {
@@ -50,18 +62,6 @@ class Request {
                 }
             }
         }
-	}
-	
-	public function clean($data) {
-		if (is_array($data)) {
-			foreach ($data as $key => $value) {
-				unset($data[$key]);
-				$data[$this->clean($key)] = $this->clean($value);
-			}
-		} else {
-			$data = htmlspecialchars($data, ENT_COMPAT, 'UTF-8');
-		}
-		return $data;
 	}
 
     public function ip() {

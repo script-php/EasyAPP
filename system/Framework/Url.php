@@ -20,7 +20,7 @@ class Url {
 		$this->registry = $registry;
 	}
 
-	public function link(string $route, array $args = [], bool $js = false): string {
+	public function link(string $route, array $args = [], bool $js = false) {
 		$url ='index.php?route=' . $route;
 
 		if ($args) {

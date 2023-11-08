@@ -151,4 +151,32 @@ class Util {
 		return $text;
 	}
 
+	function simple_format_number($number) {
+		if($number >= 1000) {
+		   return round($number/1000,1) . "k";   // NB: you will want to round this
+		}
+		else {
+			return $number;
+		}
+	}
+
+	function format_number($n, $precision = 1) {
+		if ($n < 900) {
+			$n_format = number_format($n); // Default
+		} 
+		else if ($n < 900000) {
+			$n_format = number_format($n / 1000, $precision). 'K'; // Thousand
+		} 
+		else if ($n < 900000000) {
+			$n_format = number_format($n / 1000000, $precision). 'M'; // Million
+		} 
+		else if ($n < 900000000000) {
+			$n_format = number_format($n / 1000000000, $precision). 'B'; // Billion
+		} 
+		else {
+			$n_format = number_format($n / 1000000000000, $precision). 'T'; // Trillion
+		}
+		return $n_format;
+	}
+
 }
