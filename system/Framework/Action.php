@@ -13,6 +13,7 @@ class Action {
 	public $id;
 	public $route;
 	public $method = 'index';
+	public $util;
 	
 	public function __construct($route) {
 		$this->id = $route;

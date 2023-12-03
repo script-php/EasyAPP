@@ -20,6 +20,7 @@ class Request {
     public $registry;
 	private $rewrite_url = [];
 	private $rewrite_url_direct = [];
+	public $request;
 
 	public function __construct($registry) {
         $this->registry = $registry;

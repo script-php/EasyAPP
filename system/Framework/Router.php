@@ -12,6 +12,7 @@ final class Router {
 	private $registry;
 	private $pre_action = array();
 	private $error;
+	public $request;
 	
 	public function __construct($registry) {
 		$this->registry = $registry;
