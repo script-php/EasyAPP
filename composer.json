@@ -2,18 +2,24 @@
     "name": "script-php/easyapp",
     "description": "EasyAPP is a different type of Framework. EasyAPP aims to help you in the easy development of any type of website, without consuming resources in vain.",
     "type": "library",
+    "homepage": "https://script-php.ro/",
+    "authors": [
+        {
+            "name": "YoYo",
+            "email": "l.voinea@yahoo.com"
+        }
+    ],
+    "config": {
+        "vendor-dir": "system/Vendor/"
+    },
     "autoload": {
         "psr-4": {
             "System\\Framework\\": "system/Framework/",
             "System\\Library\\": "system/Library/"
         }
     },
-    "authors": [
-        {
-            "name": "- ̗̀YoYo ̖́-",
-            "email": "l.voinea@yahoo.com"
-        }
-    ],
     "minimum-stability": "dev",
-    "require": {}
+    "require": {
+        "php": ">=7.4"
+    }
 }
