@@ -16,8 +16,10 @@ class Event {
 	public function __construct(Registry $registry) {
         $this->registry = $registry;
 	}
+
+	// $this->event->register(implode('/', $part), new \Action($result['action']), $result['sort_order']);
 		
-	public function register(string $trigger, Action $action, int $priority = 0): void {
+	public function register(string $trigger, Action $action, int $priority = 0) {
         
 		$this->data[] = [
 			'trigger'  => $trigger,
@@ -48,7 +50,7 @@ class Event {
 		return '';
 	}
 		
-	public function unregister(string $trigger, string $route): void {
+	public function unregister(string $trigger, string $route) {
 		foreach ($this->data as $key => $value) {
 			if ($trigger == $value['trigger'] && $value['action']->getId() == $route) {
 				unset($this->data[$key]);
@@ -56,7 +58,7 @@ class Event {
 		}			
 	}
 		
-	public function clear(string $trigger): void {
+	public function clear(string $trigger) {
 		foreach ($this->data as $key => $value) {
 			if ($trigger == $value['trigger']) {
 				unset($this->data[$key]);

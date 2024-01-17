@@ -46,6 +46,11 @@ class Response {
 	private $level = 0;
 	private $output;
 
+	public function __construct() {
+        $this->addHeader('Content-Type: text/html; charset=utf-8');
+		$this->setCompression(CONFIG_COMPRESSION);
+	}
+
 	public function addHeader($header) {
 		$this->headers[] = $header;
 	}

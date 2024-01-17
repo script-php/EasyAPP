@@ -13,11 +13,10 @@ class Action {
 	public $id;
 	public $route;
 	public $method = 'index';
-	public $util;
 	
 	public function __construct($route) {
 		$this->id = $route;
-        $query = preg_replace('/[^a-zA-Z0-9_\/|]/', '', (string)$route);
+        $query = preg_replace('/[^a-zA-Z0-9_\/\|]/', '', (string)$route);
         $query_exploded = explode('|', $query); // explode it 
         $this->route = (!empty($query_exploded[0]) && $query != NULL) ? $query_exploded[0] : '';
         $this->method = !empty($query_exploded[1]) ? $query_exploded[1] : $this->method;
@@ -28,15 +27,13 @@ class Action {
 	}
 	
 	public function execute($registry, array $args = array()) {
-        $this->util = $registry->get('util');
-
-		// Stop any magical methods being called
+		
 		if (substr($this->method, 0, 2) == '__') {
-			return new \Exception('Error: Calls to magic methods are not allowed!');
+			return new \Exception('Error: Calls to magic methods are not allowed!'); // Stop any magical methods being called
 		}
 
-        $class = 'Controller' . $this->util->file2Class(str_replace('/', '_', $this->route));
-
+        $class = 'Controller' . str_replace(' ', '', ucwords(str_replace('_', ' ', str_replace('/', '_', $this->route))));
+		
         $file  = CONFIG_DIR_APP . 'controller/' . $this->route . '.php';	
 		
 		if (is_file($file)) {

@@ -9,6 +9,6 @@
 
 
 function pre($var, $exit = false) {
-	echo "<pre>".print_r($var, true)."</pre>\n";
+	echo "<pre style='color:white;background:black;padding:15px'>".print_r($var, true)."</pre>\n";
 	if(!empty($exit)) exit();
 }

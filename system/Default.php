@@ -11,11 +11,13 @@ $config['action_error'] = 'errors/error';
 
 // db
 $config['db_driver'] = 'PDO'; // database driver used (Just PDO for now)
-$config['db_hostname'] = 'localhost'; 
-$config['db_database'] = 'database';
-$config['db_username'] = 'root';
+$config['db_hostname'] = ''; 
+$config['db_database'] = '';
+$config['db_username'] = '';
 $config['db_password'] = '';
-$config['db_port'] = '3306';
+$config['db_port'] = '';
+$config['db_options'] = [];
+$config['db_encoding'] = '';
 
 // Framework config
 $config['query'] = 'route';

@@ -59,8 +59,4 @@ class Url {
 		$this->rewrite_url = $rewrite_url;
 	}
 
-	
-
-
-
 }

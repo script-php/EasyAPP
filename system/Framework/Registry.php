@@ -22,6 +22,10 @@ namespace System\Framework;
 	}
 
 	public function get($key) {
+		$class = 'System\\Framework\\' . str_replace(' ', '', ucwords(str_replace('_', ' ', $key)));
+		if(!$this->has($key)) {
+			$this->set($key, new $class($this));
+		}
 		return (isset($this->data[$key]) ? $this->data[$key] : null);
 	}
 	

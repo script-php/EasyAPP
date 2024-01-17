@@ -13,13 +13,12 @@ namespace System\Framework;
 class Load {
 
 	public $load = false;
-    public $util;
 	public $registry;
+	public $route;
 	
 
     public function __construct($registry) {
 		$this->registry = $registry;
-		$this->util = $registry->get('util');
 	}
 
 	public function __get(string $key) {
@@ -101,7 +100,7 @@ class Load {
 			if (is_file($file)) {
 				include_once($file);
 
-				$class = $this->util->file2Class($model);
+				$class = str_replace(' ', '', ucwords(str_replace('_', ' ', $model)));
 
 				if (class_exists($class)) {
 					$load_model = new $class($this->registry);

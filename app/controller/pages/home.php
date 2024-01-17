@@ -8,48 +8,77 @@
 * @link         https://script-php.ro
 */
 
-class ControllerMyHomePageHome extends Controller {
+class ControllerPagesHome extends Controller {
 
 	
 	function __construct($registry) {
-		$this->registry = $registry;
+		parent::__construct($registry);
 	}
 	
 
-	function index() {
-		// show or do something something when index.php?route=home or index.php?route=home/index its accessed
 
-		$this->load->language('my_language'); // load the language
+	function index() {
+
+	
+		// pre($this->url->link('aaaaa/bbbb/cccc', ['a'=>123]));
+
+
+		$this->load->model('altmodel/fisier');
+		$this->load->language('my_language');
+
+		// echo $this->model_altmodel_fisier->test();
 
 		$data['title'] = $this->language->get('title');
 		$data['body'] = $this->language->get('text');
 
-		// $this->load->controller('my_error_page/error');
-		$this->load->model('another_model/another_one');
+		// $files = $this->db->query("SELECT * FROM user");
 
-		// $this->settings->edit('general_website', [
-		// 	'key' => [1,2,3],
-		// 	'key2' => 123,
-		// 	'key3' => '123'
-		// ]);
+		$test = $this->load->view('my_folder/my_view.html', $data);
+		// pre($this);
+		$this->response->setOutput($test);
 
-		// $this->settings->delete('general');
 
-		// $settings = $this->settings->all('general');
 
-		// $this->settings->add('general', [
-		// 	'general_url' => 'https://smehh.com',
-		// 	'general_website' => 'Smehh',
-		// 	'general_serialize' => [
-		// 		'ceva'=>'da',
-		// 		'altceva'
-		// 	]
-		// ]);
+
+
+
+
+
+
+
+		// show or do something something when index.php?route=home or index.php?route=home/index its accessed
+
+		// $this->load->language('my_language'); // load the language
+
+		// $data['title'] = $this->language->get('title');
+		// $data['body'] = $this->language->get('text');
+
+		// // $this->load->controller('my_error_page/error');
+		// $this->load->model('another_model/another_one');
+
+		// // $this->settings->edit('general_website', [
+		// // 	'key' => [1,2,3],
+		// // 	'key2' => 123,
+		// // 	'key3' => '123'
+		// // ]);
+
+		// // $this->settings->delete('general');
+
+		// // $settings = $this->settings->all('general');
+
+		// // $this->settings->add('general', [
+		// // 	'general_url' => 'https://smehh.com',
+		// // 	'general_website' => 'Smehh',
+		// // 	'general_serialize' => [
+		// // 		'ceva'=>'da',
+		// // 		'altceva'
+		// // 	]
+		// // ]);
 		
-		// $this->settings->deleteKey('general_website');
-		// $this->settings->delete('general');
+		// // $this->settings->deleteKey('general_website');
+		// // $this->settings->delete('general');
 		
-		$this->response->setOutput($this->load->view('my_folder/my_view.html', $data));
+		// $this->response->setOutput($this->load->view('my_folder/my_view.html', $data));
 		
 	}
 

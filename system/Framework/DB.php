@@ -17,7 +17,15 @@ class DB {
 	private $data = [];
 	private $affected;
 	
-    public function __construct(string $host,string $name,string $user,string $pass,string $port,array $options=[],string $encoding='utf8') {
+    public function __construct() {
+		$port = CONFIG_DB_PORT;
+		$options = CONFIG_DB_OPTIONS;
+		$encoding = (!empty(CONFIG_DB_ENCODING) ? CONFIG_DB_ENCODING : 'utf8');
+
+		if(empty(CONFIG_DB_HOSTNAME) && empty(CONFIG_DB_DATABASE) && empty(CONFIG_DB_USERNAME) && empty(CONFIG_DB_PASSWORD) && empty(CONFIG_DB_PORT)) {
+			exit('The database login data is not filled in or is filled in incorrectly. Please check the config.');
+		}
+
 		if(class_exists('PDO')) {
 			try{
 				if(empty($options)) {
@@ -30,7 +38,7 @@ class DB {
 						\PDO::ATTR_ERRMODE                   => \PDO::ERRMODE_EXCEPTION, //turn on errors in the form of exceptions
 					];
 				}
-				$conn = new \PDO("mysql:host={$host};port={$port};dbname={$name}",$user,$pass,$options);
+				$conn = new \PDO("mysql:host=".CONFIG_DB_HOSTNAME.";port=".CONFIG_DB_PORT.";dbname=".CONFIG_DB_DATABASE."",CONFIG_DB_USERNAME,CONFIG_DB_PASSWORD,$options);
 				$conn -> exec("SET character_set_client='{$encoding}',character_set_connection='{$encoding}',character_set_results='{$encoding}';");
 				$conn -> exec("SET time_zone='+03:00';");
 				$this->connection = $conn;

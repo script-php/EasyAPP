@@ -62,36 +62,3 @@ else {
         'recursive' => true
     ]);
 }
-
-$registry = new System\Framework\Registry();
-
-$registry->set('db', new System\Framework\DB(CONFIG_DB_HOSTNAME,CONFIG_DB_DATABASE,CONFIG_DB_USERNAME,CONFIG_DB_PASSWORD,CONFIG_DB_PORT)); // database connection
-$registry->set('util', new System\Framework\Util($registry));
-$registry->set('mail', new System\Framework\Mail($registry));
-$registry->set('load', new System\Framework\Load($registry));
-$registry->set('url', new System\Framework\Url($registry));
-$registry->set('event', new System\Framework\Event($registry));
-
-$response = new System\Framework\Response();
-$response->addHeader('Content-Type: text/html; charset=utf-8');
-$response->setCompression(CONFIG_COMPRESSION);
-$registry->set('response', $response);
-
-$request = new System\Framework\Request($registry);
-$registry->set('request', $request);
-
-$language = new System\Framework\Language($registry);
-$registry->set('language', $language);
-
-$route = new System\Framework\Router($registry);
-if (CONFIG_PRE_ACTION) {
-	foreach (CONFIG_PRE_ACTION as $value) {
-		$route->addPreAction(new System\Framework\Action($value));
-	}
-}
-
-$route->dispatch(new System\Framework\Action(CONFIG_ACTION_ROUTER), new System\Framework\Action(CONFIG_ACTION_ERROR));
-
-$request->sessions();
-
-$response->output();
