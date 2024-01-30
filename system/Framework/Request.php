@@ -32,6 +32,13 @@ class Request {
 		$this->files = $this->clean($_FILES);
 		$this->server = $this->clean($_SERVER);
         $this->ip = $this->ip();
+
+		register_shutdown_function(function() use (&$registry) {
+			$request = $registry->get('request');
+			foreach($request->session as $key => $value) {
+				$_SESSION[$key] = $value;
+			}
+		});
 	}
 
 	public function clean($data) {
@@ -116,7 +123,7 @@ class Request {
 		return false;
 	}
 
-	public function sessions() {
+	public function close() {
 		$request = $this->registry->get('request');
 		foreach($request->session as $key => $value) {
 			$_SESSION[$key] = $value;
@@ -124,7 +131,6 @@ class Request {
 	}
 	
 	public function redirect($url) {
-		$this->sessions(); //  save the sessions before redirect otherwise, the redirect function is executed before the sessions are saved
 		header('Location: ' . $url);
 		exit();
 	}

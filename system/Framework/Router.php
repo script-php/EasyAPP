@@ -25,7 +25,6 @@ final class Router {
 		}
 		$this->dispatch(new Action(CONFIG_ACTION_ROUTER), new Action(CONFIG_ACTION_ERROR));
 
-		$this->registry->get('request')->sessions();
 		$this->registry->get('response')->output();
 	}
 	
