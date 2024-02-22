@@ -10,7 +10,7 @@
 
 namespace System\Framework;
 
-class DB {
+class Db {
 
 	private $queries = 0;
 	private $connection;

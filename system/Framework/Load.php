@@ -30,24 +30,24 @@ class Load {
 	}
 
 	public function controller(string $route, ...$args) {
-		
+
 		$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', $route); // Sanitize the call
 
 		$trigger = $route;
 
-		$result = $this->event->trigger('controller/' . $trigger . '/before', [&$route, &$args]);
+		$before = $this->event->trigger('controller/' . $trigger . '/before', [&$route, &$args]);
 
-		if ($result != null && !$result instanceof \Exception) {
-			$output = $result;
+		if ($before != null && !$before instanceof \Exception) {
+			$output = $before;
 		} else {
 			$action = new Action($route);
 			$output = $action->execute($this->registry, $args);
 		}
 
-		$result = $this->event->trigger('controller/' . $trigger . '/after', [&$route, &$args, &$output]);
-
-		if ($result && !$result instanceof \Exception) {
-			$output = $result;
+		$after = $this->event->trigger('controller/' . $trigger . '/after', [&$route, &$args, &$output]);
+		
+		if ($after && !$after instanceof \Exception) {
+			$output = $after;
 		}
 
 		

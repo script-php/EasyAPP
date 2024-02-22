@@ -1,0 +1,91 @@
+##
+# READ THIS COMPLETELY IF YOU CHOOSE TO USE THIS FILE!
+#
+# 1.To use URL Alias you need to be running apache with mod_rewrite enabled.
+# 2. In your project directory rename .htaccess.txt (this file) to .htaccess
+#
+# The line 'Options +FollowSymLinks' may cause problems with some server configurations.
+# It is required for the use of Apache mod_rewrite, but it may have already been set by
+# your server administrator in a way that disallows changing it in this .htaccess file.
+# If you encounter problems (e.g. site is not loading), comment out this line by adding a # in front
+# FLOC is a feature suggested by Google, if this header shall not be set, disable the line
+# having 'interest-cohort' by adding a # in front
+##
+
+## No directory listings
+<IfModule mod_autoindex.c>
+  IndexIgnore *
+</IfModule>
+
+## No-Referrer-Header
+<IfModule mod_headers.c>
+  Header set Referrer-Policy "no-referrer"
+</IfModule>
+
+## Suppress mime type detection in browsers for unknown types and prevent FLOC
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Permissions-Policy "interest-cohort=()"
+</IfModule>
+
+## Can be commented out if causes errors, see notes above.
+Options +FollowSymlinks
+
+## Prevent Directory listing
+Options -Indexes
+
+## Prevent Direct Access to files
+<FilesMatch "(?i)((\.tpl|\.twig|\.ini|\.log|(?<!robots)\.txt))">
+ Require all denied
+## For apache 2.2 and older, replace "Require all denied" with these two lines :
+# Order deny,allow
+# Deny from all
+</FilesMatch>
+
+## SEO URL Settings
+RewriteEngine On
+
+## redirect from http to https
+#RewriteCond %{HTTPS} !=on
+#RewriteRule ^.*$ https://%{SERVER_NAME}%{REQUEST_URI} [R,L]
+
+## If your project does not run on the main web folder make sure you folder it does run in
+RewriteBase /radio/
+## Rewrite Rules
+RewriteRule ^storageee/(.*) index.php?route=error [L]
+RewriteRule ^system/(.*) index.php?route=error [L]
+RewriteRule ^app/(.*) index.php?route=error [L]
+RewriteRule ^admin/controller/(.*) index.php?route=error [L]
+RewriteRule ^admin/model/(.*) index.php?route=error [L]
+RewriteRule ^admin/view/(.*) index.php?route=error [L]
+RewriteRule ^admin/language/(.*) index.php?route=error [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !.*\.(ico|gif|jpg|jpeg|png|webp|js|css|svg)
+RewriteRule ^([^?]*) index.php?rewrite=$1 [L,QSA]
+
+## Optional error documents
+#ErrorDocument 400 /index.php?route=error
+#ErrorDocument 401 /index.php?route=error/permission
+#ErrorDocument 403 /index.php?route=error
+#ErrorDocument 404 /index.php?route=error
+#ErrorDocument 500 /index.php?route=error
+#ErrorDocument 503 /index.php?route=error
+
+## Additional Settings that may need to be enabled for some servers
+## Uncomment the commands by removing the # sign in front of it.
+## If you get an "Internal Server Error 500" after enabling any of the following settings, restore the # as this means your host doesn't allow that.
+
+# php_flag register_globals off
+
+# php_flag magic_quotes_gpc Off
+
+# php_value upload_max_filesize 999M
+
+# php_value post_max_size 999M
+
+# php_value max_execution_time 200
+
+# php_value max_input_time 200
+
+# php_admin_value open_basedir none

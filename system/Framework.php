@@ -44,7 +44,7 @@ include $config['dir_system'] . 'Controller.php';
 include $config['dir_system'] . 'Model.php';
 
 if (is_file(PATH . 'system/vendor/autoload.php')) {
-    require 'system/vendor/autoload.php';    
+    require 'system/vendor/autoload.php';   
 }
 else {
     include rtrim($config['dir_system'], '\\/ ') . DIRECTORY_SEPARATOR . 'Autoloader.php';
@@ -63,3 +63,27 @@ else {
         'recursive' => true
     ]);
 }
+
+$registry = new System\Framework\Registry();
+
+// $event = $registry->get('event');
+// $event->register('controller/template/after', new System\Framework\Action('errors/error|test'));
+// $event->register('controller/radio/home/after', new System\Framework\Action('errors/error|test'));
+
+$request = $registry->get('request');
+if (!empty(CONFIG_PRE_ACTION)) {
+    foreach (CONFIG_PRE_ACTION as $action) {
+        $pre_action = new System\Framework\Action($action);
+        $record = $pre_action->execute($registry);
+        if ($record instanceof \Exception) {
+            exit($result);
+        }
+    }
+}
+$route = (isset($request->get['rewrite']) && empty($request->get['route'])) ? CONFIG_ACTION_ERROR : ((isset($request->get['route']) && !empty($request->get['route']) ? $request->get['route'] : CONFIG_ACTION_ROUTER));
+$load = $registry->get('load');
+if (!is_file(CONFIG_DIR_APP . 'controller/' . $route . '.php')) {
+    $route = CONFIG_ACTION_ERROR;
+}
+$controller = $load->controller($route);
+$registry->get('response')->output();

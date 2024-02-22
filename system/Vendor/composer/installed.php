@@ -3,7 +3,7 @@
         'name' => 'script-php/easyapp',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '510ba04f50cc4a006eb258750a5e90877dbbd063',
+        'reference' => '33c9e3ff60c9c22c06db3b0f5d8804ca51b8afe0',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'script-php/easyapp' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '510ba04f50cc4a006eb258750a5e90877dbbd063',
+            'reference' => '33c9e3ff60c9c22c06db3b0f5d8804ca51b8afe0',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../../',
             'aliases' => array(),

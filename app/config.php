@@ -2,8 +2,8 @@
 
 //Your app config come here
 $config['url'] = 'http://localhost/EasyAPP/'; // the route url of your project, maybe it will help you
-$config['action_router'] = 'pages/home'; // the name of controller file that will be shown when will not be selected a route.
-$config['action_error'] = 'pages/error'; // the name of controller file that will be shown when will be accessed a wrong or a non-existent route.
+$config['action_router'] = 'common/home'; // the name of controller file that will be shown when will not be selected a route.
+$config['action_error'] = 'error/not_found'; // the name of controller file that will be shown when will be accessed a wrong or a non-existent route.
 
 $config['db_driver'] = 'PDO'; // database driver used (Just PDO for now)
 $config['db_hostname'] = 'localhost'; 

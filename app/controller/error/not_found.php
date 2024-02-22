@@ -8,20 +8,10 @@
 * @link         https://script-php.ro
 */
 
-class ControllerMyErrorPageError extends Controller {
-
-    private $settings = [];
-
-    function __construct() {
-        // do something when the class is initialized
-    }
+class ControllerErrorNotFound extends Controller {
 
     function index() {
         echo 'Page not found! :(';
-    }
-
-    function test() {
-        return 'test method';
     }
 
 }

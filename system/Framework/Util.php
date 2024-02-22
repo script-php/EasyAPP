@@ -179,4 +179,14 @@ class Util {
 		return $n_format;
 	}
 
+	function formatText($text) {
+		
+		$text = preg_replace('/__(.*?)__/', '<em>$1</em>', $text); // Italic
+		$text = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $text); // Bold
+		$text = preg_replace('/~~(.*?)~~/', '<del>$1</del>', $text); // Strikethrough
+		$text = preg_replace('/```(.*?)```/', '<code>$1</code>', $text); // Monospace
+		
+		return $text;
+	}
+
 }
