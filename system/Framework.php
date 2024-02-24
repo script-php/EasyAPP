@@ -64,26 +64,21 @@ else {
     ]);
 }
 
+
+// load router app from config or default router :-?
 $registry = new System\Framework\Registry();
 
 // $event = $registry->get('event');
-// $event->register('controller/template/after', new System\Framework\Action('errors/error|test'));
-// $event->register('controller/radio/home/after', new System\Framework\Action('errors/error|test'));
+// $event->register('after:controller/template', new System\Framework\Action('errors/error|test'));
+// $event->register('after:controller/radio/home', new System\Framework\Action('errors/error|test'));
 
 $request = $registry->get('request');
 if (!empty(CONFIG_PRE_ACTION)) {
     foreach (CONFIG_PRE_ACTION as $action) {
-        $pre_action = new System\Framework\Action($action);
-        $record = $pre_action->execute($registry);
-        if ($record instanceof \Exception) {
-            exit($result);
-        }
+        (new System\Framework\Action($action))->execute($registry);
     }
 }
-$route = (isset($request->get['rewrite']) && empty($request->get['route'])) ? CONFIG_ACTION_ERROR : ((isset($request->get['route']) && !empty($request->get['route']) ? $request->get['route'] : CONFIG_ACTION_ROUTER));
-$load = $registry->get('load');
-if (!is_file(CONFIG_DIR_APP . 'controller/' . $route . '.php')) {
-    $route = CONFIG_ACTION_ERROR;
-}
-$controller = $load->controller($route);
+
+($registry->get('load'))->controller((isset($request->get['rewrite']) && empty($request->get['route'])) ? CONFIG_ACTION_ERROR : ((isset($request->get['route']) && !empty($request->get['route']) ? $request->get['route'] : CONFIG_ACTION_ROUTER)));
+
 $registry->get('response')->output();

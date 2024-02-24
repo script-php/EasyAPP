@@ -35,58 +35,32 @@ class Load {
 
 		$trigger = $route;
 
-		$before = $this->event->trigger('controller/' . $trigger . '/before', [&$route, &$args]);
-
-		if ($before != null && !$before instanceof \Exception) {
-			$output = $before;
-		} else {
-			$action = new Action($route);
-			$output = $action->execute($this->registry, $args);
-		}
-
-		$after = $this->event->trigger('controller/' . $trigger . '/after', [&$route, &$args, &$output]);
+		$before = $this->event->trigger('before:controller/' . $trigger, [&$route, &$args]);
 		
-		if ($after && !$after instanceof \Exception) {
-			$output = $after;
-		}
+		$output = !empty($before) ? $before : (new Action($route))->execute($this->registry, $args);
+		unset($before);
 
-		
+		$after = $this->event->trigger('after:controller/' . $trigger, [&$route, &$args, &$output]);
+		$output = !empty($after) ? $after : (!empty($output) ? $output : '');
+		unset($after);
 
-		if (!$output instanceof \Exception) {
-			return $output;
-		}
-
-		return '';
+		return $output;
 	}
 
-	public function var_controller(string $route, ...$args) {
-		
+	public function get_controller(string $route, ...$args) {
 		$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', $route); // Sanitize the call
 
-		$trigger = $route;
-
-		$result = $this->event->trigger('controller/' . $trigger . '/before', [&$route, &$args]);
-
-		if ($result != null && !$result instanceof \Exception) {
-			$output = $result;
-		} else {
-			$action = new Action($route);
-			$action->load = true;
-			$output = $action->execute($this->registry, $args);
-			$action->load = false;
+        $file = CONFIG_DIR_APP . 'controller/' . $route . '.php';	
+		
+		if (is_file($file)) {
+			include_once($file);
+			$class = 'Controller' . str_replace(' ', '', ucwords(str_replace('_', ' ', str_replace('/', '_', $route))));
+			$controller = new $class($registry);
+			return $controller;
+		} 
+		else {
+			exit('Error: Could not call ' . $this->route . '/' . $this->method . '!');
 		}
-
-		$result = $this->event->trigger('controller/' . $trigger . '/after', [&$route, &$args, &$output]);
-
-		if ($result && !$result instanceof \Exception) {
-			$output = $result;
-		}
-
-		if (!$output instanceof \Exception) {
-			return $output;
-		}
-
-		return '';
 	}
 
 	public function model(string $route) {
@@ -106,7 +80,7 @@ class Load {
 					$load_model = new $class($this->registry);
 					$this->registry->set($model, $load_model);
 				} else {
-					throw new \Exception('Error: Could not load model ' . $class . '!');
+					exit('Error: Could not load model ' . $class . '!');
 				}
 
 			}
@@ -121,30 +95,15 @@ class Load {
 	}
 
 
-    public function view(string $route, array $data = [], bool $code = true) {
+    public function view(string $route, array $data = []) {
 		$route = preg_replace('/[^a-zA-Z0-9_\/.]/', '', (string)$route); // Sanitize the call
         $route = CONFIG_DIR_VIEW . $route;
         if(file_exists($route)) {
-			if($code) {
-				ob_start();
-				extract($data);
-				include $route;
-				$output = ob_get_contents();
-				ob_end_clean();
-			}
-			else {
-				$output = file_get_contents($route);
-				if($data != NULL) {
-					foreach($data as $key => $value) {
-						$output = str_replace('{'.strtoupper($key).'}', $value, $output); 
-					}
-				}
-			}
-			// $output = str_replace("\t", "", $output);
-			// if(preg_match('/(\s){2,}/s', $output) === 1) {
-			// 	$output = preg_replace('/(\s){2,}/s', '', $output);
-			// }
-			// $output = preg_replace("/[\n\r]/","",$output);
+			ob_start();
+			extract($data);
+			include $route;
+			$output = ob_get_contents();
+			ob_end_clean();
 			return $output;
 		}
 		else {

@@ -29,7 +29,7 @@ class Action {
 	public function execute($registry, array &$args = []) {
 		
 		if (substr($this->method, 0, 2) == '__') {
-			return new \Exception('Error: Calls to magic methods are not allowed!'); // Stop any magical methods being called
+			exit('Error: Calls to magic methods are not allowed!');
 		}
 
         $class = 'Controller' . str_replace(' ', '', ucwords(str_replace('_', ' ', str_replace('/', '_', $this->route))));
@@ -44,10 +44,11 @@ class Action {
 			if($this->load) {
 				$controller_load = 'controller_' . str_replace('/', '_', $this->route);
 				$registry->set($controller_load, $controller);
+				return $controller;
 			}
 			
 		} else {
-			return new \Exception('Error: Could not call ' . $this->route . '/' . $this->method . '!');
+			exit('Error: Could not call ' . $this->route . '/' . $this->method . '!');
 		}
 		
 		if(!$this->load) {
@@ -56,7 +57,7 @@ class Action {
 			if ($reflection->hasMethod($this->method) && $reflection->getMethod($this->method)->getNumberOfRequiredParameters() <= count($args)) {
 				return call_user_func_array(array($controller, $this->method), $args);
 			} else {
-				return new \Exception('Error: Could not call ' . $this->route . '/' . $this->method . '!');
+				exit('Error: Could not call ' . $this->route . '/' . $this->method . '!');
 			}
 		}
 		
