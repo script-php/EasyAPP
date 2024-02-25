@@ -65,12 +65,7 @@ else {
 }
 
 
-// load router app from config or default router :-?
 $registry = new System\Framework\Registry();
-
-// $event = $registry->get('event');
-// $event->register('after:controller/template', new System\Framework\Action('errors/error|test'));
-// $event->register('after:controller/radio/home', new System\Framework\Action('errors/error|test'));
 
 $request = $registry->get('request');
 if (!empty(CONFIG_PRE_ACTION)) {
