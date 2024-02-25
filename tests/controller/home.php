@@ -16,11 +16,11 @@ class ControllerHome extends Controller {
 	
 	function index() {
 
-		$this->response->setOutput('Homepage');
+        // $this->load->language('en');
+        // pre($this->language->get('heading_title'));
 
-        $this->load->model('test');
-
-        $this->model_test->teste();
+        // $this->load->model('home/home');
+        $this->response->setOutput($this->load->view('test_view.html'));
 		
 	}
 

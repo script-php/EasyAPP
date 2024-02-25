@@ -3,15 +3,15 @@
 namespace System\Framework;
 class Proxy {
 
-	public function __get($key) {
-		return $this->{$key};
+	public function __get($method) {
+		return $this->{$method};
 	}	
 
-	public function __set($key, $value) {
-		 $this->{$key} = $value;
+	public function __set($method, $value) {
+		 $this->{$method} = $value;
 	}
 	
-	public function __call($key, $args) {
+	public function __call($method, $args) {
 		$arg_data = array();
 		
 		$args = func_get_args();
@@ -23,12 +23,11 @@ class Proxy {
 				$arg_data[] =& $arg;
 			}
 		}
-		
-		if (isset($this->{$key})) {		
-			return call_user_func_array($this->{$key}, $arg_data);	
+		if (isset($this->{$method})) {		
+			return call_user_func_array($this->{$method}, $arg_data);	
 		} else {
 			$trace = debug_backtrace();
-			exit('<pre><b>Notice</b>:  Undefined property: Proxy::' . $key . ' in <b>' . $trace[1]['file'] . '</b> on line <b>' . $trace[1]['line'] . '</b></pre>');
+			exit('<b>Notice</b>: Undefined method: ' . $method . ' in <b>' . $trace[0]['file'] . '</b> on line <b>' . $trace[0]['line'] . '</b>');
 		}
 	}
 }

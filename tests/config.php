@@ -18,9 +18,8 @@ $config['domain'] = 'localhost'; // used for login
 $config['session_name'] = 'adm-ck'; // used for login
 $config['session_time'] = 31556926;
 
-// $config['pre_action'] = [
-//     'startup/start',
-//     'startup/permission'
-// ];
+$config['pre_action'] = [
+    'startup/events',
+];
 
 $config['debug'] = true;

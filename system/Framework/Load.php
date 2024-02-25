@@ -63,75 +63,81 @@ class Load {
 		}
 	}
 
-	// public function model(string $route) {
-
-	// 	$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route);
-	// 	$model = 'model_' . str_replace('/', '_', $route);
-
-	// 	if (!$this->registry->has($model)) {
-	// 		$file = CONFIG_DIR_MODEL . $route . '.php';
-
-	// 		if (is_file($file)) {
-	// 			include_once($file);
-
-	// 			$class = str_replace(' ', '', ucwords(str_replace('_', ' ', $model)));
-
-	// 			if (class_exists($class)) {
-	// 				$load_model = new $class($this->registry);
-	// 				$this->registry->set($model, $load_model);
-	// 			} else {
-	// 				exit('Error: Could not load model ' . $class . '!');
-	// 			}
-
-	// 		}
-			
-	// 	}
-	// }
-
 	public function model($route) {
-		// Sanitize the call
 		$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', (string)$route);
-		
+
 		if (!$this->registry->has('model_' . str_replace('/', '_', $route))) {
 			$file  = CONFIG_DIR_MODEL . $route . '.php';
 			$class = 'Model' . preg_replace('/[^a-zA-Z0-9]/', '', $route);
-			
 			if (is_file($file)) {
 				include_once($file);
-	
 				$proxy = new Proxy();
-				
-				// Overriding models is a little harder so we have to use PHP's magic methods
-				// In future version we can use runkit
 				foreach (get_class_methods($class) as $method) {
-					// pre($method);
-					$proxy->{$method} = $this->callback($this->registry, $route . '/' . $method);
+					$proxy->{$method} = $this->callback($this->registry, $route . '|' . $method);
 					break;
 				}
-				
 				$this->registry->set('model_' . str_replace('/', '_', (string)$route), $proxy);
 			} else {
 				exit('Error: Could not load model ' . $route . '!');
 			}
 		}
-	}
 
-    public function language($route) {
-		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route); // Sanitize the call
-        $output = $this->registry->get('language')->load($route);	
-		return $output;
+	}
+	// used for model load
+	protected function callback($registry, $route) {
+		return function($args) use($registry, $route) {
+			static $model;
+			$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', (string)$route);
+			$trigger = $route;
+			$before = $registry->get('event')->trigger('before:model/' . $trigger . '', array(&$route, &$args));
+			if (!empty($before)) {
+				$output = $before;
+			} else {
+				$class_path = substr($route, 0, strrpos($route, '|'));
+				if (!isset($model[$class_path])) {
+					$class = 'Model' . preg_replace('/[^a-zA-Z0-9]/', '', substr($route, 0, strrpos($route, '|')));
+					$model[$class_path] = new $class($registry);
+				}
+				$method = array($model[$class_path], (substr($route, strrpos($route, '|') + 1)));
+				if (is_callable($method)) {
+					$output = call_user_func_array($method, $args);
+				} else {
+					exit('Error: Could not call model/' . $route . '!');
+				}					
+			}
+			$result = $registry->get('event')->trigger('after:model/' . $trigger . '', array(&$route, &$args, &$output));
+			if (!empty($result)) {
+				$output = $result;
+			}
+			return $output;
+		};
+	}
+	
+
+    public function language(string $route) {
+		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
+		$trigger = $route;
+		$this->event->trigger('before:language/' . $trigger, [&$route]);
+		$language =$this->registry->get('language')->load($route);
+		$this->event->trigger('after:language/' . $trigger, [&$route, &$language]);
+		return $language;
 	}
 
 
     public function view(string $route, array $data = []) {
 		$route = preg_replace('/[^a-zA-Z0-9_\/.]/', '', (string)$route); // Sanitize the call
-        $route = CONFIG_DIR_VIEW . $route;
+        $trigger = $route;
+		$route = CONFIG_DIR_VIEW . $route;
         if(file_exists($route)) {
-			ob_start();
-			extract($data);
-			include $route;
-			$output = ob_get_contents();
-			ob_end_clean();
+			$output = $this->event->trigger('before:view/' . $trigger, [&$route, &$data]);
+			if(empty($output)) {
+				ob_start();
+				extract($data);
+				include $route;
+				$output = ob_get_contents();
+				ob_end_clean();
+			}
+			$this->event->trigger('after:view/' . $trigger, [&$route, &$data, &$output]);
 			return $output;
 		}
 		else {
@@ -139,7 +145,7 @@ class Load {
 		}
 	}
 
-    public function json($Response, $header=TRUE) {
+    public function json($response, $header=true) {
 		$json = json_encode($Response);
 		if($header) {
 			header('Content-type: text/json;charset=UTF-8');
@@ -150,59 +156,13 @@ class Load {
 		}
 	}
 
-    public function text(string $text,array $params=NULL) {
+    public function text(string $text,array $params=null) {
 		if($params != NULL) {
 			foreach($params as $param => $value) {
-				$text = str_replace('{'.strtoupper($param).'}',$value,$text);
+				$text = str_replace('{{'.strtoupper($param).'}}',$value,$text);
 			}
 		}
 		return $text;
 	}
-
-	protected function callback($registry, $route) {
-		return function($args) use($registry, $route) {
-			static $model;
-			
-			$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
-
-			// Keep the original trigger
-			$trigger = $route;
-					
-			// Trigger the pre events
-			$result = $registry->get('event')->trigger('model/' . $trigger . '/before', array(&$route, &$args));
-			
-			if ($result && !$result instanceof Exception) {
-				$output = $result;
-			} else {
-				$class = 'Model' . preg_replace('/[^a-zA-Z0-9]/', '', substr($route, 0, strrpos($route, '/')));
-				
-				// Store the model object
-				$key = substr($route, 0, strrpos($route, '|'));
-				
-				if (!isset($model[$key])) {
-					$model[$key] = new $class($registry);
-				}
-				
-				$method = substr($route, strrpos($route, '|') + 1);
-				
-				$callable = array($model[$key], $method);
-	
-				if (is_callable($callable)) {
-					$output = call_user_func_array($callable, $args);
-				} else {
-					throw new \Exception('Error: Could not call model/' . $route . '!');
-				}					
-			}
-			
-			// Trigger the post events
-			$result = $registry->get('event')->trigger('model/' . $trigger . '/after', array(&$route, &$args, &$output));
-			
-			if ($result && !$result instanceof Exception) {
-				$output = $result;
-			}
-						
-			return $output;
-		};
-	}	
 
 }

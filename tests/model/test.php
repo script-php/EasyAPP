@@ -3,7 +3,7 @@
 class ModelTest extends Model {
 
     function test() {
-        return [];
+        return 'output model test';
     }
 
 }
