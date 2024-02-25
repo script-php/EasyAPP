@@ -32,33 +32,23 @@ class Action {
 			exit('Error: Calls to magic methods are not allowed!');
 		}
 
-        $class = 'Controller' . str_replace(' ', '', ucwords(str_replace('_', ' ', str_replace('/', '_', $this->route))));
-		
         $file  = CONFIG_DIR_APP . 'controller/' . $this->route . '.php';	
 		
 		if (is_file($file)) {
 			include_once($file);
-			
-			$controller = new $class($registry);
 
-			if($this->load) {
-				$controller_load = 'controller_' . str_replace('/', '_', $this->route);
-				$registry->set($controller_load, $controller);
-				return $controller;
+			$class = 'Controller' . str_replace(' ', '', ucwords(str_replace('_', ' ', str_replace('/', '_', $this->route))));
+			
+			$reflection = new \ReflectionClass($class);
+	
+			if ($reflection->hasMethod($this->method) && $reflection->getMethod($this->method)->getNumberOfRequiredParameters() <= count($args)) {
+				return call_user_func_array(array((new $class($registry)), $this->method), $args);
+			} else {
+				exit('Error: Could not call ' . $this->route . '/' . $this->method . '!');
 			}
 			
 		} else {
 			exit('Error: Could not call ' . $this->route . '/' . $this->method . '!');
-		}
-		
-		if(!$this->load) {
-			$reflection = new \ReflectionClass($class);
-		
-			if ($reflection->hasMethod($this->method) && $reflection->getMethod($this->method)->getNumberOfRequiredParameters() <= count($args)) {
-				return call_user_func_array(array($controller, $this->method), $args);
-			} else {
-				exit('Error: Could not call ' . $this->route . '/' . $this->method . '!');
-			}
 		}
 		
 	}
