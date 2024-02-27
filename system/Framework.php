@@ -67,17 +67,12 @@ else {
 
 $registry = new System\Framework\Registry();
 
-$tables = [];
-if (is_file(PATH . 'db_schema.php')) {
-    include PATH . 'db_schema.php';   
-}
-if (is_file($config['dir_app'] . 'db_schema.php')) {
-    include $config['dir_app'] . 'db_schema.php';   
-}
-
-// pre($tables);
-$db_schema = $registry->get('tables');
-$db_schema->db_schema($tables);
+// i place it here just for testing... 
+// $tables = [];
+// if (is_file(PATH . 'db_schema.php')) {
+//     include PATH . 'db_schema.php';   
+// }
+// $registry->get('tables')->db_schema($tables);
 
 $request = $registry->get('request');
 if (!empty(CONFIG_PRE_ACTION)) {

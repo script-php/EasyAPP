@@ -1,9 +1,7 @@
 <?php 
 
-
 /**
 * @package      DB - Tables
-* @version      v1.1.1
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
@@ -15,55 +13,70 @@ class Tables {
 
     public $tables = [];
     private $db;
+    private $diff = true;
 
     protected $registry;
 
 	function __construct($registry) {
 		$this->registry = $registry;
         $this->db = $this->registry->get('db');
+        $this->util = $this->registry->get('util');
 	}
+
 
     function db_schema($tables) {
+        
+        $debug_backtrace = debug_backtrace();
+        $file = $this->util->hash($debug_backtrace[0]['file']);
+        $hash = $this->util->hash(json_encode($tables));
 
-		// It makes mass changes to the DB by creating tables that are not in the current db, changes the charset and DB engine to the SQL schema.
-		try {
-			// Structure
+        if (is_file(CONFIG_DIR_STORAGE . 'logs/tables-' . $file)) {
+            $check = file_get_contents(CONFIG_DIR_STORAGE . 'logs/tables-' . $file);
+            if($hash === $check) {
+                $this->diff = false;
+            } 
+        }
 
-            foreach ($tables as $table) {
-				$foreign_query = $this->db->query("SELECT * FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = '" . CONFIG_DB_DATABASE . "' AND TABLE_NAME = '" . CONFIG_DB_PREFIX . $table['name'] . "' AND CONSTRAINT_TYPE = 'FOREIGN KEY'");
-				foreach ($foreign_query->rows as $foreign) {
-					$this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` DROP FOREIGN KEY `" . $foreign['CONSTRAINT_NAME'] . "`");
-				}
-			}
+        if($this->diff) {
+            $this->actions($tables);
+            file_put_contents(CONFIG_DIR_STORAGE . 'logs/tables-' . $file, $hash);
+        }
 
-			foreach ($tables as $table) {
-				$table_query = $this->db->query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '" . CONFIG_DB_DATABASE . "' AND TABLE_NAME = '" . CONFIG_DB_PREFIX . $table['name'] . "'");
-				if (!$table_query->num_rows) {
-					$this->createTable($table);
-				} else {
-                    $this->alterTable($table);
-				}
-			}
-
-            foreach ($tables as $table) {
-				if (isset($table['foreign'])) {
-					foreach ($table['foreign'] as $foreign) {
-						$this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['field'] . "`)");
-						//$this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['field'] . "`)");
-					}
-				}
-			}
-
-		} catch (\ErrorException $exception) {
-            exit($exception);
-		}
 	}
 
 
+    function actions($tables) {
 
+        try {
+            // Structure
+            foreach ($tables as $table) {
+                $foreign_query = $this->db->query("SELECT * FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = '" . CONFIG_DB_DATABASE . "' AND TABLE_NAME = '" . CONFIG_DB_PREFIX . $table['name'] . "' AND CONSTRAINT_TYPE = 'FOREIGN KEY'");
+                foreach ($foreign_query->rows as $foreign) {
+                    $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` DROP FOREIGN KEY `" . $foreign['CONSTRAINT_NAME'] . "`");
+                }
+            }
 
+            foreach ($tables as $table) {
+                $table_query = $this->db->query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '" . CONFIG_DB_DATABASE . "' AND TABLE_NAME = '" . CONFIG_DB_PREFIX . $table['name'] . "'");
+                if (!$table_query->num_rows) {
+                    $this->createTable($table);
+                } else {
+                    $this->alterTable($table);
+                }
+            }
 
+            foreach ($tables as $table) {
+                if (isset($table['foreign'])) {
+                    foreach ($table['foreign'] as $foreign) {
+                        $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['field'] . "`)");
+                    }
+                }
+            }
 
+        } catch (\ErrorException $exception) {
+            exit($exception);
+        }
+    }
 
 
 
@@ -120,6 +133,12 @@ class Tables {
             $sql = "ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "`";
 
             $field_query = $this->db->query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '" . CONFIG_DB_DATABASE . "' AND TABLE_NAME = '" . CONFIG_DB_PREFIX . $table['name'] . "' AND COLUMN_NAME = '" . $table['field'][$i]['name'] . "'");
+
+            
+
+            # TODO: add CHANGE and DROP to action for columns
+            #ALTER TABLE `user` CHANGE `user_idd` `user_iddd` BIGINT(22) NOT NULL;
+            #ALTER TABLE `user` DROP `user_idd`;
 
             if (!$field_query->num_rows) {
                 $sql .= " ADD";
