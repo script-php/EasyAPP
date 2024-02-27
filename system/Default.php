@@ -18,6 +18,8 @@ $config['db_password'] = '';
 $config['db_port'] = '';
 $config['db_options'] = [];
 $config['db_encoding'] = '';
+$config['db_prefix'] = '';
+
 
 // Framework config
 $config['query'] = 'route';

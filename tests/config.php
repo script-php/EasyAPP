@@ -9,7 +9,7 @@ $config['action_router']        = 'home'; // the name of controller file that wi
 $config['action_error']         = 'not_found';// the name of controller file that will be shown when will be accessed a wrong or a non-existent route.
 
 $config['db_hostname'] = 'localhost'; 
-$config['db_database'] = 'radio';
+$config['db_database'] = 'framework';
 $config['db_username'] = 'root';
 $config['db_password'] = '';
 $config['db_port'] = '3306';

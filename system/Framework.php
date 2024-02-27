@@ -67,6 +67,18 @@ else {
 
 $registry = new System\Framework\Registry();
 
+$tables = [];
+if (is_file(PATH . 'db_schema.php')) {
+    include PATH . 'db_schema.php';   
+}
+if (is_file($config['dir_app'] . 'db_schema.php')) {
+    include $config['dir_app'] . 'db_schema.php';   
+}
+
+// pre($tables);
+$db_schema = $registry->get('tables');
+$db_schema->db_schema($tables);
+
 $request = $registry->get('request');
 if (!empty(CONFIG_PRE_ACTION)) {
     foreach (CONFIG_PRE_ACTION as $action) {
@@ -75,5 +87,7 @@ if (!empty(CONFIG_PRE_ACTION)) {
 }
 
 ($registry->get('load'))->controller((isset($request->get['rewrite']) && empty($request->get['route'])) ? CONFIG_ACTION_ERROR : ((isset($request->get['route']) && !empty($request->get['route']) ? $request->get['route'] : CONFIG_ACTION_ROUTER)));
+
+
 
 $registry->get('response')->output();
