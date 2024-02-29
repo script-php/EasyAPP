@@ -2,7 +2,6 @@
 
 /**
 * @package      DB - PDO Connection
-* @version      v1.1.1
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro

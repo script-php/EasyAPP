@@ -2,7 +2,7 @@
 
 /**
 * @package      EasyAPP Framework
-* @version      v1.4.7
+* @version      v1.5.1
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
@@ -67,12 +67,22 @@ else {
 
 $registry = new System\Framework\Registry();
 
-// i place it here just for testing... 
-// $tables = [];
-// if (is_file(PATH . 'db_schema.php')) {
-//     include PATH . 'db_schema.php';   
-// }
-// $registry->get('tables')->db_schema($tables);
+/** 
+ * This is here only to help in the development of projects, where you need to modify you database very often. 
+ * (This should be used on your install when you create the database. Just copy & paste from here and adapt it for your needs) 
+ * It is disabled by default. 
+ * If you want to use it, place in your config: 
+ * $config['debug'] = true; 
+ * $config['dev_db_schema'] = true;
+ */
+if(CONFIG_DEBUG && CONFIG_DEV_DB_SCHEMA) {
+    $tables = [];
+    if (is_file(PATH . 'db_schema.php')) {
+        include PATH . 'db_schema.php';   
+    }
+    $registry->get('tables')->db_schema($tables);
+} 
+
 
 $request = $registry->get('request');
 if (!empty(CONFIG_PRE_ACTION)) {

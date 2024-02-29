@@ -40,6 +40,7 @@ $config['dir_assets'] = 'assets/';
 $config['compression'] = 0;
 
 $config['debug'] = false;
+$config['dev_db_schema'] = false;
 
 $config['default_language'] = 'en-gb';
 

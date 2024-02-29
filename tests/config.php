@@ -23,3 +23,4 @@ $config['pre_action'] = [
 ];
 
 $config['debug'] = true;
+$config['dev_db_schema'] = true;
