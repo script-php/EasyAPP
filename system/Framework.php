@@ -43,8 +43,8 @@ if($config['debug']) {
 include $config['dir_system'] . 'Controller.php';
 include $config['dir_system'] . 'Model.php';
 
-if (is_file(PATH . 'system/vendor/autoload.php')) {
-    require 'system/vendor/autoload.php';   
+if (is_file(PATH . 'system/Vendor/autoload.php')) {
+    require 'system/Vendor/autoload.php';   
 }
 else {
     include rtrim($config['dir_system'], '\\/ ') . DIRECTORY_SEPARATOR . 'Autoloader.php';

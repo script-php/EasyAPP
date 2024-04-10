@@ -62,26 +62,51 @@ class Load {
 		}
 	}
 
-	public function model($route) {
-		$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', (string)$route);
+	public function model(string $route) {
 
-		if (!$this->registry->has('model_' . str_replace('/', '_', $route))) {
-			$file  = CONFIG_DIR_MODEL . $route . '.php';
-			$class = 'Model' . preg_replace('/[^a-zA-Z0-9]/', '', $route);
+		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route);
+		$model = 'model_' . str_replace('/', '_', $route);
+
+		if (!$this->registry->has($model)) {
+			$file = CONFIG_DIR_MODEL . $route . '.php';
+
 			if (is_file($file)) {
 				include_once($file);
-				$proxy = new Proxy();
-				foreach (get_class_methods($class) as $method) {
-					$proxy->{$method} = $this->callback($this->registry, $route . '|' . $method);
-					break;
-				}
-				$this->registry->set('model_' . str_replace('/', '_', (string)$route), $proxy);
-			} else {
-				exit('Error: Could not load model ' . $route . '!');
-			}
-		}
 
+				$class = str_replace(' ', '', ucwords(str_replace('_', ' ', $model)));
+
+				if (class_exists($class)) {
+					$load_model = new $class($this->registry);
+					$this->registry->set($model, $load_model);
+				} else {
+					exit('Error: Could not load model ' . $class . '!');
+				}
+
+			}
+			
+		}
 	}
+
+	// public function model($route) {
+	// 	$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', (string)$route);
+
+	// 	if (!$this->registry->has('model_' . str_replace('/', '_', $route))) {
+	// 		$file  = CONFIG_DIR_MODEL . $route . '.php';
+	// 		$class = 'Model' . preg_replace('/[^a-zA-Z0-9]/', '', $route);
+	// 		if (is_file($file)) {
+	// 			include_once($file);
+	// 			$proxy = new Proxy();
+	// 			foreach (get_class_methods($class) as $method) {
+	// 				$proxy->{$method} = $this->callback($this->registry, $route . '|' . $method);
+	// 				break;
+	// 			}
+	// 			$this->registry->set('model_' . str_replace('/', '_', (string)$route), $proxy);
+	// 		} else {
+	// 			exit('Error: Could not load model ' . $route . '!');
+	// 		}
+	// 	}
+
+	// }
 	// used for model load
 	protected function callback($registry, $route) {
 		return function($args) use($registry, $route) {

@@ -30,10 +30,10 @@ class Db {
 				if(empty($options)) {
 					$options = [
 						\PDO::MYSQL_ATTR_INIT_COMMAND        => "SET NAMES {$encoding}",
-						\PDO::ATTR_PERSISTENT                => true, // Long connection
+						\PDO::ATTR_PERSISTENT                => false, // Long connection
 						\PDO::ATTR_EMULATE_PREPARES          => false, // turn off emulation mode for "real" prepared statements
 						\PDO::ATTR_DEFAULT_FETCH_MODE        => \PDO::FETCH_ASSOC, //make the default fetch be an associative array
-						\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY  => true,
+						\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY  => false,
 						\PDO::ATTR_ERRMODE                   => \PDO::ERRMODE_EXCEPTION, //turn on errors in the form of exceptions
 					];
 				}
