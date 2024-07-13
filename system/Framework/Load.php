@@ -54,7 +54,7 @@ class Load {
 		if (is_file($file)) {
 			include_once($file);
 			$class = 'Controller' . str_replace(' ', '', ucwords(str_replace('_', ' ', str_replace('/', '_', $route))));
-			$controller = new $class($registry);
+			$controller = new $class($this->registry);
 			return $controller;
 		} 
 		else {
@@ -63,11 +63,14 @@ class Load {
 	}
 
 	public function model(string $route) {
-
+		
+		// Sanitize the call
 		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route);
-		$model = 'model_' . str_replace('/', '_', $route);
 
+		$model = 'model_' . str_replace('/', '_', $route);
+		
 		if (!$this->registry->has($model)) {
+
 			$file = CONFIG_DIR_MODEL . $route . '.php';
 
 			if (is_file($file)) {
@@ -76,68 +79,66 @@ class Load {
 				$class = str_replace(' ', '', ucwords(str_replace('_', ' ', $model)));
 
 				if (class_exists($class)) {
-					$load_model = new $class($this->registry);
-					$this->registry->set($model, $load_model);
+					$proxy = new Proxy();
+	
+					foreach (get_class_methods($class) as $method) {
+
+						$reflection = new \ReflectionMethod($class, $method);
+	
+						if ((substr($method, 0, 2) != '__') && $reflection->isPublic()) {
+
+							$proxy->{$method} = function(&...$args) use ($route, $method) {
+								
+								$route = $route . '|' . $method;
+								$trigger = $route;
+	
+								$this->event->trigger('before:model/' . $trigger . '', [&$route, &$args]); // Trigger the pre events
+
+								$class = substr($route, 0, strrpos($route, '|'));
+								$method = substr($route, strrpos($route, '|') + 1);
+
+								if (is_file((CONFIG_DIR_MODEL . $class . '.php'))) {
+									include_once((CONFIG_DIR_MODEL . $class . '.php'));
+								}
+
+								$newmodel = 'callback_' . str_replace('/', '_', $class);
+	
+								if (!$this->registry->has($newmodel)) {
+									$class = str_replace(' ', '', ucwords(str_replace('_', ' ', 'model_' . str_replace('/', '_', $class))));
+									$load_model = new $class($this->registry);
+									$this->registry->set($newmodel, ($load_model)); // Store object
+								}
+								else {
+									$load_model = $this->registry->get($newmodel); // use it from registry
+								}
+
+								$callable = [$load_model, $method];
+
+								if (is_callable($callable)) {
+									$output = $callable(...$args);
+								}
+								else {
+									throw new \Exception('Error: Could not call model/' . $route . '!');
+								}
+	
+								$this->event->trigger('after:model/' . $trigger . '', [&$route, &$args, &$output]);
+	
+								return $output;
+							};
+						}
+					}
+	
+					$this->registry->set($model, $proxy);
 				} else {
-					exit('Error: Could not load model ' . $class . '!');
+					throw new \Exception('Error: Could not load model ' . $class . '!');
 				}
 
 			}
-			
+
 		}
 	}
 
-	// public function model($route) {
-	// 	$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', (string)$route);
-
-	// 	if (!$this->registry->has('model_' . str_replace('/', '_', $route))) {
-	// 		$file  = CONFIG_DIR_MODEL . $route . '.php';
-	// 		$class = 'Model' . preg_replace('/[^a-zA-Z0-9]/', '', $route);
-	// 		if (is_file($file)) {
-	// 			include_once($file);
-	// 			$proxy = new Proxy();
-	// 			foreach (get_class_methods($class) as $method) {
-	// 				$proxy->{$method} = $this->callback($this->registry, $route . '|' . $method);
-	// 				break;
-	// 			}
-	// 			$this->registry->set('model_' . str_replace('/', '_', (string)$route), $proxy);
-	// 		} else {
-	// 			exit('Error: Could not load model ' . $route . '!');
-	// 		}
-	// 	}
-
-	// }
-	// used for model load
-	protected function callback($registry, $route) {
-		return function($args) use($registry, $route) {
-			static $model;
-			$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', (string)$route);
-			$trigger = $route;
-			$before = $registry->get('event')->trigger('before:model/' . $trigger . '', array(&$route, &$args));
-			if (!empty($before)) {
-				$output = $before;
-			} else {
-				$class_path = substr($route, 0, strrpos($route, '|'));
-				if (!isset($model[$class_path])) {
-					$class = 'Model' . preg_replace('/[^a-zA-Z0-9]/', '', substr($route, 0, strrpos($route, '|')));
-					$model[$class_path] = new $class($registry);
-				}
-				$method = array($model[$class_path], (substr($route, strrpos($route, '|') + 1)));
-				if (is_callable($method)) {
-					$output = call_user_func_array($method, $args);
-				} else {
-					exit('Error: Could not call model/' . $route . '!');
-				}					
-			}
-			$result = $registry->get('event')->trigger('after:model/' . $trigger . '', array(&$route, &$args, &$output));
-			if (!empty($result)) {
-				$output = $result;
-			}
-			return $output;
-		};
-	}
 	
-
     public function language(string $route) {
 		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
 		$trigger = $route;

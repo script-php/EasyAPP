@@ -1,33 +1,51 @@
 <?php
 
 namespace System\Framework;
+
 class Proxy {
 
-	public function __get($method) {
-		return $this->{$method};
-	}	
+	protected array $data = [];
 
-	public function __set($method, $value) {
-		 $this->{$method} = $value;
-	}
-	
-	public function __call($method, $args) {
-		$arg_data = array();
-		
-		$args = func_get_args();
-		
-		foreach ($args as $arg) {
-			if ($arg instanceof Ref) {
-				$arg_data[] =& $arg->getRef();
-			} else {
-				$arg_data[] =& $arg;
-			}
+	public function &__get(string $key) {
+		if (isset($this->data[$key])) {
+			return $this->data[$key];
+		} 
+		else {
+			throw new \Exception('Error: Could not call proxy key ' . $key . '!');
 		}
-		if (isset($this->{$method})) {		
-			return call_user_func_array($this->{$method}, $arg_data);	
+	}
+
+	public function __set(string $key, object $value): void {
+		$this->data[$key] = $value;
+	}
+
+	public function __isset(string $key): bool {
+		return isset($this->data[$key]);
+	}
+
+	public function __unset(string $key): void {
+		unset($this->data[$key]);
+	}
+
+	public function data() {
+		return $this->data;
+	}
+
+	public function exists(string $method) {
+		if (isset($this->data[$method])) {
+			return true;
+		}
+		return false;
+	}
+
+	public function __call(string $method, array $args) {
+		foreach ($args as $key => &$value);
+
+		if (isset($this->data[$method])) {
+			return ($this->data[$method])(...$args);
 		} else {
 			$trace = debug_backtrace();
-			exit('<b>Notice</b>: Undefined method: ' . $method . ' in <b>' . $trace[0]['file'] . '</b> on line <b>' . $trace[0]['line'] . '</b>');
+			exit('<b>Notice</b>:  Undefined property: Proxy::<b>' . $method . '</b> in <b>' . $trace[0]['file'] . '</b> on line <b>' . $trace[0]['line'] . '</b>');
 		}
 	}
 }

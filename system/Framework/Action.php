@@ -47,7 +47,7 @@ class Action {
 			}
 			
 		} else {
-			exit('Error: Could not call ' . $this->route . '|' . $this->method . '!');
+			exit('Error: Could not find ' . $this->route . '|' . $this->method . '!');
 		}
 		
 	}

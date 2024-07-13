@@ -27,8 +27,15 @@ $config['dir_library'] = $config['dir_system'] . $config['dir_library'];
 $config['dir_assets'] = PATH . $config['dir_assets'];
 $config['dir_storage'] = PATH . $config['dir_storage'];
 
-include $config['dir_app'] . 'config.php'; // app config
-include $config['dir_app'] . 'helper.php'; // custom functions
+if(is_file($config['dir_app'] . 'config.php')) {
+    include $config['dir_app'] . 'config.php'; // app config
+}
+if (is_file(PATH . 'config.php')) {
+    include 'config.php';   
+}
+if(is_file($config['dir_app'] . 'helper.php')) {
+    include $config['dir_app'] . 'helper.php'; // custom functions
+}
 
 foreach($config as $key => $value) {
     define("CONFIG_" . strtoupper($key), $value);

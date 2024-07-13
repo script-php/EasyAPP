@@ -12,3 +12,10 @@ function pre($var, $exit = false) {
 	echo "<pre style='color:white;background:black;padding:15px'>".print_r($var, true)."</pre>\n";
 	if(!empty($exit)) exit();
 }
+
+function localhost(string $localhost = 'localhost') {
+	if($_SERVER['SERVER_NAME'] == $localhost) {
+		return true;
+	}
+	return false;
+}

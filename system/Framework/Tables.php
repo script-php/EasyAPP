@@ -23,7 +23,6 @@ class Tables {
         $this->util = $this->registry->get('util');
 	}
 
-
     function db_schema($tables) {
         
         $debug_backtrace = debug_backtrace();
@@ -80,23 +79,20 @@ class Tables {
 
 
 
-
-
-
-
-
-
-
-
-
     # CREATE TABLE
     function createTable($table) {
         $sql = "CREATE TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` (" . "\n";
 
         foreach ($table['field'] as $field) {
-            $sql .= "  `" . $field['name'] . "` " . $field['type'] . (!empty($field['not_null']) ? " NOT NULL" : "") . (isset($field['default']) ? " DEFAULT '" . $field['default'] . "'" : "") . (!empty($field['auto_increment']) ? " AUTO_INCREMENT" : "") . ",\n";
+
+            $not_null = (!empty($field['not_null']) ? " NOT NULL" : "");
+            $default = (isset($field['default']) ? " DEFAULT " . $field['default'] . "" : "");
+            $auto_increment = (!empty($field['auto_increment']) ? " AUTO_INCREMENT" : "");
+
+            $sql .= "  `" . $field['name'] . "` " . $field['type'] . $not_null . $default . $auto_increment . ",\n";
         }
 
+        # PRIMARY
         if (isset($table['primary'])) {
             $primary_data = [];
 
@@ -105,6 +101,24 @@ class Tables {
             }
 
             $sql .= " PRIMARY KEY (" . implode(",", $primary_data) . "),\n";
+        }
+
+        # FULLTEXT
+        if (isset($table['fulltext'])) {
+            $fulltext_data = [];
+            foreach ($table['fulltext'] as $fulltext) {
+                
+                if(is_array($fulltext)) {
+                    $index = [];
+                    foreach($fulltext as $fulltext) {
+                        $index[] = "`" . $fulltext . "`";
+                    }
+                    $fulltext = implode(",", $index);
+                }
+                $fulltext_data[] = " FULLTEXT INDEX (" . $fulltext . "),\n";
+            }
+
+            $sql .= implode($fulltext_data);
         }
 
         if (isset($table['index'])) {
@@ -122,7 +136,7 @@ class Tables {
         $sql = rtrim($sql, ",\n") . "\n";
         $sql .= ") ENGINE=" . $table['engine'] . " CHARSET=" . $table['charset'] . " COLLATE=" . $table['collate'] . ";\n";
 
-        // pre($sql);
+        // pre($sql,1);
         $this->db->query($sql);
     }
 
@@ -133,8 +147,6 @@ class Tables {
             $sql = "ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "`";
 
             $field_query = $this->db->query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '" . CONFIG_DB_DATABASE . "' AND TABLE_NAME = '" . CONFIG_DB_PREFIX . $table['name'] . "' AND COLUMN_NAME = '" . $table['field'][$i]['name'] . "'");
-
-            
 
             # TODO: add CHANGE and DROP to action for columns
             #ALTER TABLE `user` CHANGE `user_idd` `user_iddd` BIGINT(22) NOT NULL;
@@ -153,7 +165,7 @@ class Tables {
             }
 
             if (isset($table['field'][$i]['default'])) {
-                $sql .= " DEFAULT '" . $table['field'][$i]['default'] . "'";
+                $sql .= " DEFAULT " . $table['field'][$i]['default'] . "";
             }
 
             if (!isset($table['field'][$i - 1])) {
@@ -162,6 +174,7 @@ class Tables {
                 $sql .= " AFTER `" . $table['field'][$i - 1]['name'] . "`";
             }
 
+            // pre($sql,1);
             $this->db->query($sql);
         }
 
@@ -203,6 +216,24 @@ class Tables {
             $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD PRIMARY KEY(" . implode(",", $primary_data) . ")");
         }
 
+        // Fulltext Key
+        if (isset($table['fulltext'])) {
+            $fulltext_data = [];
+            foreach ($table['fulltext'] as $fulltext) {
+                if(is_array($fulltext)) {
+                    foreach($fulltext as $index) {
+                        $fulltext_data[] = "`" . $index . "`";
+                    }
+                }
+                else {
+                    $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FULLTEXT INDEX(" . $fulltext . ")");
+                }
+            }
+            if(!empty($fulltext_data)) {
+                $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FULLTEXT INDEX(" . implode(",", $fulltext_data) . ")");
+            }
+        }
+
         for ($i = 0; $i < count($table['field']); $i++) {
             if (isset($table['field'][$i]['auto_increment'])) {
                 $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` MODIFY `" . $table['field'][$i]['name'] . "` " . $table['field'][$i]['type'] . " AUTO_INCREMENT");
@@ -240,14 +271,3 @@ class Tables {
     }
 
 }
-
-
-
-
-
-		
-
-
-
-
-	
