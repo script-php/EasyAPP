@@ -112,9 +112,11 @@ class Tables {
                 if (isset($table['foreign'])) {
                     foreach ($table['foreign'] as $foreign) {
 
-                        $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['column'] . "`)");
+                        $cascade = ($foreign['cascade'] ? " ON DELETE CASCADE " : "");
 
-                        pre("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['column'] . "`)");
+                        $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['column'] . "`)" . $cascade);
+
+                        pre("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['column'] . "`)" . $cascade);
                     }
                 }
             }
@@ -293,9 +295,9 @@ class Tables {
             }
         }
 
-        for ($i = 0; $i < count($table['column']); $i++) {
-            if (isset($table['column'][$i]['auto_increment'])) {
-                $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` MODIFY `" . $table['column'][$i]['name'] . "` " . $table['column'][$i]['type'] . " AUTO_INCREMENT");
+        foreach($table['column'] as $column) {
+            if (isset($column['auto_increment'])) {
+                $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` MODIFY `" . $column['name'] . "` " . $column['type'] . " AUTO_INCREMENT");
             }
         }
 
@@ -377,11 +379,12 @@ class Tables {
 		return $this;
 	}
 
-    function foreign($key, $table, $column) {
+    function foreign($key, $table, $column, bool $cascade = false) {
         $this->tables[$this->table_use]['foreign'][] = [
             'key' => $key,
             'table' => $table,
             'column' => $column,
+            'cascade' => $cascade
         ];
 		return $this;
 	}
