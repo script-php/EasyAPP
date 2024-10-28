@@ -15,6 +15,11 @@ class Tables {
     private $db;
     private $diff = true;
 
+    private $primary_use = 0;
+    private $after_use = '';
+    private $table_use = '';
+	private $column_use = '';
+
     protected $registry;
 
 	function __construct($registry) {
@@ -23,7 +28,11 @@ class Tables {
         $this->util = $this->registry->get('util');
 	}
 
-    function db_schema($tables) {
+    function create(array $tables = []) {
+
+        $tables = array_merge($this->tables, $tables);
+
+        // pre($tables,1);
         
         $debug_backtrace = debug_backtrace();
         $file = $this->util->hash($debug_backtrace[0]['file']);
@@ -37,6 +46,40 @@ class Tables {
         }
 
         if($this->diff) {
+
+            foreach ($tables as $table) {
+                if (isset($table['foreign'])) {
+                    foreach ($table['foreign'] as $foreign) {
+
+                        if(!isset($tables[$table['name']])) {
+                            pre('Table "' . $table['name'] . '" doesnt exists! Please check and try again',1);
+                        }
+
+                        if(!isset($tables[$foreign['table']])) {
+                            pre('Table "' . $foreign['table'] . '" doesnt exists! Please check try again',1);
+                        }
+
+                        if(!isset($tables[$table['name']]['column'][$foreign['key']])) {
+                            pre('Table "' . $table['name'] . '" doesnt have the column "'.$foreign['key'].'"! Please check and try again',1);
+                        }
+                        else if(!isset($tables[$foreign['table']]['column'][$foreign['column']])) {
+                            pre('Table "' . $foreign['table'] . '" doesnt have the column "'.$foreign['column'].'"! Please check and try again',1);
+                        }
+                        else {
+
+                            $key = strtolower($tables[$table['name']]['column'][$foreign['key']]['type']);
+                            $column = strtolower($tables[$foreign['table']]['column'][$foreign['column']]['type']);
+
+                            if($key !== $column) {
+                                pre('The column "'.$foreign['table'].'('.$foreign['column'].')" doesnt have same type with the selected foreign key "'.$foreign['key'].'" ! Please check and try again',1);
+                            }
+
+                        }
+
+                    }
+                }
+            }
+
             $this->actions($tables);
             file_put_contents(CONFIG_DIR_STORAGE . 'logs/tables-' . $file, $hash);
         }
@@ -47,11 +90,12 @@ class Tables {
     function actions($tables) {
 
         try {
-            // Structure
+
             foreach ($tables as $table) {
                 $foreign_query = $this->db->query("SELECT * FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = '" . CONFIG_DB_DATABASE . "' AND TABLE_NAME = '" . CONFIG_DB_PREFIX . $table['name'] . "' AND CONSTRAINT_TYPE = 'FOREIGN KEY'");
                 foreach ($foreign_query->rows as $foreign) {
                     $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` DROP FOREIGN KEY `" . $foreign['CONSTRAINT_NAME'] . "`");
+                    pre("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` DROP FOREIGN KEY `" . $foreign['CONSTRAINT_NAME'] . "`");
                 }
             }
 
@@ -67,7 +111,10 @@ class Tables {
             foreach ($tables as $table) {
                 if (isset($table['foreign'])) {
                     foreach ($table['foreign'] as $foreign) {
-                        $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['field'] . "`)");
+
+                        $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['column'] . "`)");
+
+                        pre("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['column'] . "`)");
                     }
                 }
             }
@@ -83,24 +130,26 @@ class Tables {
     function createTable($table) {
         $sql = "CREATE TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` (" . "\n";
 
-        foreach ($table['field'] as $field) {
+        foreach ($table['column'] as $column) {
 
-            $not_null = (!empty($field['not_null']) ? " NOT NULL" : "");
-            $default = (isset($field['default']) ? " DEFAULT " . $field['default'] . "" : "");
-            $auto_increment = (!empty($field['auto_increment']) ? " AUTO_INCREMENT" : "");
+            if(!isset($column['delete'])) {
+                $not_null = (!empty($column['not_null']) ? " NOT NULL" : "");
+                $default = (isset($column['default']) ? " DEFAULT " . $column['default'] . "" : "");
+                $auto_increment = (!empty($column['auto_increment']) ? " AUTO_INCREMENT" : "");
 
-            $sql .= "  `" . $field['name'] . "` " . $field['type'] . $not_null . $default . $auto_increment . ",\n";
+                $name = $column['name'];
+                if(isset($column['change']) && !empty($column['change'])) {
+                    $name = $column['change'];
+                }
+
+                $sql .= "  `" . $name . "` " . $column['type'] . $not_null . $default . $auto_increment . ",\n";
+            }
+            
         }
 
         # PRIMARY
         if (isset($table['primary'])) {
-            $primary_data = [];
-
-            foreach ($table['primary'] as $primary) {
-                $primary_data[] = "`" . $primary . "`";
-            }
-
-            $sql .= " PRIMARY KEY (" . implode(",", $primary_data) . "),\n";
+            $sql .= " PRIMARY KEY (" . $table['primary'] . "),\n";
         }
 
         # FULLTEXT
@@ -136,47 +185,63 @@ class Tables {
         $sql = rtrim($sql, ",\n") . "\n";
         $sql .= ") ENGINE=" . $table['engine'] . " CHARSET=" . $table['charset'] . " COLLATE=" . $table['collate'] . ";\n";
 
-        // pre($sql,1);
+        pre("=== CREATE TABLE ===");
+        pre($sql);
         $this->db->query($sql);
     }
 
 
     # ALTER TABLE
     function alterTable($table) {
-        for ($i = 0; $i < count($table['field']); $i++) {
+    
+        foreach($table['column'] as $key => $value) {
+
             $sql = "ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "`";
 
-            $field_query = $this->db->query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '" . CONFIG_DB_DATABASE . "' AND TABLE_NAME = '" . CONFIG_DB_PREFIX . $table['name'] . "' AND COLUMN_NAME = '" . $table['field'][$i]['name'] . "'");
+            $column_query = $this->db->query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '" . CONFIG_DB_DATABASE . "' AND TABLE_NAME = '" . CONFIG_DB_PREFIX . $table['name'] . "' AND COLUMN_NAME = '" . $value['name'] . "'");
 
             # TODO: add CHANGE and DROP to action for columns
             #ALTER TABLE `user` CHANGE `user_idd` `user_iddd` BIGINT(22) NOT NULL;
-            #ALTER TABLE `user` DROP `user_idd`;
 
-            if (!$field_query->num_rows) {
-                $sql .= " ADD";
-            } else {
-                $sql .= " MODIFY";
+            if(isset($value['delete'])) {
+                $sql .= " DROP";
+                $sql .= " `" . $value['name'] . "`";
+            }
+            else {
+
+                $change = '';
+                if (!$column_query->num_rows) {
+                    $sql .= " ADD";
+                } 
+                else if(isset($value['change'])) {
+                    $sql .= " CHANGE";
+                    $change = "`" . $value['change'] . "`";
+                }
+                else {
+                    $sql .= " MODIFY";
+                }
+    
+                $sql .= " `" . $value['name'] . "` " . $change . " ". $value['type'];
+    
+                if (!empty($value['not_null'])) {
+                    $sql .= " NOT NULL";
+                }
+    
+                if (isset($value['default'])) {
+                    $sql .= " DEFAULT " . $value['default'] . "";
+                }
+    
+                if (isset($value['after'])) {
+                    $sql .= " AFTER `" . $value['after'] . "`";
+                } else if(isset($value['first'])) {
+                    $sql .= " FIRST";
+                }
             }
 
-            $sql .= " `" . $table['field'][$i]['name'] . "` " . $table['field'][$i]['type'];
-
-            if (!empty($table['field'][$i]['not_null'])) {
-                $sql .= " NOT NULL";
-            }
-
-            if (isset($table['field'][$i]['default'])) {
-                $sql .= " DEFAULT " . $table['field'][$i]['default'] . "";
-            }
-
-            if (!isset($table['field'][$i - 1])) {
-                $sql .= " FIRST";
-            } else {
-                $sql .= " AFTER `" . $table['field'][$i - 1]['name'] . "`";
-            }
-
-            // pre($sql,1);
+            pre("=== ALTER TABLE ===");
+            pre($sql);
             $this->db->query($sql);
-        }
+        } ##########
 
         $keys = [];
 
@@ -186,9 +251,9 @@ class Tables {
         foreach ($query->rows as $result) {
             if ($result['Key_name'] == 'PRIMARY') {
                 // We need to remove the AUTO_INCREMENT
-                $field_query = $this->db->query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '" . CONFIG_DB_DATABASE . "' AND TABLE_NAME = '" . CONFIG_DB_PREFIX . $table['name'] . "' AND COLUMN_NAME = '" . $result['Column_name'] . "'");
+                $column_query = $this->db->query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '" . CONFIG_DB_DATABASE . "' AND TABLE_NAME = '" . CONFIG_DB_PREFIX . $table['name'] . "' AND COLUMN_NAME = '" . $result['Column_name'] . "'");
 
-                $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` MODIFY `" . $result['Column_name'] . "` " . $field_query->row['COLUMN_TYPE'] . " NOT NULL");
+                $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` MODIFY `" . $result['Column_name'] . "` " . $column_query->row['COLUMN_TYPE'] . " NOT NULL");
             }
 
             if (!in_array($result['Key_name'], $keys)) {
@@ -207,13 +272,7 @@ class Tables {
 
         // Primary Key
         if (isset($table['primary'])) {
-            $primary_data = [];
-
-            foreach ($table['primary'] as $primary) {
-                $primary_data[] = "`" . $primary . "`";
-            }
-
-            $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD PRIMARY KEY(" . implode(",", $primary_data) . ")");
+            $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD PRIMARY KEY(" . $table['primary'] . ")");
         }
 
         // Fulltext Key
@@ -234,9 +293,9 @@ class Tables {
             }
         }
 
-        for ($i = 0; $i < count($table['field']); $i++) {
-            if (isset($table['field'][$i]['auto_increment'])) {
-                $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` MODIFY `" . $table['field'][$i]['name'] . "` " . $table['field'][$i]['type'] . " AUTO_INCREMENT");
+        for ($i = 0; $i < count($table['column']); $i++) {
+            if (isset($table['column'][$i]['auto_increment'])) {
+                $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` MODIFY `" . $table['column'][$i]['name'] . "` " . $table['column'][$i]['type'] . " AUTO_INCREMENT");
             }
         }
 
@@ -266,8 +325,103 @@ class Tables {
                 $sql .= " COLLATE `" . $table['collate'] . "`";
             }
 
+            pre($sql);
             $this->db->query($sql);
         }
+    }
+
+    function table($table) {
+		$this->table_use = $table;
+		$this->tables[$this->table_use] = [
+			'name' => $this->table_use,
+			'column' => [],
+			'engine' => 'default InnoDB',
+			'charset' => 'default utf8mb4',
+			'collate' => 'default utf8mb4_unicode_ci',
+		];
+		return $this;
+	}
+	
+	function column($name, string $change = NULL) {
+		$this->column_use = $name;
+		$this->tables[$this->table_use]['column'][$this->column_use]['name'] = $name;
+        if(!empty($change)) {
+            $this->tables[$this->table_use]['column'][$this->column_use]['change'] = $change;
+        }
+		return $this;
+	}
+	
+	function type($str) {
+		$this->tables[$this->table_use]['column'][$this->column_use]['type'] = $str;
+		return $this;
+	}
+
+    function after($str) {
+		$this->tables[$this->table_use]['column'][$this->column_use]['after'] = $str;
+		return $this;
+	}
+	
+	function auto_increment($bool) {
+		$this->tables[$this->table_use]['column'][$this->column_use]['auto_increment'] = $bool;
+		return $this;
+	}
+
+    function default($str) {
+		$this->tables[$this->table_use]['column'][$this->column_use]['default'] = $str;
+		return $this;
+	}
+
+    function primary($str) {
+        // $this->tables[$this->table_use]['primary'] = [$str];
+        $this->tables[$this->table_use]['primary'] = $str;
+		return $this;
+	}
+
+    function foreign($key, $table, $column) {
+        $this->tables[$this->table_use]['foreign'][] = [
+            'key' => $key,
+            'table' => $table,
+            'column' => $column,
+        ];
+		return $this;
+	}
+	
+	function not_null($bool) {
+		$this->tables[$this->table_use]['column'][$this->column_use]['not_null'] = $bool;
+		return $this;
+	}
+	
+	function engine($str) {
+		$this->tables[$this->table_use]['engine'] = $str;
+		return $this;
+	}
+	
+	function charset($str) {
+		$this->tables[$this->table_use]['charset'] = $str;
+		return $this;
+	}
+	
+	function collate($str) {
+		$this->tables[$this->table_use]['collate'] = $str;
+		return $this;
+	}
+
+    function delete() {
+        $this->tables[$this->table_use]['column'][$this->column_use]['delete'] = true;
+        return $this;
+    }
+
+    function index(string $name, array $key = []) {
+        $this->tables[$this->table_use]['index'][] = [
+            'name' => $name,
+            'key' => $key,
+        ];
+		return $this;
+    }
+
+    // TODO
+    function edit($str) {
+        return $this;
     }
 
 }

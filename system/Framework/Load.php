@@ -62,82 +62,50 @@ class Load {
 		}
 	}
 
-	public function model(string $route) {
-		
-		// Sanitize the call
-		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route);
-
-		$model = 'model_' . str_replace('/', '_', $route);
-		
+	public function model($route) {
+		$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', (string)$route);
+		$class = 'Model' . preg_replace('/[^a-zA-Z0-9]/', '', $route);
+		$model = 'model_' . str_replace('/', '_', (string)$route);
 		if (!$this->registry->has($model)) {
-
-			$file = CONFIG_DIR_MODEL . $route . '.php';
-
+			$file  = CONFIG_DIR_MODEL . $route . '.php';
 			if (is_file($file)) {
 				include_once($file);
 
-				$class = str_replace(' ', '', ucwords(str_replace('_', ' ', $model)));
+				$registry = $this->registry;
+				$model_instance = new $class($this->registry);
+				$proxy = new Proxy($model_instance, function ($model, $method, $args) use($registry, $route) {
 
-				if (class_exists($class)) {
-					$proxy = new Proxy();
-	
-					foreach (get_class_methods($class) as $method) {
+					$trigger = $route . '|' . $method;
+					if (method_exists($model, $method)) {
 
-						$reflection = new \ReflectionMethod($class, $method);
-	
-						if ((substr($method, 0, 2) != '__') && $reflection->isPublic()) {
-
-							$proxy->{$method} = function(&...$args) use ($route, $method) {
-								
-								$route = $route . '|' . $method;
-								$trigger = $route;
-	
-								$this->event->trigger('before:model/' . $trigger . '', [&$route, &$args]); // Trigger the pre events
-
-								$class = substr($route, 0, strrpos($route, '|'));
-								$method = substr($route, strrpos($route, '|') + 1);
-
-								if (is_file((CONFIG_DIR_MODEL . $class . '.php'))) {
-									include_once((CONFIG_DIR_MODEL . $class . '.php'));
-								}
-
-								$newmodel = 'callback_' . str_replace('/', '_', $class);
-	
-								if (!$this->registry->has($newmodel)) {
-									$class = str_replace(' ', '', ucwords(str_replace('_', ' ', 'model_' . str_replace('/', '_', $class))));
-									$load_model = new $class($this->registry);
-									$this->registry->set($newmodel, ($load_model)); // Store object
-								}
-								else {
-									$load_model = $this->registry->get($newmodel); // use it from registry
-								}
-
-								$callable = [$load_model, $method];
-
-								if (is_callable($callable)) {
-									$output = $callable(...$args);
-								}
-								else {
-									throw new \Exception('Error: Could not call model/' . $route . '!');
-								}
-	
-								$this->event->trigger('after:model/' . $trigger . '', [&$route, &$args, &$output]);
-	
-								return $output;
-							};
+						$result = $this->event->trigger('before:model/' . $trigger . '', [&$trigger, &$args]); // Trigger the pre events
+						if ($result && !$result instanceof Exception) {
+							$output = $result;
 						}
+						else {
+							$callable = array($model, $method);
+							if (is_callable($callable)) {
+								$output = call_user_func_array($callable, $args);
+							} else {
+								throw new \Exception('Error: Could not call model/' . $route . '!');
+							}
+						}
+
+						if ($result && !$result instanceof Exception) {
+							$output = $result;
+						}
+			
+						$this->event->trigger('after:model/' . $trigger . '', [&$trigger, &$args, &$output]);
+					    return $output;
 					}
-	
-					$this->registry->set($model, $proxy);
-				} else {
-					throw new \Exception('Error: Could not load model ' . $class . '!');
-				}
-
+				} );
+				
+				$this->registry->set($model, $proxy);
+			} else {
+				throw new \Exception('Error: Model file ' . $file . ' not found!');
 			}
-
 		}
 	}
-
 	
     public function language(string $route) {
 		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
