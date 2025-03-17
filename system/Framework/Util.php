@@ -187,5 +187,12 @@ class Util {
 		
 		return $text;
 	}
+	
+	function compress_html($html) {
+		$html = str_replace("\t", "", $html);
+		if(preg_match('/(\s){2,}/s', $html) === 1) { $html = preg_replace('/(\s){2,}/s', '', $html); }
+		$html = preg_replace("/[\n\r]/","",$html);
+		return $html;
+	}
 
 }

@@ -9,6 +9,11 @@
 
 namespace System\Framework;
 
+use System\Framework\Exceptions\ModelNotFoundException;
+use System\Framework\Exceptions\ControllerNotFoundException;
+use System\Framework\Exceptions\LibraryNotFoundException;
+use System\Framework\Exceptions\ViewNotFoundException;
+
 class Load {
 
 	public $load = false;
@@ -46,7 +51,7 @@ class Load {
 		return $output;
 	}
 
-	public function get_controller(string $route, ...$args) {
+	public function get_controller(string $route) {
 		$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', $route); // Sanitize the call
 
         $file = CONFIG_DIR_APP . 'controller/' . $route . '.php';	
@@ -58,7 +63,7 @@ class Load {
 			return $controller;
 		} 
 		else {
-			exit('Error: Could not call ' . $this->route . '/' . $this->method . '!');
+			throw new ControllerNotFoundException('Error: Could not call ' . $this->route . '/' . $this->method . '!');
 		}
 	}
 
@@ -79,7 +84,7 @@ class Load {
 					if (method_exists($model, $method)) {
 
 						$result = $this->event->trigger('before:model/' . $trigger . '', [&$trigger, &$args]); // Trigger the pre events
-						if ($result && !$result instanceof Exception) {
+						if ($result && !$result instanceof ModelNotFoundException) {
 							$output = $result;
 						}
 						else {
@@ -87,11 +92,11 @@ class Load {
 							if (is_callable($callable)) {
 								$output = call_user_func_array($callable, $args);
 							} else {
-								throw new \Exception('Error: Could not call model/' . $route . '!');
+								throw new ModelNotFoundException('Error: Could not call model/' . $route . '!');
 							}
 						}
 
-						if ($result && !$result instanceof Exception) {
+						if ($result && !$result instanceof ModelNotFoundException) {
 							$output = $result;
 						}
 			
@@ -102,11 +107,38 @@ class Load {
 				
 				$this->registry->set($model, $proxy);
 			} else {
-				throw new \Exception('Error: Model file ' . $file . ' not found!');
+				throw new ModelNotFoundException('Error: Model file ' . $file . ' not found!');
 			}
 		}
 	}
+
+
+	public function library(string $route) {
 	
+		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route);
+		$library = 'library_' . str_replace('/', '_', $route);
+	
+		if (!$this->registry->has($library)) {
+			$file = CONFIG_DIR_LIBRARY . $route . '.php';
+	
+			if (is_file($file)) {
+				include_once($file);
+	
+				$class = str_replace(' ', '', ucwords(str_replace('_', ' ', $library)));
+	
+				if (class_exists($class)) {
+					$load_library = new $class($this->registry);
+					$this->registry->set($library, $load_library);
+				} else {
+					throw new LibraryNotFoundException('Error: Could not load library ' . $class . '!');
+				}
+			}
+	
+		}
+
+	}
+
+
     public function language(string $route) {
 		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
 		$trigger = $route;
@@ -134,7 +166,7 @@ class Load {
 			return $output;
 		}
 		else {
-			exit('Error: Could not load template ' . $route . '!');
+			throw new ViewNotFoundException('Error: Could not load template ' . $route . '!');
 		}
 	}
 
