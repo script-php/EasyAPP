@@ -7,8 +7,6 @@
 * @link         https://script-php.ro
 */
 
-namespace App\Model;
-
 class ModelHome extends Model {
 
     function test() {
