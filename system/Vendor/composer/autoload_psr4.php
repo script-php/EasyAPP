@@ -7,5 +7,6 @@ $baseDir = dirname(dirname($vendorDir));
 
 return array(
     'System\\Library\\' => array($baseDir . '/system/Library'),
+    'System\\Framework\\Exceptions\\' => array($baseDir . '/system/Framework/Exceptions'),
     'System\\Framework\\' => array($baseDir . '/system/Framework'),
 );

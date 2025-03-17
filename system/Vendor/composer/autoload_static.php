@@ -10,6 +10,7 @@ class ComposerStaticInitaa7f7ce5fc6ac0bb17f3bf1814c8be56
         'S' => 
         array (
             'System\\Library\\' => 15,
+            'System\\Framework\\Exceptions\\' => 28,
             'System\\Framework\\' => 17,
         ),
     );
@@ -18,6 +19,10 @@ class ComposerStaticInitaa7f7ce5fc6ac0bb17f3bf1814c8be56
         'System\\Library\\' => 
         array (
             0 => __DIR__ . '/../../..' . '/system/Library',
+        ),
+        'System\\Framework\\Exceptions\\' => 
+        array (
+            0 => __DIR__ . '/../../..' . '/system/Framework/Exceptions',
         ),
         'System\\Framework\\' => 
         array (
