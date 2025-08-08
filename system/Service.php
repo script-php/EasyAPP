@@ -1,13 +1,13 @@
 <?php
 
 /**
-* @package      Model
+* @package      Service
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
 */
 
-abstract class Model {
+abstract class Service {
 
 	protected $registry;
 
@@ -22,14 +22,5 @@ abstract class Model {
 	public function __set($key, $value) {
 		$this->registry->set($key, $value);
 	}
-
-	function __callMethod($method, array $args = []) {
-		$result = call_user_func_array([$this, $method], $args);
-		return $result;
-	}
-
-	public function exists(string $method) {
-        return method_exists($this, $method);
-    }
 	
 }

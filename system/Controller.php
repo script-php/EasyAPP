@@ -22,5 +22,10 @@ abstract class Controller {
 	public function __set($key, $value) {
 		$this->registry->set($key, $value);
 	}
+
+	function __callMethod($method, array $args = []) {
+		$result = call_user_func_array([$this, $method], $args);
+		return $result;
+	}
 	
 }

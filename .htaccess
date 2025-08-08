@@ -50,7 +50,7 @@ RewriteEngine On
 #RewriteRule ^.*$ https://%{SERVER_NAME}%{REQUEST_URI} [R,L]
 
 ## If your project does not run on the main web folder make sure you folder it does run in
-RewriteBase /radio/
+RewriteBase /tests/
 ## Rewrite Rules
 RewriteRule ^storageee/(.*) index.php?route=error [L]
 RewriteRule ^system/(.*) index.php?route=error [L]

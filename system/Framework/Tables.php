@@ -279,6 +279,7 @@ class Tables {
 
         // Fulltext Key
         if (isset($table['fulltext'])) {
+            pre($table['fulltext']);
             $fulltext_data = [];
             foreach ($table['fulltext'] as $fulltext) {
                 if(is_array($fulltext)) {
@@ -376,6 +377,12 @@ class Tables {
     function primary($str) {
         // $this->tables[$this->table_use]['primary'] = [$str];
         $this->tables[$this->table_use]['primary'] = $str;
+		return $this;
+	}
+
+    function fulltext($str = []) {
+        // $this->tables[$this->table_use]['primary'] = [$str];
+        $this->tables[$this->table_use]['fulltext'] = $str;
 		return $this;
 	}
 

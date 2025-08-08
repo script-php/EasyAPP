@@ -8,10 +8,6 @@
 
 namespace System\Framework;
 
-use System\Framework\Exceptions\RouteNotFoundException;
-use System\Framework\Exceptions\MethodNotFoundException;
-use System\Framework\Exceptions\MagicMethodCallException;
-
 class Action {
     public $id;
     public $route;
@@ -31,7 +27,7 @@ class Action {
 
     public function execute($registry, array &$args = []) {
         if (substr($this->method, 0, 2) == '__') {
-            throw new MagicMethodCallException('Error: Calls to magic methods are not allowed!');
+            throw new System\Framework\Exceptions\MagicMethodCall('Error: Calls to magic methods are not allowed!');
         }
 
         $file = CONFIG_DIR_APP . 'controller/' . $this->route . '.php';
@@ -46,10 +42,10 @@ class Action {
                 $controllerInstance = new $class($registry); //more readable.
                 return call_user_func_array([$controllerInstance, $this->method], $args);
             } else {
-                throw new MethodNotFoundException('Error: Could not call ' . $this->route . '|' . $this->method . '!');
+                throw new System\Framework\Exceptions\MethodNotFound('Error: Could not call ' . $this->route . '|' . $this->method . '!');
             }
         } else {
-            throw new RouteNotFoundException('Error: Could not find ' . $this->route . '|' . $this->method . '!');
+            throw new System\Framework\Exceptions\RouteNotFound('Error: Could not find ' . $this->route . '|' . $this->method . '!');
         }
     }
 }

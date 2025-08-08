@@ -8,6 +8,8 @@
 * @link         https://script-php.ro
 */
 
+use System\Framework\Exceptions;
+
 session_start();
 
 // config
@@ -22,16 +24,18 @@ $config['dir_controller'] = $config['dir_app'] . $config['dir_controller'];
 $config['dir_model'] = $config['dir_app'] . $config['dir_model'];
 $config['dir_language'] = $config['dir_app'] . $config['dir_language'];
 $config['dir_view'] = $config['dir_app'] . $config['dir_view'];
+$config['dir_service'] = $config['dir_app'] . $config['dir_service'];
+
 $config['dir_framework'] = $config['dir_system'] . $config['dir_framework'];
 $config['dir_library'] = $config['dir_system'] . $config['dir_library'];
 $config['dir_assets'] = PATH . $config['dir_assets'];
 $config['dir_storage'] = PATH . $config['dir_storage'];
 
-if(is_file($config['dir_app'] . 'config.php')) {
-    include $config['dir_app'] . 'config.php'; // app config
-}
 if (is_file(PATH . 'config.php')) {
     include 'config.php';   
+}
+if(is_file($config['dir_app'] . 'config.php')) {
+    include $config['dir_app'] . 'config.php'; // app config
 }
 if(is_file($config['dir_app'] . 'helper.php')) {
     include $config['dir_app'] . 'helper.php'; // custom functions
@@ -50,6 +54,7 @@ if($config['debug']) {
 include $config['dir_system'] . 'Controller.php';
 include $config['dir_system'] . 'Model.php';
 include $config['dir_system'] . 'Library.php';
+include $config['dir_system'] . 'Service.php';
 
 if (is_file(PATH . 'system/Vendor/autoload.php')) {
     require 'system/Vendor/autoload.php';   
@@ -73,53 +78,109 @@ else {
 }
 
 $registry = new System\Framework\Registry();
+
+$registry->set('appName', 'Framework');
+$registry->set('version', '1.0.0');
+$registry->set('environment', 'development');
+$registry->set('debug', true);
+$registry->set('appPath', __DIR__);
+
+$registry->set('proxy', new System\Framework\Proxy($registry));
+
+$loader = new System\Framework\Load($registry);
+
+$registry->set('load', $loader);
+
 $request = $registry->get('request');
 
 $errorConfig = [
-    System\Framework\Exceptions\RouteNotFoundException::class => [404, "The requested page was not found."],
-    System\Framework\Exceptions\MethodNotFoundException::class => [405, "The requested method is not allowed."],
-    System\Framework\Exceptions\MagicMethodCallException::class => [500, "An internal server error occurred."],
-    System\Framework\Exceptions\ControllerNotFoundException::class => [404, "The requested page was not found."],
-    System\Framework\Exceptions\ModelNotFoundException::class => [500, "An internal server error occurred."],
-    System\Framework\Exceptions\LibraryNotFoundException::class => [500, "An internal server error occurred."],
-    System\Framework\Exceptions\ViewNotFoundException::class => [500, "An internal server error occurred."],
+    RouteNotFound::class => [404, "The requested page was not found."],
+    MethodNotFound::class => [405, "The requested method is not allowed."],
+    MagicMethodCall::class => [500, "An internal server error occurred."],
+    ControllerNotFound::class => [404, "The requested page was not found."],
+    ModelNotFound::class => [500, "An internal server error occurred."],
+    LibraryNotFound::class => [500, "An internal server error occurred."],
+    ViewNotFound::class => [500, "An internal server error occurred."],
+    ServiceNotFound::class => [500, "An internal server error occurred."],
     
-    System\Framework\Exceptions\DatabaseConfigurationException::class => [500, "Database configuration error."],
-    System\Framework\Exceptions\PDOExtensionNotFoundException::class => [500, "PDO extension not found."],
-    System\Framework\Exceptions\DatabaseConnectionException::class => [500, "Database connection error."],
-    System\Framework\Exceptions\DatabaseQueryException::class => [500, "Database query error."],
+    DatabaseConfiguration::class => [500, "Database configuration error."],
+    PDOExtensionNotFound::class => [500, "PDO extension not found."],
+    DatabaseConnection::class => [500, "Database connection error."],
+    DatabaseQuery::class => [500, "Database query error."],
 
     \Exception::class => [500, "An internal server error occurred."],
 ];
 
 try {
-    if (!empty(CONFIG_PRE_ACTION)) {
-        foreach (CONFIG_PRE_ACTION as $action) {
-            (new System\Framework\Action($action))->execute($registry);
+    if (!empty(CONFIG_SERVICES)) {
+        foreach (CONFIG_SERVICES as $action) {
+            ($registry->get('load'))->service($action);
         }
     }
-    ($registry->get('load'))->controller((isset($request->get['rewrite']) && empty($request->get['route'])) ? CONFIG_ACTION_ERROR : ((isset($request->get['route']) && !empty($request->get['route']) ? $request->get['route'] : CONFIG_ACTION_ROUTER)));
+
+    if(isset($request->get['rewrite'])) {
+
+        $registry->set('router', new System\Framework\Router($registry));
+
+        $router = $registry->get('router');
+
+        if(is_file($config['dir_app'] . 'router.php')) {
+            include $config['dir_app'] . 'router.php'; // app config
+        }
+
+        if(is_file(PATH . 'router.php')) {
+            include 'router.php'; // app config
+        }
+
+        $router->dispatch();
+    }
+    else {
+        // Determine and execute route
+
+    // ($registry->get('load'))->controller(
+        
+    //     (isset($request->get['rewrite']) && empty($request->get['route'])) ? CONFIG_ACTION_ERROR : ((isset($request->get['route']) && !empty($request->get['route']) ? $request->get['route'] : CONFIG_ACTION_ROUTER)
+        
+    // ));
+
+
+
+        if (empty($request->get['route'])) {
+            $route = CONFIG_ACTION_ROUTER;
+        } elseif (isset($request->get['route']) && !empty($request->get['route'])) {
+            $route = $request->get['route'];
+        } else {
+            $route = CONFIG_ACTION_ERROR;
+        }
+
+        $registry->get('load')->runController($route);
+    }
+    
+    $registry->get('response')->output();
 } 
 catch (\Exception $e) {
 
     $exceptionClass = get_class($e);
+    
     if (isset($errorConfig[$exceptionClass])) {
         list($statusCode, $errorMessage) = $errorConfig[$exceptionClass];
-        http_response_code($statusCode);
-        $data['errorMessage'] = $errorMessage;
     } else {
-        http_response_code(500);
-        $data['errorMessage'] = "An unexpected error occurred.";
+        $statusCode = 500;
+        $errorMessage = "An unexpected error occurred.";
     }
-
-    if(CONFIG_DEBUG) {
-        pre($e->getMessage());
-        pre($e);
-    }
-    else {
-        $registry->get('load')->get_controller(CONFIG_ACTION_ERROR)->index($data);
+    
+    // Set HTTP status code
+    http_response_code($statusCode);
+    
+    // Log error
+    $debug = new System\Framework\DebugError();
+    $debug->log($e);
+    
+    // Display error
+    if (defined('CONFIG_DEBUG') && CONFIG_DEBUG) {
+        $debug->display($e);
+    } else {
+        displayErrorPage($statusCode, $errorMessage);
     }
 
 }
-
-$registry->get('response')->output();

@@ -40,6 +40,22 @@ class Request {
 		});
 	}
 
+	public function get($key, $default = '') {
+        return isset($_GET[$key]) ? $_GET[$key] : $default;
+    }
+    
+    public function post($key, $default = '') {
+        return isset($_POST[$key]) ? $_POST[$key] : $default;
+    }
+    
+    public function cookie($key, $default = '') {
+        return isset($_COOKIE[$key]) ? $_COOKIE[$key] : $default;
+    }
+    
+    public function server($key, $default = '') {
+        return isset($_SERVER[$key]) ? $_SERVER[$key] : $default;
+    }
+
 	public function clean($data) {
 		if (is_array($data)) {
 			foreach ($data as $key => $value) {

@@ -9,111 +9,168 @@
 
 namespace System\Framework;
 
-use System\Framework\Exceptions\ModelNotFoundException;
-use System\Framework\Exceptions\ControllerNotFoundException;
-use System\Framework\Exceptions\LibraryNotFoundException;
-use System\Framework\Exceptions\ViewNotFoundException;
-
 class Load {
 
 	public $load = false;
 	public $registry;
 	public $route;
+	private $classCache = [];
 	
 
     public function __construct($registry) {
 		$this->registry = $registry;
 	}
 
+
 	public function __get(string $key) {
 		return $this->registry->get($key);
 	}
+
 
 	public function __set(string $key, $value) {
 		$this->registry->set($key, $value);
 	}
 
-	public function controller(string $route, ...$args) {
 
-		$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', $route); // Sanitize the call
-
-		$trigger = $route;
-
-		$before = $this->event->trigger('before:controller/' . $trigger, [&$route, &$args]);
+	public function controller($route, $useProxy = true) {
+        $cacheKey = 'controller:' . $route;
+        if (isset($this->classCache[$cacheKey])) {
+            return $this->classCache[$cacheKey];
+        }
+        
+        $filename = CONFIG_DIR_CONTROLLER . $route . '.php';
+	
+        if (!file_exists($filename)) {
+            throw new \Exception("Controller file not found: {$filename}");
+        }
+        
+        require_once $filename;
+                
+        $className = "Controller" . str_replace(' ', '', ucwords(str_replace('_', ' ', str_replace('/', '_', $route))));
+        
+        if (!class_exists($className)) {
+            throw new \Exception("Controller class {$className} not found in {$filename}");
+        }
+        
+        $registry = $this->registry;
+        $controller = new $className($registry);
 		
-		$output = !empty($before) ? $before : (new Action($route))->execute($this->registry, $args);
-		unset($before);
+        
+        $dataEvent = [
+            'route' => $route,
+            'controller' => $controller,
+            'registry' => $registry
+        ];
 
-		$after = $this->event->trigger('after:controller/' . $trigger, [&$route, &$args, &$output]);
-		$output = !empty($after) ? $after : (!empty($output) ? $output : '');
-		unset($after);
+        $registry->get('events')->trigger("controller.loaded", $dataEvent);
+        
+        if ($useProxy) {
+            $proxy = $this->registry->proxy->createControllerProxy($controller);
+            $this->classCache[$cacheKey] = $proxy;
+            return $proxy;
+        } else {
+            $this->classCache[$cacheKey] = $controller;
+            return $controller;
+        }
+    }
 
-		return $output;
-	}
 
-	public function get_controller(string $route) {
-		$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', $route); // Sanitize the call
+	function runController($route, array $args = [], $useProxy = true) {
 
-        $file = CONFIG_DIR_APP . 'controller/' . $route . '.php';	
+        $data = $this->route($route);
+
+        $className = 'Controller' . str_replace(' ', '', ucwords(str_replace('_', ' ', str_replace('/', '_', $data['route']))));
+
+        $controller = $this->controller($data['route'], $useProxy);
+
+        $result = call_user_func_array([$controller, $data['method']], $args);
+		return $result;
+
+    }
+
+
+	public function model($route, $useProxy = true) {
+        $cacheKey = 'model:' . $route;
+        if (isset($this->classCache[$cacheKey])) {
+            return $this->classCache[$cacheKey];
+        }
+
+        $filename = CONFIG_DIR_MODEL . $route . '.php';
+        
+        if (!file_exists($filename)) {
+            throw new \Exception("Model file not found: {$filename}");
+        }
+        
+        require_once $filename;
+        
+        $className = "Model" . str_replace(' ', '', ucwords(str_replace('_', ' ', str_replace('/', '_', $route))));
+        
+        if (!class_exists($className)) {
+            throw new \Exception("Model class {$className} not found in {$filename}");
+        }
+        
+        $model = new $className($this->registry);
+
 		
-		if (is_file($file)) {
-			include_once($file);
-			$class = 'Controller' . str_replace(' ', '', ucwords(str_replace('_', ' ', str_replace('/', '_', $route))));
-			$controller = new $class($this->registry);
-			return $controller;
-		} 
-		else {
-			throw new ControllerNotFoundException('Error: Could not call ' . $this->route . '/' . $this->method . '!');
+        
+        $dataEvent = [
+            'route' => $route,
+            'model' => $model,
+            'registry' => $this->registry
+        ];
+        $this->registry->get('events')->trigger("model.loaded", $dataEvent);
+
+        if ($useProxy) {
+            $proxy = $this->registry->proxy->createModelProxy($model);
+            $this->classCache[$cacheKey] = $proxy;
+
+			// pre($proxy);
+            return $proxy;
+        } else {
+            $this->classCache[$cacheKey] = $model;
+            return $model;
+        }
+
+    }
+
+
+	public function service($route, ...$args) {
+
+		$query = preg_replace('/[^a-zA-Z0-9_\/\|-]/', '', (string)$route);
+		
+		list($route, $method) = array_pad(explode('|', $query), 2, 'index');
+
+		if (substr($method, 0, 2) === '__') {
+			throw new \Exception('Error: Calls to magic methods are not allowed!');
 		}
-	}
 
-	public function model($route) {
-		$route = preg_replace('/[^a-zA-Z0-9_|\/]/', '', (string)$route);
-		$class = 'Model' . preg_replace('/[^a-zA-Z0-9]/', '', $route);
-		$model = 'model_' . str_replace('/', '_', (string)$route);
-		if (!$this->registry->has($model)) {
-			$file  = CONFIG_DIR_MODEL . $route . '.php';
-			if (is_file($file)) {
-				include_once($file);
+        $filename = CONFIG_DIR_SERVICE . $route . '.php';
+        
+        if (!file_exists($filename)) {
+            throw new \Exception("Service file not found: {$filename}");
+        }
+        
+        require_once $filename;
+        
+        $className = "Service" . str_replace(' ', '', ucwords(str_replace('_', ' ', str_replace('/', '_', $route))));
+        
+        if (!class_exists($className)) {
+            throw new \Exception("Service class {$className} not found in {$filename}");
+        }
+        
+        $service = new $className($this->registry, ...$args);
 
-				$registry = $this->registry;
-				$model_instance = new $class($this->registry);
-				$proxy = new Proxy($model_instance, function ($model, $method, $args) use($registry, $route) {
-
-					$trigger = $route . '|' . $method;
-					if (method_exists($model, $method)) {
-
-						$result = $this->event->trigger('before:model/' . $trigger . '', [&$trigger, &$args]); // Trigger the pre events
-						if ($result && !$result instanceof ModelNotFoundException) {
-							$output = $result;
-						}
-						else {
-							$callable = array($model, $method);
-							if (is_callable($callable)) {
-								$output = call_user_func_array($callable, $args);
-							} else {
-								throw new ModelNotFoundException('Error: Could not call model/' . $route . '!');
-							}
-						}
-
-						if ($result && !$result instanceof ModelNotFoundException) {
-							$output = $result;
-						}
-			
-						$this->event->trigger('after:model/' . $trigger . '', [&$trigger, &$args, &$output]);
-					    return $output;
-					}
-				} );
-				
-				$this->registry->set($model, $proxy);
-			} else {
-				throw new ModelNotFoundException('Error: Model file ' . $file . ' not found!');
-			}
+		if (!method_exists($service, $method) || 
+			(new \ReflectionMethod($service, $method))->getNumberOfRequiredParameters() > count($args)) {
+			throw new System\Framework\Exceptions\MethodNotFound('Error: Could not call preaction method ' . $route . '|' . $method . '!');
 		}
-	}
+		
+		return call_user_func_array([$service, $method], $args);
+
+    }
 
 
-	public function library(string $route) {
+	public function library(string $route, ...$args) {
 	
 		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route);
 		$library = 'library_' . str_replace('/', '_', $route);
@@ -127,10 +184,10 @@ class Load {
 				$class = str_replace(' ', '', ucwords(str_replace('_', ' ', $library)));
 	
 				if (class_exists($class)) {
-					$load_library = new $class($this->registry);
+					$load_library = new $class($this->registry, ...$args);
 					$this->registry->set($library, $load_library);
 				} else {
-					throw new LibraryNotFoundException('Error: Could not load library ' . $class . '!');
+					throw new System\Framework\Exceptions\LibraryNotFound('Error: Could not load library ' . $class . '!');
 				}
 			}
 	
@@ -166,7 +223,7 @@ class Load {
 			return $output;
 		}
 		else {
-			throw new ViewNotFoundException('Error: Could not load template ' . $route . '!');
+			throw new System\Framework\Exceptions\ViewNotFound('Error: Could not load template ' . $route . '!');
 		}
 	}
 
@@ -189,5 +246,14 @@ class Load {
 		}
 		return $text;
 	}
+
+	function route($route) {
+        $data = [];
+        $query = preg_replace('/[^a-zA-Z0-9_\/\|-]/', '', (string)$route);
+        $query_exploded = explode('|', $query);
+        $data['route'] = !empty($query_exploded[0]) ? $query_exploded[0] : '';
+        $data['method'] = !empty($query_exploded[1]) ? $query_exploded[1] : 'index';
+        return $data;
+    }
 
 }

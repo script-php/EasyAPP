@@ -4,7 +4,7 @@
 $config['url'] = NULL;
 $config['base_url'] = NULL;
 $config['session'] = NULL;
-$config['pre_action'] = [];
+$config['services'] = [];
 
 $config['action_router'] = 'pages/dashboard';
 $config['action_error'] = 'errors/error';
@@ -26,6 +26,8 @@ $config['query'] = 'route';
 $config['dir_app'] = 'app/';
 $config['dir_controller'] = 'controller/';
 $config['dir_model'] = 'model/';
+$config['dir_event'] = 'event/';
+$config['dir_service'] = 'service/';
 $config['dir_view'] = 'view/';
 $config['dir_language'] = 'language/';
 
@@ -49,3 +51,6 @@ $config['rewrite_url'] = [];
 
 // rewrite the URLs displayed in the pages
 $config['system_rewrite_url'] = [];
+
+$config['platform'] = 'EasyAPP';
+$config['version'] = '1.6.0';
