@@ -27,11 +27,21 @@ class Load {
 	}
 
 
+    // Set a value in the registry
+    // @param string $key The key to set
+    // @param mixed $value The value to set
+    // @return void    
 	public function __set(string $key, $value) {
 		$this->registry->set($key, $value);
 	}
 
-
+    // Load the route and method from the given string
+    // @param string $route The route string, e.g., 'controller/method'
+    // @return array An associative array with 'route' and 'method' keys
+    // @throws System\Framework\Exceptions\RouteNotFound If the route or method is not found
+    // @throws System\Framework\Exceptions\MethodNotFound If the method does not exist or has too few parameters 
+    // @throws System\Framework\Exceptions\MagicMethodCall If a magic method is called
+    // @throws \Exception If the controller file or class does not exist
 	public function controller($route, $useProxy = true) {
         $cacheKey = 'controller:' . $route;
         if (isset($this->classCache[$cacheKey])) {
@@ -75,7 +85,12 @@ class Load {
     }
 
 
-	function runController($route, array $args = [], $useProxy = true) {
+    // Run the controller with the given route and arguments
+    // @param string $route The route to run, e.g., 'controller/method'
+    // @param array $args The arguments to pass to the controller method
+	// @param bool $useProxy Whether to use a proxy for the controller
+    // @return mixed The result of the controller method
+    function runController($route, array $args = [], $useProxy = true) {
 
         $data = $this->route($route);
 
@@ -88,7 +103,10 @@ class Load {
 
     }
 
-
+    // Load a model by its route
+    // @param string $route The route of the model, e.g., 'model_name'
+    // @param bool $useProxy Whether to use a proxy for the model
+    // @return mixed The model instance or its proxy
 	public function model($route, $useProxy = true) {
         $cacheKey = 'model:' . $route;
         if (isset($this->classCache[$cacheKey])) {
@@ -134,6 +152,10 @@ class Load {
     }
 
 
+    // Load a service by its route
+    // @param string $route The route of the service, e.g., 'service_name'
+    // @param mixed ...$args Additional arguments to pass to the service constructor
+    // @return mixed The service instance
 	public function service($route, ...$args) {
 
 		$query = preg_replace('/[^a-zA-Z0-9_\/\|-]/', '', (string)$route);
@@ -170,6 +192,10 @@ class Load {
     }
 
 
+    // Load a library by its route
+    // @param string $route The route of the library, e.g., 'library_name'
+    // @param mixed ...$args Additional arguments to pass to the library constructor
+    // @return void
 	public function library(string $route, ...$args) {
 	
 		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', $route);
@@ -196,6 +222,9 @@ class Load {
 	}
 
 
+    // Load a language file by its route
+    // @param string $route The route of the language file, e.g., 'language_name'
+    // @return array The loaded language data
     public function language(string $route) {
 		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
 		$trigger = $route;
@@ -205,7 +234,10 @@ class Load {
 		return $language;
 	}
 
-
+    // Load a view file by its route
+    // @param string $route The route of the view file, e.g., 'view_name'
+    // @param array $data The data to pass to the view
+    // @return string The rendered view output
     public function view(string $route, array $data = []) {
 		$route = preg_replace('/[^a-zA-Z0-9_\/.]/', '', (string)$route); // Sanitize the call
         $trigger = $route;

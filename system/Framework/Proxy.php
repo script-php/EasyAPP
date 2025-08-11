@@ -29,7 +29,9 @@ class Proxy {
         
         $proxy->beforeMethodCall(function($method, &$args, $registry) use ($controller) {
             $className = get_class($controller);
-            error_log("Controller: Calling method {$className}::{$method}");
+            if (CONFIG_DEBUG) {
+                error_log("Controller: Calling method {$className}::{$method}");
+            }
             
             $eventData = [
                 'class' => $className,
