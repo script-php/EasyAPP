@@ -9,6 +9,12 @@
 
 namespace System\Framework;
 
+use System\Framework\Exceptions\ViewNotFound;
+use System\Framework\Exceptions\RouteNotFound;
+use System\Framework\Exceptions\MethodNotFound;
+use System\Framework\Exceptions\MagicMethodCall;
+use System\Framework\Exceptions\LibraryNotFound;
+
 class Load {
 
 	public $load = false;
@@ -255,7 +261,7 @@ class Load {
 			return $output;
 		}
 		else {
-			throw new System\Framework\Exceptions\ViewNotFound('Error: Could not load template ' . $route . '!');
+			throw new ViewNotFound('Error: Could not load template ' . $route . '!');
 		}
 	}
 

@@ -12,8 +12,6 @@ namespace System\Framework;
 class Url {
 
 	private $registry;
-	private $rewrite = FALSE;
-	private $rewrite_url = [];
 	private $router;
 
     public function __construct($registry) {
@@ -33,10 +31,6 @@ class Url {
             if ($args) {
                 $url .= '&' . http_build_query($args);
             }
-        }
-
-        if ($this->rewrite) {
-            $url = $this->rewrite_url($url);
         }
 
 		$url = ltrim($url, '/');
@@ -120,21 +114,5 @@ class Url {
         
         return $uri;
     }
-
-	private function rewrite_url($url) {
-		$rewrite_url = (!empty($this->rewrite_url) ? array_merge(CONFIG_SYSTEM_REWRITE_URL,$this->rewrite_url) : (!empty(CONFIG_SYSTEM_REWRITE_URL) ? CONFIG_SYSTEM_REWRITE_URL : []));
-		foreach($rewrite_url as $regex => $rewrite) {
-			preg_match('/^'.$regex.'$/',$url,$match);
-			if(!empty($match)) {
-				return preg_replace("/^" .$regex. "$/", $rewrite, $url);
-			}
-		}
-		return $url;
-	}
-
-	public function rewrite($rewrite_url) {
-		$this->rewrite = TRUE;
-		$this->rewrite_url = $rewrite_url;
-	}
 
 }

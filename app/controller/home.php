@@ -7,7 +7,7 @@
 * @link         https://script-php.ro
 */
 
-class ControllerCommonHome extends Controller {
+class ControllerHome extends Controller {
 
 	function __construct($registry) {
 		parent::__construct($registry);

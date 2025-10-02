@@ -7,7 +7,7 @@
 * @link         https://script-php.ro
 */
 
-class ControllerErrorNotFound extends Controller {
+class ControllerNotFound extends Controller {
 
     function index() {
         echo 'Page not found! :(';

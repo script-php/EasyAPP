@@ -50,15 +50,11 @@ RewriteEngine On
 #RewriteRule ^.*$ https://%{SERVER_NAME}%{REQUEST_URI} [R,L]
 
 ## If your project does not run on the main web folder make sure you folder it does run in
-RewriteBase /tests/
+RewriteBase /
 ## Rewrite Rules
-RewriteRule ^storageee/(.*) index.php?route=error [L]
+RewriteRule ^storage/(.*) index.php?route=error [L]
 RewriteRule ^system/(.*) index.php?route=error [L]
 RewriteRule ^app/(.*) index.php?route=error [L]
-RewriteRule ^admin/controller/(.*) index.php?route=error [L]
-RewriteRule ^admin/model/(.*) index.php?route=error [L]
-RewriteRule ^admin/view/(.*) index.php?route=error [L]
-RewriteRule ^admin/language/(.*) index.php?route=error [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_URI} !.*\.(ico|gif|jpg|jpeg|png|webp|js|css|svg)

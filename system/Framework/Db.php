@@ -15,39 +15,51 @@ class Db {
 	private $connection;
 	private $data = [];
 	private $affected;
-	
-    public function __construct() {
-		$port = CONFIG_DB_PORT;
-		$options = CONFIG_DB_OPTIONS;
-		$encoding = (!empty(CONFIG_DB_ENCODING) ? CONFIG_DB_ENCODING : 'utf8');
 
-		if(empty(CONFIG_DB_HOSTNAME) && empty(CONFIG_DB_DATABASE) && empty(CONFIG_DB_USERNAME) && empty(CONFIG_DB_PASSWORD) && empty(CONFIG_DB_PORT)) {
-			exit('The database login data is not filled in or is filled in incorrectly. Please check the config.');
+    public function __construct($driver,$db_hostname,$db_database,$db_username,$db_password,$db_port,$encoding,$options) {
+		$options = [];
+		$encoding = (!empty($encoding) ? $encoding : 'utf8');
+
+		if(empty($db_hostname) && empty($db_database) && empty($db_username) && empty($db_password) && empty($db_port)) {
+			throw new \Exception('The database login data is not filled in or is filled in incorrectly. Please check the config.');
 		}
 
 		if(class_exists('PDO')) {
 			try{
-				if(empty($options)) {
-					$options = [
-						\PDO::MYSQL_ATTR_INIT_COMMAND        => "SET NAMES {$encoding}",
-						\PDO::ATTR_PERSISTENT                => false, // Long connection
-						\PDO::ATTR_EMULATE_PREPARES          => false, // turn off emulation mode for "real" prepared statements
-						\PDO::ATTR_DEFAULT_FETCH_MODE        => \PDO::FETCH_ASSOC, //make the default fetch be an associative array
-						\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY  => false,
-						\PDO::ATTR_ERRMODE                   => \PDO::ERRMODE_EXCEPTION, //turn on errors in the form of exceptions
-					];
+				
+				if(empty($driver) || $driver === 'mysql') {
+					if(empty($options)) {
+						$options = [
+							\PDO::MYSQL_ATTR_INIT_COMMAND        => "SET NAMES {$encoding}",
+							\PDO::ATTR_PERSISTENT                => false, // Long connection
+							\PDO::ATTR_EMULATE_PREPARES          => false, // turn off emulation mode for "real" prepared statements
+							\PDO::ATTR_DEFAULT_FETCH_MODE        => \PDO::FETCH_ASSOC, //make the default fetch be an associative array
+							\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY  => false,
+							\PDO::ATTR_ERRMODE                   => \PDO::ERRMODE_EXCEPTION, //turn on errors in the form of exceptions
+						];
+					}
+					$conn = new \PDO("mysql:host={$db_hostname};port={$db_port};dbname={$db_database}",$db_username,$db_password,$options);
+					$conn -> exec("SET character_set_client='{$encoding}',character_set_connection='{$encoding}',character_set_results='{$encoding}';");
+					$conn -> exec("SET time_zone='+03:00';");
 				}
-				$conn = new \PDO("mysql:host=".CONFIG_DB_HOSTNAME.";port=".CONFIG_DB_PORT.";dbname=".CONFIG_DB_DATABASE."",CONFIG_DB_USERNAME,CONFIG_DB_PASSWORD,$options);
-				$conn -> exec("SET character_set_client='{$encoding}',character_set_connection='{$encoding}',character_set_results='{$encoding}';");
-				$conn -> exec("SET time_zone='+03:00';");
+				else if($driver === 'sqlsrv') {
+					if(empty($options)) {
+						$options = [
+							\PDO::ATTR_EMULATE_PREPARES          => false, // turn off emulation mode for "real" prepared statements
+							\PDO::ATTR_DEFAULT_FETCH_MODE        => \PDO::FETCH_ASSOC, //make the default fetch be an associative array
+							\PDO::ATTR_ERRMODE                   => \PDO::ERRMODE_EXCEPTION, //turn on errors in the form of exceptions
+						];
+					}
+					$conn = new \PDO("sqlsrv:Server={$db_hostname},{$db_port};TrustServerCertificate=true;Database={$db_database}", $db_username, $db_password,$options);
+				}
 				$this->connection = $conn;
 			}
 			catch(PDOException $e) {
-				exit($e->getMessage());
+				throw new \Exception($e->getMessage());
 			}
 		}
 		else {
-			exit('PDO is not installed on this server.');
+			throw new \Exception('PDO is not installed on this server.');
 		}
 	}
 
@@ -92,7 +104,7 @@ class Db {
 
 		}
 		else {
-			exit('Is not initiated by PDO.');
+			throw new \Exception('Is not initiated by PDO.');
 		}
 
 		return FALSE;
@@ -112,6 +124,18 @@ class Db {
 		} else {
 			return false;
 		}
+	}
+
+	public function beginTransaction() {
+		return $this->connection->beginTransaction();
+	}
+
+	public function commit() {
+		return $this->connection->commit();
+	}
+
+	public function rollBack() {
+		return $this->connection->rollBack();
 	}
 
 	public function queries() {

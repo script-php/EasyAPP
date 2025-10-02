@@ -2,7 +2,7 @@
 
 /**
 * @package      EasyAPP Framework
-* @version      v1.5.1
+* @version      v1.6.0
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
@@ -23,6 +23,15 @@
 use System\Framework\Exceptions;
 
 session_start();
+
+if (is_file(PATH . 'system/Vendor/autoload.php')) {
+    require 'system/Vendor/autoload.php';   
+}
+
+if (is_file(PATH . '.env')) {
+    $env = new System\Framework\EnvReader('.env');
+    $env->load();
+}
 
 // config
 include PATH . 'system/Default.php'; // Framework default config.
@@ -68,98 +77,93 @@ include $config['dir_system'] . 'Model.php';
 include $config['dir_system'] . 'Library.php';
 include $config['dir_system'] . 'Service.php';
 
-if (is_file(PATH . 'system/Vendor/autoload.php')) {
-    require 'system/Vendor/autoload.php';   
-}
-else {
-    include rtrim($config['dir_system'], '\\/ ') . DIRECTORY_SEPARATOR . 'Autoloader.php';
-
-    $loader = new System\Autoloader();
-    
-    $loader->load([
-        'namespace' => 'System\Framework',
-        'directory' => CONFIG_DIR_FRAMEWORK,
-        'recursive' => true
-    ]);
-    
-    $loader->load([
-        'namespace' => 'System\Library',
-        'directory' => $config['dir_library'],
-        'recursive' => true
-    ]);
-}
-
-$registry = new System\Framework\Registry();
-
-$registry->set('appName', 'Framework');
-$registry->set('version', '1.0.0');
-$registry->set('environment', 'development');
-$registry->set('debug', true);
-$registry->set('appPath', __DIR__);
-
-$registry->set('proxy', new System\Framework\Proxy($registry));
-
-$loader = new System\Framework\Load($registry);
-
-$registry->set('load', $loader);
-
-$request = $registry->get('request');
-
-$errorConfig = [
-    RouteNotFound::class => [404, "The requested page was not found."],
-    MethodNotFound::class => [405, "The requested method is not allowed."],
-    MagicMethodCall::class => [500, "An internal server error occurred."],
-    ControllerNotFound::class => [404, "The requested page was not found."],
-    ModelNotFound::class => [500, "An internal server error occurred."],
-    LibraryNotFound::class => [500, "An internal server error occurred."],
-    ViewNotFound::class => [500, "An internal server error occurred."],
-    ServiceNotFound::class => [500, "An internal server error occurred."],
-    
-    DatabaseConfiguration::class => [500, "Database configuration error."],
-    PDOExtensionNotFound::class => [500, "PDO extension not found."],
-    DatabaseConnection::class => [500, "Database connection error."],
-    DatabaseQuery::class => [500, "Database query error."],
-
-    \Exception::class => [500, "An internal server error occurred."],
-];
 
 try {
+    
+    $registry = new System\Framework\Registry();
+
+    $registry->set('appName', CONFIG_PLATFORM);
+    $registry->set('version', CONFIG_VERSION);
+    $registry->set('environment', CONFIG_ENVIRONMENT);
+    $registry->set('debug', CONFIG_DEBUG);
+    $registry->set('appPath', __DIR__);
+
+    $registry->set('proxy', new System\Framework\Proxy($registry));
+
+    $loader = new System\Framework\Load($registry);
+
+    $registry->set('load', $loader);
+
+    $request = $registry->get('request');
+
+    $errorConfig = [
+        RouteNotFound::class => [404, "The requested page was not found."],
+        MethodNotFound::class => [405, "The requested method is not allowed."],
+        MagicMethodCall::class => [500, "An internal server error occurred."],
+        ControllerNotFound::class => [404, "The requested page was not found."],
+        ModelNotFound::class => [500, "An internal server error occurred."],
+        LibraryNotFound::class => [500, "An internal server error occurred."],
+        ViewNotFound::class => [500, "An internal server error occurred."],
+        ServiceNotFound::class => [500, "An internal server error occurred."],
+        
+        DatabaseConfiguration::class => [500, "Database configuration error."],
+        PDOExtensionNotFound::class => [500, "PDO extension not found."],
+        DatabaseConnection::class => [500, "Database connection error."],
+        DatabaseQuery::class => [500, "Database query error."],
+
+        \Exception::class => [500, "An internal server error occurred."],
+    ];
+
+    $registry->set('router', new System\Framework\Router($registry));
+    $router = $registry->get('router');
+    if(is_file($config['dir_app'] . 'router.php')) {
+        include $config['dir_app'] . 'router.php'; // app config
+    }
+
+    $registry->set('db', new System\Framework\Db($config['db_driver'],$config['db_hostname'],$config['db_database'],$config['db_username'],$config['db_password'],$config['db_port'], '', ''));
+
     if (!empty(CONFIG_SERVICES)) {
         foreach (CONFIG_SERVICES as $action) {
-            ($registry->get('load'))->service($action);
+            try {
+                ($registry->get('load'))->service($action);
+            } catch (\Exception $e) {
+                error_log("Failed to load service: " . $action); // Log service loading failure but don't stop execution
+            }
         }
     }
 
-    if(isset($request->get['rewrite'])) {
-
-        $registry->set('router', new System\Framework\Router($registry));
-
-        $router = $registry->get('router');
-
-        if(is_file($config['dir_app'] . 'router.php')) {
-            include $config['dir_app'] . 'router.php'; // app config
-        }
-
-        if(is_file(PATH . 'router.php')) {
-            include 'router.php'; // app config
-        }
-
+    if(isset($request->get['rewrite']) || (!isset($request->get['rewrite']) && !isset($request->get['route']))) {
         $router->dispatch();
     }
     else {
-        // Determine and execute route
-        if (empty($request->get['route'])) {
-            $route = CONFIG_ACTION_ROUTER;
-        } elseif (isset($request->get['route']) && !empty($request->get['route'])) {
-            $route = $request->get['route'];
-        } else {
-            $route = CONFIG_ACTION_ERROR;
+        if (isset($request->get['route']) && !isset($request->get['rewrite'])) {
+            $route = $request->get('route');
+            if(empty(CONFIG_ACTION_ROUTER) && empty(CONFIG_ACTION_ERROR)) {
+                if(!empty($route)) {
+                    $registry->get('load')->runController($route); // run requested page
+                }
+                else {
+                    defaultPage(); // run default page
+                    exit(); // just to be sure
+                }
+            }
+            else {
+                try {
+                    $route = $request->get('route');
+                    $route = !empty($route) ? $route : CONFIG_ACTION_ROUTER;
+                    $registry->get('load')->runController($route); // run requested page or default page
+                }
+                catch(\Exception $e) {
+                    $registry->get('load')->runController(CONFIG_ACTION_ERROR); // run error page
+                }
+            }
         }
-
-        $registry->get('load')->runController($route);
+        else {
+            defaultPage(); // run default page
+        }
     }
-    
-    $registry->get('response')->output();
+    $registry->get('response')->output(); // send output to browser
+
 } 
 catch (\Exception $e) {
 

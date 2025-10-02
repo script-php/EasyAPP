@@ -17,8 +17,6 @@ class Request {
 	public $server = array();
 	public $ip;
     public $registry;
-	private $rewrite_url = [];
-	private $rewrite_url_direct = [];
 	public $request;
 
 	public function __construct($registry) {
@@ -66,25 +64,6 @@ class Request {
 			$data = htmlspecialchars($data, ENT_COMPAT, 'UTF-8');
 		}
 		return $data;
-	}
-
-	function rewrite($url) {
-		$rewrite_url = (!empty($url) ? array_merge(CONFIG_REWRITE_URL,$url) : (!empty(CONFIG_REWRITE_URL) ? CONFIG_REWRITE_URL : []));
-		if(isset($this->get['rewrite']) && !empty($rewrite_url)) {
-            $seo_url = rtrim($this->get['rewrite'], "/");
-            foreach($rewrite_url as $regex => $rewrite) {
-                preg_match('/^'.$regex.'$/',$seo_url,$match);
-                if(!empty($match)) {
-                    $rewr = preg_replace("/^" .$regex. "$/", $rewrite, $seo_url);
-                    $parse_url = parse_url($rewr);
-                    if(!empty($parse_url['query'])) {
-                        parse_str($parse_url['query'], $parse_str);
-                        $this->get = $parse_str;
-                    }
-                    break;
-                }
-            }
-        }
 	}
 
     public function ip() {
