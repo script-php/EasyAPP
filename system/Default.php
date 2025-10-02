@@ -2,7 +2,7 @@
 
 // Platform
 $config['platform'] = 'EasyAPP';
-$config['version'] = '1.6.0';
+$config['version'] = '1.7.0';
 $config['environment'] = 'dev';
 
 // App config

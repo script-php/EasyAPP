@@ -10,24 +10,84 @@
 namespace System\Framework;
 
 class DebugError {
+    private $logger;
+    
+    public function __construct() {
+        $this->logger = Logger::getInstance();
+    }
 
     public function display(\Throwable $e) {
-        echo "<div style='background:#2b2b2b;color:#f8f8f2;padding:20px;font-family:monospace;border:2px solid #f92672;border-radius:10px;margin:20px;'>";
-        echo "<h2 style='color:#f92672;'>Exception Thrown</h2>";
-        echo "<strong>Message:</strong> " . htmlspecialchars($e->getMessage()) . "<br><br>";
-        echo "<strong>File:</strong> " . $e->getFile() . " (Line " . $e->getLine() . ")<br><br>";
-        echo "<strong>Trace:</strong><pre style='white-space:pre-wrap;color:#66d9ef'>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
-        echo "</div>";
+        if (ob_get_level()) {
+            ob_clean();
+        }
+        
+        http_response_code($this->getStatusCode($e));
+        
+        echo $this->renderErrorPage($e);
     }
-
-    public static function log(\Throwable $e, $logFile = CONFIG_DIR_STORAGE . 'logs/error.log') {
-        $log = str_repeat("-", 40) . " [" . date('Y-m-d H:i:s') . "] " . str_repeat("-", 40) . PHP_EOL;
-        $log .= "Message: " . $e->getMessage() . PHP_EOL;
-        $log .= "File: " . $e->getFile() . " (Line " . $e->getLine() . ")" . PHP_EOL;
-        $log .= "Trace:" . PHP_EOL . $e->getTraceAsString() . PHP_EOL;
-        $log .= str_repeat("-", 40) . " [ END ERROR ] " . str_repeat("-", 40) . PHP_EOL;
-
-        error_log($log, 3, $logFile);
+    
+    private function renderErrorPage(\Throwable $e) {
+        $statusCode = $this->getStatusCode($e);
+        $message = $this->getUserMessage($e);
+        
+        if (defined('CONFIG_DEBUG') && CONFIG_DEBUG) {
+            return $this->renderDebugPage($e);
+        }
+        
+        return $this->renderProductionPage($statusCode, $message);
     }
-
+    
+    private function renderDebugPage(\Throwable $e) {
+        ob_start();
+        include PATH . 'system/Framework/Views/debug_error.php';
+        return ob_get_clean();
+    }
+    
+    private function renderProductionPage($statusCode, $message) {
+        $platform = defined('CONFIG_PLATFORM') ? CONFIG_PLATFORM : 'EasyAPP';
+        $version = defined('CONFIG_VERSION') ? CONFIG_VERSION : '1.7.0';
+        
+        return "<!DOCTYPE html>
+<html>
+<head>
+    <title>Error {$statusCode}</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f8fafc; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+        .error-container { max-width: 500px; padding: 40px; border-radius: 12px; background: white; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
+        h1 { color: #e53e3e; margin-bottom: 20px; font-size: 2rem; }
+        p { line-height: 1.6; margin-bottom: 15px; color: #4a5568; }
+        .error-code { font-size: 4rem; color: #cbd5e0; margin-bottom: 10px; }
+        .footer { color: #a0aec0; font-size: 0.875rem; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class='error-container'>
+        <div class='error-code'>{$statusCode}</div>
+        <h1>Oops! Something went wrong</h1>
+        <p>{$message}</p>
+        <div class='footer'>{$platform} v{$version}</div>
+    </div>
+</body>
+</html>";
+    }
+    
+    public function log(\Throwable $e) {
+        $this->logger->exception($e);
+    }
+    
+    private function getStatusCode(\Throwable $e) {
+        if (method_exists($e, 'getStatusCode')) {
+            return $e->getStatusCode();
+        }
+        
+        return 500;
+    }
+    
+    private function getUserMessage(\Throwable $e) {
+        if (method_exists($e, 'getUserMessage')) {
+            return $e->getUserMessage();
+        }
+        
+        return 'An unexpected error occurred. Please try again later.';
+    }
 }

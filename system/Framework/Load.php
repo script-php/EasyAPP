@@ -190,7 +190,7 @@ class Load {
 
 		if (!method_exists($service, $method) || 
 			(new \ReflectionMethod($service, $method))->getNumberOfRequiredParameters() > count($args)) {
-			throw new System\Framework\Exceptions\MethodNotFound('Error: Could not call preaction method ' . $route . '|' . $method . '!');
+			throw new \System\Framework\Exceptions\MethodNotFound('Error: Could not call preaction method ' . $route . '|' . $method . '!');
 		}
 		
 		return call_user_func_array([$service, $method], $args);
@@ -219,7 +219,7 @@ class Load {
 					$load_library = new $class($this->registry, ...$args);
 					$this->registry->set($library, $load_library);
 				} else {
-					throw new System\Framework\Exceptions\LibraryNotFound('Error: Could not load library ' . $class . '!');
+					throw new \System\Framework\Exceptions\LibraryNotFound('Error: Could not load library ' . $class . '!');
 				}
 			}
 	
@@ -261,7 +261,7 @@ class Load {
 			return $output;
 		}
 		else {
-			throw new ViewNotFound('Error: Could not load template ' . $route . '!');
+			throw new \System\Framework\Exceptions\ViewNotFound('Error: Could not load template ' . $route . '!');
 		}
 	}
 

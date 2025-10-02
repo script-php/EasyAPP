@@ -1,9 +1,73 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<title>{TITLE}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo isset($title) ? htmlspecialchars($title) : 'EasyAPP Framework'; ?></title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; background: #f8fafc; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 60px 0; margin-bottom: 40px; }
+        .header h1 { font-size: 2.5rem; text-align: center; margin-bottom: 10px; }
+        .header p { text-align: center; font-size: 1.2rem; opacity: 0.9; }
+        .card { background: white; border-radius: 8px; padding: 30px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .btn { display: inline-block; padding: 12px 24px; background: #4299e1; color: white; text-decoration: none; border-radius: 6px; transition: background 0.2s; }
+        .btn:hover { background: #3182ce; }
+        .footer { text-align: center; margin: 40px 0; color: #666; }
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 40px 0; }
+        .feature { background: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .feature h3 { color: #4299e1; margin-bottom: 10px; }
+        code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+    </style>
 </head>
 <body>
-	{BODY}
+    <div class="header">
+        <div class="container">
+            <h1>🚀 <?php echo isset($title) ? htmlspecialchars($title) : 'Welcome to EasyAPP'; ?></h1>
+            <p><?php echo isset($subtitle) ? htmlspecialchars($subtitle) : 'A Modern PHP Framework for Rapid Development'; ?></p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <?php echo isset($content) ? $content : ''; ?>
+        
+        <?php if (!isset($content)): ?>
+        <div class="card">
+            <h2>🎉 Your EasyAPP is Ready!</h2>
+            <p>Congratulations! You have successfully set up EasyAPP Framework. Here are some next steps to get you started:</p>
+            
+            <div class="features">
+                <div class="feature">
+                    <h3>📝 Create Controllers</h3>
+                    <p>Use the CLI to generate new controllers: <code>php easyapp make:controller MyController</code></p>
+                </div>
+                <div class="feature">
+                    <h3>🗄️ Build Models</h3>
+                    <p>Create data models: <code>php easyapp make:model MyModel</code></p>
+                </div>
+                <div class="feature">
+                    <h3>🎯 Define Routes</h3>
+                    <p>Add your routes in <code>app/router.php</code> for clean URLs</p>
+                </div>
+                <div class="feature">
+                    <h3>🎨 Design Views</h3>
+                    <p>Create beautiful templates in <code>app/view/</code> directory</p>
+                </div>
+            </div>
+            
+            <p style="margin-top: 30px; text-align: center;">
+                <a href="https://github.com/script-php/EasyAPP/blob/main/DOCUMENTATION.md" class="btn" target="_blank">📚 Read Documentation</a>
+                <a href="https://github.com/script-php/EasyAPP" class="btn" style="margin-left: 10px;" target="_blank">⭐ Star on GitHub</a>
+            </p>
+        </div>
+        <?php endif; ?>
+    </div>
+    
+    <div class="footer">
+        <div class="container">
+            <p>&copy; <?php echo date('Y'); ?> EasyAPP Framework. Built with ❤️ by <a href="https://script-php.ro" target="_blank">script-php.ro</a></p>
+        </div>
+    </div>
 </body>
 </html>

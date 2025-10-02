@@ -14,9 +14,12 @@ class ControllerHome extends Controller {
 	}
 	
 	function index() {
-
-		$this->response->setOutput('Homepage');
+		$data = [];
+		$data['title'] = 'Welcome to EasyAPP Framework';
+		$data['subtitle'] = 'A Modern PHP Framework for Rapid Development';
+		$data['content'] = $this->load->view('home/index.html');
 		
+		$this->response->setOutput($this->load->view('base.html', $data));
 	}
 
 }

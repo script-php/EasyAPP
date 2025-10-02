@@ -20,7 +20,15 @@
 // You should have received a copy of the GNU General Public License
 // along with EasyAPP Framework.  If not, see <http://www.gnu.org/licenses/>.
 
-use System\Framework\Exceptions;
+// Register custom autoloader for framework classes
+spl_autoload_register(function ($class) {
+    if (strpos($class, 'System\\') === 0) {
+        $file = PATH . str_replace('\\', DIRECTORY_SEPARATOR, $class) . '.php';
+        if (file_exists($file)) {
+            require_once $file;
+        }
+    }
+});
 
 session_start();
 
@@ -97,22 +105,23 @@ try {
     $request = $registry->get('request');
 
     $errorConfig = [
-        RouteNotFound::class => [404, "The requested page was not found."],
-        MethodNotFound::class => [405, "The requested method is not allowed."],
-        MagicMethodCall::class => [500, "An internal server error occurred."],
-        ControllerNotFound::class => [404, "The requested page was not found."],
-        ModelNotFound::class => [500, "An internal server error occurred."],
-        LibraryNotFound::class => [500, "An internal server error occurred."],
-        ViewNotFound::class => [500, "An internal server error occurred."],
-        ServiceNotFound::class => [500, "An internal server error occurred."],
+        System\Framework\Exceptions\RouteNotFound::class => [404, "The requested page was not found."],
+        System\Framework\Exceptions\MethodNotFound::class => [405, "The requested method is not allowed."],
+        System\Framework\Exceptions\MagicMethodCall::class => [500, "An internal server error occurred."],
+        System\Framework\Exceptions\ControllerNotFound::class => [404, "The requested page was not found."],
+        System\Framework\Exceptions\ModelNotFound::class => [500, "An internal server error occurred."],
+        System\Framework\Exceptions\LibraryNotFound::class => [500, "An internal server error occurred."],
+        System\Framework\Exceptions\ViewNotFound::class => [500, "An internal server error occurred."],
+        System\Framework\Exceptions\ServiceNotFound::class => [500, "An internal server error occurred."],
         
-        DatabaseConfiguration::class => [500, "Database configuration error."],
-        PDOExtensionNotFound::class => [500, "PDO extension not found."],
-        DatabaseConnection::class => [500, "Database connection error."],
-        DatabaseQuery::class => [500, "Database query error."],
-
-        \Exception::class => [500, "An internal server error occurred."],
+        System\Framework\Exceptions\DatabaseConfiguration::class => [500, "Database configuration error."],
+        System\Framework\Exceptions\PDOExtensionNotFound::class => [500, "PDO extension not found."],
+        System\Framework\Exceptions\DatabaseConnection::class => [500, "Database connection error."],
+        System\Framework\Exceptions\DatabaseQuery::class => [500, "Database query error."]
     ];
+    
+    // Add catch-all for unexpected exceptions
+    $errorConfig[\Exception::class] = [500, "An internal server error occurred."];
 
     $registry->set('router', new System\Framework\Router($registry));
     $router = $registry->get('router');

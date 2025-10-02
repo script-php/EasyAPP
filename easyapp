@@ -1,0 +1,385 @@
+#!/usr/bin/env php
+<?php
+
+/**
+* @package      EasyAPP CLI Tool
+* @author       EasyAPP Framework
+* @copyright    Copyright (c) 2022, script-php.ro
+* @link         https://script-php.ro
+*/
+
+define('PATH', __DIR__ . DIRECTORY_SEPARATOR);
+define('CLI_MODE', true);
+
+// Include framework
+require_once PATH . 'system/Framework.php';
+
+class EasyAppCLI {
+    private $commands = [];
+    
+    public function __construct() {
+        $this->registerCommands();
+    }
+    
+    private function registerCommands() {
+        $this->commands = [
+            'make:controller' => [$this, 'makeController'],
+            'make:model' => [$this, 'makeModel'],
+            'make:service' => [$this, 'makeService'],
+            'clear:cache' => [$this, 'clearCache'],
+            'serve' => [$this, 'serve'],
+            'db:migrate' => [$this, 'dbMigrate'],
+            'help' => [$this, 'showHelp'],
+            '--version' => [$this, 'showVersion'],
+        ];
+    }
+    
+    public function run($argv) {
+        if (count($argv) < 2) {
+            $this->showHelp();
+            return;
+        }
+        
+        $command = $argv[1];
+        
+        if (!isset($this->commands[$command])) {
+            $this->error("Unknown command: {$command}");
+            $this->showHelp();
+            return;
+        }
+        
+        call_user_func($this->commands[$command], array_slice($argv, 2));
+    }
+    
+    public function makeController($args) {
+        if (empty($args[0])) {
+            $this->error("Controller name is required");
+            return;
+        }
+        
+        $name = $args[0];
+        $className = 'Controller' . ucfirst($name);
+        $filename = PATH . 'app/controller/' . $name . '.php';
+        
+        if (file_exists($filename)) {
+            $this->error("Controller already exists: {$filename}");
+            return;
+        }
+        
+        $template = $this->getControllerTemplate($className, $name);
+        
+        if (file_put_contents($filename, $template)) {
+            $this->success("Controller created: {$filename}");
+        } else {
+            $this->error("Failed to create controller");
+        }
+    }
+    
+    public function makeModel($args) {
+        if (empty($args[0])) {
+            $this->error("Model name is required");
+            return;
+        }
+        
+        $name = $args[0];
+        $className = 'Model' . ucfirst($name);
+        $filename = PATH . 'app/model/' . $name . '.php';
+        
+        if (file_exists($filename)) {
+            $this->error("Model already exists: {$filename}");
+            return;
+        }
+        
+        $template = $this->getModelTemplate($className, $name);
+        
+        if (file_put_contents($filename, $template)) {
+            $this->success("Model created: {$filename}");
+        } else {
+            $this->error("Failed to create model");
+        }
+    }
+    
+    public function makeService($args) {
+        if (empty($args[0])) {
+            $this->error("Service name is required");
+            return;
+        }
+        
+        $name = $args[0];
+        $className = 'Service' . ucfirst($name);
+        $filename = PATH . 'app/service/' . $name . '.php';
+        
+        if (file_exists($filename)) {
+            $this->error("Service already exists: {$filename}");
+            return;
+        }
+        
+        $template = $this->getServiceTemplate($className, $name);
+        
+        if (file_put_contents($filename, $template)) {
+            $this->success("Service created: {$filename}");
+        } else {
+            $this->error("Failed to create service");
+        }
+    }
+    
+    public function clearCache($args) {
+        $cacheDir = PATH . 'storage/cache/';
+        
+        if (!is_dir($cacheDir)) {
+            $this->info("Cache directory does not exist");
+            return;
+        }
+        
+        $files = glob($cacheDir . '*');
+        $count = 0;
+        
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                unlink($file);
+                $count++;
+            }
+        }
+        
+        $this->success("Cleared {$count} cache files");
+    }
+    
+    public function serve($args) {
+        $host = $args[0] ?? 'localhost';
+        $port = $args[1] ?? '8000';
+        
+        $this->info("Starting development server at http://{$host}:{$port}");
+        $this->info("Press Ctrl+C to stop the server");
+        
+        $command = "php -S {$host}:{$port} -t " . PATH;
+        passthru($command);
+    }
+    
+    public function dbMigrate($args) {
+        $this->info("Database migrations are not implemented yet");
+        $this->info("This feature will be available in a future version");
+    }
+    
+    public function showHelp($args = []) {
+        echo "\n";
+        $this->info("EasyAPP Framework CLI Tool");
+        echo "\n";
+        echo "Usage: php easyapp [command] [options]\n\n";
+        echo "Available commands:\n";
+        echo "  make:controller <name>  Create a new controller\n";
+        echo "  make:model <name>       Create a new model\n";
+        echo "  make:service <name>     Create a new service\n";
+        echo "  clear:cache            Clear all cache files\n";
+        echo "  serve [host] [port]    Start development server (default: localhost:8000)\n";
+        echo "  db:migrate             Run database migrations\n";
+        echo "  help                   Show this help message\n";
+        echo "  --version              Show version information\n";
+        echo "\n";
+    }
+    
+    public function showVersion($args = []) {
+        $version = defined('CONFIG_VERSION') ? CONFIG_VERSION : '1.7.0';
+        $platform = defined('CONFIG_PLATFORM') ? CONFIG_PLATFORM : 'EasyAPP';
+        echo "{$platform} Framework v{$version}\n";
+    }
+    
+    private function getControllerTemplate($className, $name) {
+        return "<?php
+
+/**
+* @package      {$className}
+* @author       Generated by EasyAPP CLI
+* @copyright    Copyright (c) 2022, script-php.ro
+*/
+
+class {$className} extends Controller {
+
+    function __construct(\$registry) {
+        parent::__construct(\$registry);
+    }
+    
+    public function index() {
+        \$data = [];
+        \$data['title'] = '{$name} Controller';
+        \$data['message'] = 'This is the {$name} controller index method';
+        
+        \$this->response->setOutput(\$this->load->view('{$name}/index.html', \$data));
+    }
+    
+    public function create() {
+        // Handle POST requests to create new resources
+        if (\$this->request->server('REQUEST_METHOD') === 'POST') {
+            // Process form data
+            \$this->response->setOutput('Resource created successfully');
+        } else {
+            // Show create form
+            \$this->response->setOutput(\$this->load->view('{$name}/create.html'));
+        }
+    }
+    
+    public function edit() {
+        \$id = \$this->request->get('id');
+        
+        if (empty(\$id)) {
+            \$this->response->redirect('/not-found');
+            return;
+        }
+        
+        \$data = [];
+        \$data['id'] = \$id;
+        
+        \$this->response->setOutput(\$this->load->view('{$name}/edit.html', \$data));
+    }
+    
+    public function delete() {
+        \$id = \$this->request->get('id');
+        
+        if (empty(\$id)) {
+            \$this->response->redirect('/not-found');
+            return;
+        }
+        
+        // Delete logic here
+        \$this->response->setOutput('Resource deleted successfully');
+    }
+}
+";
+    }
+    
+    private function getModelTemplate($className, $name) {
+        return "<?php
+
+/**
+* @package      {$className}
+* @author       Generated by EasyAPP CLI
+* @copyright    Copyright (c) 2022, script-php.ro
+*/
+
+class {$className} extends Model {
+
+    function __construct(\$registry) {
+        parent::__construct(\$registry);
+    }
+    
+    public function getAll() {
+        \$sql = \"SELECT * FROM {$name}s ORDER BY id DESC\";
+        \$query = \$this->db->query(\$sql);
+        return \$query->rows;
+    }
+    
+    public function getById(\$id) {
+        \$sql = \"SELECT * FROM {$name}s WHERE id = :id\";
+        \$query = \$this->db->query(\$sql, [':id' => \$id]);
+        return \$query->row;
+    }
+    
+    public function create(\$data) {
+        \$sql = \"INSERT INTO {$name}s (name, created_at) VALUES (:name, :created_at)\";
+        \$params = [
+            ':name' => \$data['name'],
+            ':created_at' => date('Y-m-d H:i:s')
+        ];
+        
+        \$this->db->query(\$sql, \$params);
+        return \$this->db->getLastId();
+    }
+    
+    public function update(\$id, \$data) {
+        \$sql = \"UPDATE {$name}s SET name = :name, updated_at = :updated_at WHERE id = :id\";
+        \$params = [
+            ':id' => \$id,
+            ':name' => \$data['name'],
+            ':updated_at' => date('Y-m-d H:i:s')
+        ];
+        
+        return \$this->db->query(\$sql, \$params);
+    }
+    
+    public function delete(\$id) {
+        \$sql = \"DELETE FROM {$name}s WHERE id = :id\";
+        return \$this->db->query(\$sql, [':id' => \$id]);
+    }
+    
+    public function exists(\$id) {
+        \$sql = \"SELECT COUNT(*) as count FROM {$name}s WHERE id = :id\";
+        \$query = \$this->db->query(\$sql, [':id' => \$id]);
+        return \$query->row['count'] > 0;
+    }
+}
+";
+    }
+    
+    private function getServiceTemplate($className, $name) {
+        return "<?php
+
+/**
+* @package      {$className}
+* @author       Generated by EasyAPP CLI
+* @copyright    Copyright (c) 2022, script-php.ro
+*/
+
+class {$className} extends Service {
+
+    function __construct(\$registry) {
+        parent::__construct(\$registry);
+    }
+    
+    public function index() {
+        // Main service logic here
+        return [
+            'success' => true,
+            'message' => '{$name} service initialized successfully'
+        ];
+    }
+    
+    public function process(\$data) {
+        // Process business logic here
+        try {
+            // Your business logic implementation
+            
+            return [
+                'success' => true,
+                'data' => \$data,
+                'message' => 'Data processed successfully'
+            ];
+        } catch (Exception \$e) {
+            return [
+                'success' => false,
+                'error' => \$e->getMessage()
+            ];
+        }
+    }
+    
+    public function validate(\$data) {
+        \$errors = [];
+        
+        // Add validation rules here
+        if (empty(\$data['name'])) {
+            \$errors[] = 'Name is required';
+        }
+        
+        return [
+            'valid' => empty(\$errors),
+            'errors' => \$errors
+        ];
+    }
+}
+";
+    }
+    
+    private function success($message) {
+        echo "\033[32m✓\033[0m {$message}\n";
+    }
+    
+    private function error($message) {
+        echo "\033[31m✗\033[0m {$message}\n";
+    }
+    
+    private function info($message) {
+        echo "\033[34mℹ\033[0m {$message}\n";
+    }
+}
+
+// Run the CLI
+$cli = new EasyAppCLI();
+$cli->run($argv);
