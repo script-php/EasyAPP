@@ -340,4 +340,4 @@ Created with ❤️ by [YoYo](https://script-php.ro)
 
 ---
 
-**Ready to build amazing applications? [Get started now!](#-quick-start)**
+**Ready to build amazing applications? [Get started now!](#quick-start)**
