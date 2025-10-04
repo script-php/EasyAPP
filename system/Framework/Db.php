@@ -68,9 +68,19 @@ class Db {
 		if(is_a($this->connection, 'PDO')) {
 			$statement = $this->connection->prepare($sql);
 			if(!empty($params)) {
-				foreach($params as $param => &$value) {
-					$varType = ((is_null($value) ? \PDO::PARAM_NULL : is_bool($value)) ? \PDO::PARAM_BOOL : is_int($value)) ? \PDO::PARAM_INT : \PDO::PARAM_STR;
-					$statement -> bindParam($param, $value, $varType);
+				// Check if indexed array (0-based) or associative array
+				if (array_keys($params) === range(0, count($params) - 1)) {
+					// Indexed array - use 1-based binding for PDO
+					foreach($params as $index => $value) {
+						$varType = ((is_null($value) ? \PDO::PARAM_NULL : is_bool($value)) ? \PDO::PARAM_BOOL : is_int($value)) ? \PDO::PARAM_INT : \PDO::PARAM_STR;
+						$statement -> bindValue($index + 1, $value, $varType);
+					}
+				} else {
+					// Associative array - use named parameters
+					foreach($params as $param => &$value) {
+						$varType = ((is_null($value) ? \PDO::PARAM_NULL : is_bool($value)) ? \PDO::PARAM_BOOL : is_int($value)) ? \PDO::PARAM_INT : \PDO::PARAM_STR;
+						$statement -> bindParam($param, $value, $varType);
+					}
 				}
 			}
 

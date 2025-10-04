@@ -9,13 +9,128 @@
 
 namespace System\Framework;
 
-use System\Framework\Exceptions\FrameworkException;
+use System\Framework\Exceptions\DatabaseQuery as FrameworkException;
 
 /**
  * Enhanced MySQL Tables Schema Management
  * 
  * This class provides a fluent, optimized interface for managing database schemas
  * with proper error handling, validation, and performance optimizations.
+ * 
+ * =============================================================================
+ * COMPLETE METHOD REFERENCE
+ * =============================================================================
+ * 
+ * CORE METHODS:
+ * -------------
+ * __construct($registry)           - Initialize Tables manager with registry dependencies
+ * create(array $tables = [])       - Create or update database tables with transaction support
+ * 
+ * FLUENT API - TABLE STRUCTURE:
+ * -----------------------------
+ * table($name)                     - Start defining a table schema
+ * column($name, $change = null)    - Define a column (optionally rename existing)
+ * type($str)                       - Set column data type (VARCHAR, INT, etc.)
+ * after($str)                      - Position column after another column
+ * default($str)                    - Set default value for column
+ * primary($str)                    - Define primary key constraint
+ * 
+ * COLUMN CONSTRAINTS:
+ * ------------------
+ * autoIncrement($bool = true)      - Make column auto-incrementing (camelCase)
+ * auto_increment($bool = true)     - Legacy alias for autoIncrement()
+ * notNull($bool = true)            - Make column required/not nullable (camelCase)
+ * not_null($bool = true)          - Legacy alias for notNull()
+ * nullable($bool = true)           - Make column nullable (opposite of notNull)
+ * unique($indexName = null)        - Add unique constraint to single column
+ * comment($comment)                - Add descriptive comment to column
+ * 
+ * MODERN COLUMN TYPES:
+ * -------------------
+ * json()                           - JSON column type (MySQL 5.7+)
+ * uuid()                           - UUID column (CHAR(36))
+ * enum(array $values)              - ENUM with validation
+ * decimal($precision = 10, $scale = 2) - DECIMAL with precision control
+ * timestamp($currentTimestamp = false) - TIMESTAMP with optional auto-default
+ * date()                           - DATE column type
+ * datetime()                       - DATETIME column type
+ * boolean()                        - BOOLEAN (stored as TINYINT(1))
+ * geometry()                       - GEOMETRY spatial data type
+ * point()                          - POINT spatial data type
+ * polygon()                        - POLYGON spatial data type
+ * text($size = '')                 - TEXT with size variants (tiny, medium, long)
+ * unsigned()                       - Add UNSIGNED modifier to numeric types
+ * onUpdate($value)                 - Set ON UPDATE clause (for timestamps)
+ * 
+ * INDEXES AND CONSTRAINTS:
+ * -----------------------
+ * index($name, array $key = [])    - Create regular index on columns
+ * uniqueComposite(array $columns, $indexName = null) - Multi-column unique constraint
+ * fulltext($columns = [])          - Create fulltext search index
+ * spatial($column, $indexName = null) - Create spatial index for GIS data
+ * foreign($key, $table, $column, $cascade = false) - Define foreign key relationship
+ * 
+ * TABLE PROPERTIES:
+ * ----------------
+ * engine($str)                     - Set storage engine (InnoDB, MyISAM, MEMORY)
+ * charset($str)                    - Set character set (utf8mb4, latin1, etc.)
+ * collate($str)                    - Set collation (utf8mb4_unicode_ci, etc.)
+ * 
+ * COLUMN OPERATIONS:
+ * -----------------
+ * delete()                         - Mark column for deletion
+ * first()                          - Position column as first in table
+ * 
+ * SCHEMA INTROSPECTION:
+ * --------------------
+ * exists($tableName)               - Check if table exists in database
+ * describe($tableName)             - Get detailed column information for table
+ * getIndexes($tableName)           - Get all indexes for specified table
+ * 
+ * UTILITY AND DEBUG:
+ * -----------------
+ * debug($bool = true)              - Enable/disable debug logging
+ * getExecutedQueries()             - Get array of all executed SQL queries
+ * getErrors()                      - Get array of any errors that occurred
+ * getTables()                      - Get current table configuration (for testing)
+ * clearTables()                    - Clear all table definitions (for testing)
+ * getCurrentTable()                - Get name of currently active table
+ * getCurrentColumn()               - Get name of currently active column
+ * 
+ * USAGE EXAMPLES:
+ * --------------
+ * 
+ * Basic Table Creation:
+ * $tables->table('users')
+ *     ->column('id')->type('INT(11)')->autoIncrement(true)->primary('`id`')
+ *     ->column('name')->type('VARCHAR(100)')->notNull(true)
+ *     ->column('email')->type('VARCHAR(100)')->unique()
+ *     ->create();
+ * 
+ * Modern Column Types:
+ * $tables->table('products')
+ *     ->column('id')->type('INT(11)')->autoIncrement(true)->primary('`id`')
+ *     ->column('data')->json()
+ *     ->column('price')->decimal(10, 2)
+ *     ->column('status')->enum(['active', 'inactive'])
+ *     ->column('created_at')->timestamp(true)
+ *     ->create();
+ * 
+ * Foreign Key Relations:
+ * $tables->table('orders')
+ *     ->column('id')->type('INT(11)')->autoIncrement(true)->primary('`id`')
+ *     ->column('user_id')->type('INT(11)')->notNull(true)
+ *     ->foreign('user_id', 'users', 'id', true)  // CASCADE delete
+ *     ->create();
+ * 
+ * Complex Indexes:
+ * $tables->table('posts')
+ *     ->column('id')->type('INT(11)')->autoIncrement(true)->primary('`id`')
+ *     ->column('title')->type('VARCHAR(200)')->notNull(true)
+ *     ->column('content')->text('long')
+ *     ->index('idx_title', ['title'])
+ *     ->fulltext(['title', 'content'])
+ *     ->create();
  */
 class Tables {
     
@@ -43,9 +158,9 @@ class Tables {
     private $util;
     protected $registry;
     
-    // Current context tracking
-    private $currentTable = '';
-    private $currentColumn = '';
+    // Current context tracking  
+    private $table_use = '';
+    private $column_use = '';
     
     // Execution tracking
     private $executedQueries = [];
@@ -123,20 +238,23 @@ class Tables {
     }
 
 
-    function actions($tables) {
+    private function executeTables(array $tables): void {
 
         try {
 
             foreach ($tables as $table) {
-                $foreign_query = $this->db->query("SELECT * FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = '" . CONFIG_DB_DATABASE . "' AND TABLE_NAME = '" . CONFIG_DB_PREFIX . $table['name'] . "' AND CONSTRAINT_TYPE = 'FOREIGN KEY'");
+                $sql = "SELECT * FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_TYPE = 'FOREIGN KEY'";
+                $foreign_query = $this->db->query($sql, [CONFIG_DB_DATABASE, CONFIG_DB_PREFIX . $table['name']]);
                 foreach ($foreign_query->rows as $foreign) {
-                    $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` DROP FOREIGN KEY `" . $foreign['CONSTRAINT_NAME'] . "`");
-                    pre("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` DROP FOREIGN KEY `" . $foreign['CONSTRAINT_NAME'] . "`");
+                    $dropSql = "ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` DROP FOREIGN KEY `" . $foreign['CONSTRAINT_NAME'] . "`";
+                    $this->db->query($dropSql);
+                    $this->logQuery($dropSql);
                 }
             }
 
             foreach ($tables as $table) {
-                $table_query = $this->db->query("SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '" . CONFIG_DB_DATABASE . "' AND TABLE_NAME = '" . CONFIG_DB_PREFIX . $table['name'] . "'");
+                $sql = "SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
+                $table_query = $this->db->query($sql, [CONFIG_DB_DATABASE, CONFIG_DB_PREFIX . $table['name']]);
                 if (!$table_query->num_rows) {
                     $this->createTable($table);
                 } else {
@@ -150,15 +268,16 @@ class Tables {
 
                         $cascade = ($foreign['cascade'] ? " ON DELETE CASCADE " : "");
 
-                        $this->db->query("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['column'] . "`)" . $cascade);
-
-                        pre("ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['column'] . "`)" . $cascade);
+                        $addForeignKeySql = "ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['column'] . "`)" . $cascade;
+                        $this->db->query($addForeignKeySql);
+                        $this->logQuery($addForeignKeySql);
                     }
                 }
             }
 
-        } catch (\ErrorException $exception) {
-            exit($exception);
+        } catch (\Exception $exception) {
+            $this->logError('Failed to execute tables: ' . $exception->getMessage());
+            throw new FrameworkException('Database operation failed: ' . $exception->getMessage());
         }
     }
 
@@ -192,7 +311,7 @@ class Tables {
     private function shouldExecuteChanges(array $tables): bool {
         $debug_backtrace = debug_backtrace();
         $file = $this->util->hash($debug_backtrace[1]['file'] ?? 'unknown');
-        $hash = $this->util->hash(json_encode($tables, JSON_SORT_KEYS));
+        $hash = $this->util->hash(json_encode($tables, JSON_UNESCAPED_UNICODE));
         
         $hashFile = CONFIG_DIR_STORAGE . 'logs/tables-' . $file;
         
@@ -212,7 +331,7 @@ class Tables {
     private function updateChangeHash(array $tables): void {
         $debug_backtrace = debug_backtrace();
         $file = $this->util->hash($debug_backtrace[1]['file'] ?? 'unknown');
-        $hash = $this->util->hash(json_encode($tables, JSON_SORT_KEYS));
+        $hash = $this->util->hash(json_encode($tables, JSON_UNESCAPED_UNICODE));
         
         $hashFile = CONFIG_DIR_STORAGE . 'logs/tables-' . $file;
         file_put_contents($hashFile, $hash);
@@ -324,6 +443,71 @@ class Tables {
             }
         }
     }
+    
+    /**
+     * Validate foreign key relationships
+     * 
+     * @param array $table Table configuration
+     * @param array $tablesByName All tables indexed by name
+     * @throws FrameworkException On validation failure
+     */
+    private function validateForeignKeys(array $table, array $tablesByName): void {
+        if (!isset($table['foreign']) || !is_array($table['foreign'])) {
+            return;
+        }
+        
+        foreach ($table['foreign'] as $foreign) {
+            // Validate foreign key structure
+            if (!isset($foreign['key']) || !isset($foreign['table']) || !isset($foreign['column'])) {
+                throw new FrameworkException('Foreign key must have key, table, and column properties in table: ' . $table['name']);
+            }
+            
+            // Check if referenced table exists in the schema
+            if (!isset($tablesByName[$foreign['table']])) {
+                throw new FrameworkException("Foreign key references non-existent table: {$foreign['table']} from table: {$table['name']}");
+            }
+            
+            $referencedTable = $tablesByName[$foreign['table']];
+            
+            // Check if local column exists
+            if (!isset($table['column'][$foreign['key']])) {
+                throw new FrameworkException("Foreign key column does not exist: {$foreign['key']} in table {$table['name']}");
+            }
+            
+            // Check if referenced column exists
+            if (!isset($referencedTable['column'][$foreign['column']])) {
+                throw new FrameworkException("Foreign key references non-existent column: {$foreign['column']} in table {$foreign['table']}");
+            }
+            
+            // Check type compatibility (basic check)
+            $localType = $this->normalizeType($table['column'][$foreign['key']]['type']);
+            $referencedType = $this->normalizeType($referencedTable['column'][$foreign['column']]['type']);
+            
+            if ($localType !== $referencedType) {
+                throw new FrameworkException("Foreign key type mismatch: {$foreign['key']} ({$localType}) does not match {$foreign['table']}.{$foreign['column']} ({$referencedType})");
+            }
+        }
+    }
+    
+    /**
+     * Normalize MySQL type for comparison
+     * 
+     * @param string $type MySQL column type
+     * @return string Normalized type
+     */
+    private function normalizeType(string $type): string {
+        // Remove size specifications and convert to uppercase
+        $type = preg_replace('/\([^)]*\)/', '', strtoupper(trim($type)));
+        
+        // Handle common type mappings
+        $typeMap = [
+            'INTEGER' => 'INT',
+            'BOOLEAN' => 'TINYINT',
+            'BOOL' => 'TINYINT'
+        ];
+        
+        return $typeMap[$type] ?? $type;
+    }
     /**
      * Build column definition string for SQL
      * 
@@ -342,12 +526,37 @@ class Tables {
         
         // Add DEFAULT value
         if (isset($column['default'])) {
-            $definition .= ' DEFAULT ' . $column['default'];
+            $defaultValue = $column['default'];
+            
+            // Handle boolean values
+            if (is_bool($defaultValue)) {
+                $definition .= ' DEFAULT ' . ($defaultValue ? '1' : '0');
+            }
+            // Don't quote SQL functions and NULL
+            else if (in_array(strtoupper($defaultValue), ['CURRENT_TIMESTAMP', 'NOW()', 'NULL']) || 
+                     preg_match('/^[0-9]+(\.[0-9]+)?$/', $defaultValue) || // Numbers
+                     strtolower($defaultValue) === 'true' || 
+                     strtolower($defaultValue) === 'false') {
+                $definition .= ' DEFAULT ' . $defaultValue;
+            } else {
+                // Quote string values
+                $definition .= " DEFAULT '" . addslashes($defaultValue) . "'";
+            }
         }
         
         // Add AUTO_INCREMENT (only if NOT NULL)
         if (!empty($column['auto_increment'])) {
             $definition .= ' AUTO_INCREMENT';
+        }
+        
+        // Add ON UPDATE clause
+        if (!empty($column['on_update'])) {
+            $definition .= ' ON UPDATE ' . $column['on_update'];
+        }
+        
+        // Add column comment
+        if (!empty($column['comment'])) {
+            $definition .= ' COMMENT ' . $this->db->quote($column['comment']);
         }
         
         return $definition;
@@ -360,7 +569,7 @@ class Tables {
      * @param array $table Table configuration
      * @throws FrameworkException On creation failure
      */
-    function createTable($table) {
+    private function createTable(array $table): void {
         try {
             $tableName = CONFIG_DB_PREFIX . $table['name'];
             $columns = [];
@@ -394,8 +603,23 @@ class Tables {
             // Add regular indexes
             if (isset($table['index'])) {
                 foreach ($table['index'] as $index) {
-                    $columns = implode('`, `', $index['key']);
-                    $sql .= ",\n  KEY `{$index['name']}` (`{$columns})";
+                    $columns = '`' . implode('`, `', $index['key']) . '`';
+                    $sql .= ",\n  KEY `{$index['name']}` ({$columns})";
+                }
+            }
+            
+            // Add unique indexes
+            if (isset($table['unique'])) {
+                foreach ($table['unique'] as $unique) {
+                    $columns = '`' . implode('`, `', $unique['columns']) . '`';
+                    $sql .= ",\n  UNIQUE KEY `{$unique['name']}` ({$columns})";
+                }
+            }
+            
+            // Add spatial indexes
+            if (isset($table['spatial'])) {
+                foreach ($table['spatial'] as $spatial) {
+                    $sql .= ",\n  SPATIAL INDEX `{$spatial['name']}` (`{$spatial['column']})";
                 }
             }
             
@@ -422,7 +646,7 @@ class Tables {
      * @param array $table Table configuration
      * @throws FrameworkException On alteration failure
      */
-    function alterTable($table) {
+    private function alterTable(array $table): void {
         try {
             $tableName = CONFIG_DB_PREFIX . $table['name'];
             
@@ -498,15 +722,16 @@ class Tables {
     /**
      * Check if column exists in table
      * 
-     * @param string $tableName Full table name
+     * @param string $tableName Full table name with prefix
      * @param string $columnName Column name
      * @return bool Whether column exists
      */
     private function columnExists(string $tableName, string $columnName): bool {
-        $sql = "SELECT 1 FROM information_schema.COLUMNS 
-               WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1";
-               
-        $query = $this->db->query($sql, [CONFIG_DB_DATABASE, $tableName, $columnName]);
+        // Remove prefix for information_schema query
+        $tableNameOnly = str_replace(CONFIG_DB_PREFIX, '', $tableName);
+        
+        $sql = "SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1";
+        $query = $this->db->query($sql, [CONFIG_DB_DATABASE, $tableNameOnly, $columnName]);
         return $query->num_rows > 0;
     }
     
@@ -668,60 +893,63 @@ class Tables {
         }
     }
 
-    function table($table) {
+    public function table($table) {
 		$this->table_use = $table;
 		$this->tables[$this->table_use] = [
 			'name' => $this->table_use,
 			'column' => [],
-			'engine' => 'default InnoDB',
-			'charset' => 'default utf8mb4',
-			'collate' => 'default utf8mb4_unicode_ci',
+			'engine' => 'InnoDB',
+			'charset' => 'utf8mb4',
+			'collate' => 'utf8mb4_unicode_ci',
 		];
 		return $this;
 	}
 	
-	function column($name, string $change = NULL) {
+	public function column($name, string $change = null) {
 		$this->column_use = $name;
 		$this->tables[$this->table_use]['column'][$this->column_use]['name'] = $name;
-        if(!empty($change)) {
+        if (!empty($change)) {
             $this->tables[$this->table_use]['column'][$this->column_use]['change'] = $change;
         }
 		return $this;
 	}
 	
-	function type($str) {
+	public function type($str) {
 		$this->tables[$this->table_use]['column'][$this->column_use]['type'] = $str;
 		return $this;
 	}
 
-    function after($str) {
+    public function after($str) {
 		$this->tables[$this->table_use]['column'][$this->column_use]['after'] = $str;
 		return $this;
 	}
 	
-	function auto_increment($bool) {
+	public function autoIncrement($bool = true) {
 		$this->tables[$this->table_use]['column'][$this->column_use]['auto_increment'] = $bool;
 		return $this;
 	}
 
-    function default($str) {
+    // Legacy method for backward compatibility
+    public function auto_increment($bool = true) {
+        return $this->autoIncrement($bool);
+    }
+
+    public function default($str) {
 		$this->tables[$this->table_use]['column'][$this->column_use]['default'] = $str;
 		return $this;
 	}
 
-    function primary($str) {
-        // $this->tables[$this->table_use]['primary'] = [$str];
+    public function primary($str) {
         $this->tables[$this->table_use]['primary'] = $str;
 		return $this;
 	}
 
-    function fulltext($str = []) {
-        // $this->tables[$this->table_use]['primary'] = [$str];
+    public function fulltext($str = []) {
         $this->tables[$this->table_use]['fulltext'] = $str;
 		return $this;
 	}
 
-    function foreign($key, $table, $column, bool $cascade = false) {
+    public function foreign($key, $table, $column, bool $cascade = false) {
         $this->tables[$this->table_use]['foreign'][] = [
             'key' => $key,
             'table' => $table,
@@ -731,32 +959,37 @@ class Tables {
 		return $this;
 	}
 	
-	function not_null($bool) {
+	public function notNull($bool = true) {
 		$this->tables[$this->table_use]['column'][$this->column_use]['not_null'] = $bool;
 		return $this;
 	}
+
+    // Legacy method for backward compatibility
+    public function not_null($bool = true) {
+        return $this->notNull($bool);
+    }
 	
-	function engine($str) {
+	public function engine($str) {
 		$this->tables[$this->table_use]['engine'] = $str;
 		return $this;
 	}
 	
-	function charset($str) {
+	public function charset($str) {
 		$this->tables[$this->table_use]['charset'] = $str;
 		return $this;
 	}
 	
-	function collate($str) {
+	public function collate($str) {
 		$this->tables[$this->table_use]['collate'] = $str;
 		return $this;
 	}
 
-    function delete() {
+    public function delete() {
         $this->tables[$this->table_use]['column'][$this->column_use]['delete'] = true;
         return $this;
     }
 
-    function index(string $name, array $key = []) {
+    public function index(string $name, array $key = []) {
         $this->tables[$this->table_use]['index'][] = [
             'name' => $name,
             'key' => $key,
@@ -828,6 +1061,60 @@ class Tables {
     }
     
     /**
+     * Set column type to DATE
+     * 
+     * @return $this
+     */
+    public function date() {
+        return $this->type('DATE');
+    }
+    
+    /**
+     * Set column type to DATETIME
+     * 
+     * @return $this
+     */
+    public function datetime() {
+        return $this->type('DATETIME');
+    }
+    
+    /**
+     * Set column type to BOOLEAN (stored as TINYINT(1))
+     * 
+     * @return $this
+     */
+    public function boolean() {
+        return $this->type('TINYINT(1)');
+    }
+    
+    /**
+     * Set column type to GEOMETRY
+     * 
+     * @return $this
+     */
+    public function geometry() {
+        return $this->type('GEOMETRY');
+    }
+    
+    /**
+     * Set column type to POINT (spatial data)
+     * 
+     * @return $this
+     */
+    public function point() {
+        return $this->type('POINT');
+    }
+    
+    /**
+     * Set column type to POLYGON (spatial data)
+     * 
+     * @return $this
+     */
+    public function polygon() {
+        return $this->type('POLYGON');
+    }
+    
+    /**
      * Set column type to TEXT with size variant
      * 
      * @param string $size Size variant: 'tiny', 'medium', 'long', or empty for regular TEXT
@@ -870,6 +1157,17 @@ class Tables {
     }
     
     /**
+     * Set ON UPDATE clause for timestamp columns
+     * 
+     * @param string $value ON UPDATE value (e.g., 'CURRENT_TIMESTAMP')
+     * @return $this
+     */
+    public function onUpdate(string $value) {
+        $this->tables[$this->table_use]['column'][$this->column_use]['on_update'] = $value;
+        return $this;
+    }
+    
+    /**
      * Set column as nullable (alias for not_null(false))
      * 
      * @param bool $nullable Whether column should be nullable
@@ -879,15 +1177,7 @@ class Tables {
         return $this->not_null(!$nullable);
     }
     
-    /**
-     * Set column to auto increment with default parameters
-     * 
-     * @param bool $autoIncrement Whether to auto increment
-     * @return $this
-     */
-    public function autoIncrement(bool $autoIncrement = true) {
-        return $this->auto_increment($autoIncrement);
-    }
+
     
     /**
      * Set column as first in table
@@ -1015,6 +1305,45 @@ class Tables {
     public function debug(bool $debug = true) {
         $this->debug = $debug;
         return $this;
+    }
+    
+    /**
+     * Get current tables configuration (for testing)
+     * 
+     * @return array Tables configuration
+     */
+    public function getTables(): array {
+        return array_values($this->tables);
+    }
+    
+    /**
+     * Clear all tables (for testing)
+     * 
+     * @return $this
+     */
+    public function clearTables() {
+        $this->tables = [];
+        $this->table_use = '';
+        $this->column_use = '';
+        return $this;
+    }
+    
+    /**
+     * Get current table being used
+     * 
+     * @return string Current table name
+     */
+    public function getCurrentTable(): string {
+        return $this->table_use;
+    }
+    
+    /**
+     * Get current column being used
+     * 
+     * @return string Current column name
+     */
+    public function getCurrentColumn(): string {
+        return $this->column_use;
     }
 
 }
