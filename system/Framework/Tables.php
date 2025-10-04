@@ -1345,5 +1345,243 @@ class Tables {
     public function getCurrentColumn(): string {
         return $this->column_use;
     }
+    
+    /**
+     * Drop table from database
+     * 
+     * @param string|null $tableName Table name to drop (uses current table if null)
+     * @param bool $ifExists Add IF EXISTS clause to prevent errors
+     * @return $this
+     * @throws FrameworkException On drop failure
+     */
+    public function drop(?string $tableName = null, bool $ifExists = true): self {
+        try {
+            $table = $tableName ?: $this->table_use;
+            
+            if (empty($table)) {
+                throw new FrameworkException('No table specified for drop operation');
+            }
+            
+            $fullTableName = CONFIG_DB_PREFIX . $table;
+            $ifExistsClause = $ifExists ? 'IF EXISTS ' : '';
+            
+            $sql = "DROP TABLE {$ifExistsClause}`{$fullTableName}`";
+            
+            $this->db->query($sql);
+            $this->logQuery($sql);
+            
+            // Clear from cache if exists
+            if (isset($this->tableCache[$table])) {
+                unset($this->tableCache[$table]);
+            }
+            
+            if ($this->debug) {
+                $this->log("Dropped table: {$table}");
+            }
+            
+            return $this;
+            
+        } catch (\Exception $e) {
+            $error = 'Table drop failed for ' . ($tableName ?: $this->table_use) . ': ' . $e->getMessage();
+            $this->logError($error);
+            throw new FrameworkException($error);
+        }
+    }
+    
+    /**
+     * Drop multiple tables in dependency order
+     * 
+     * @param array $tableNames Array of table names to drop
+     * @param bool $ifExists Add IF EXISTS clause to prevent errors
+     * @return $this
+     * @throws FrameworkException On drop failure
+     */
+    public function dropTables(array $tableNames, bool $ifExists = true): self {
+        try {
+            // First, drop all foreign key constraints to avoid dependency issues
+            foreach ($tableNames as $tableName) {
+                $this->dropForeignKeys($tableName);
+            }
+            
+            // Then drop all tables
+            foreach ($tableNames as $tableName) {
+                $this->drop($tableName, $ifExists);
+            }
+            
+            return $this;
+            
+        } catch (\Exception $e) {
+            $error = 'Bulk table drop failed: ' . $e->getMessage();
+            $this->logError($error);
+            throw new FrameworkException($error);
+        }
+    }
+    
+    /**
+     * Drop all foreign keys from a table
+     * 
+     * @param string $tableName Table name (without prefix)
+     * @return $this
+     */
+    public function dropForeignKeys(string $tableName): self {
+        try {
+            $fullTableName = CONFIG_DB_PREFIX . $tableName;
+            
+            // Get all foreign keys for this table
+            $sql = "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+                   WHERE CONSTRAINT_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_TYPE = 'FOREIGN KEY'";
+                   
+            $result = $this->db->query($sql, [CONFIG_DB_DATABASE, $fullTableName]);
+            
+            // Drop each foreign key
+            foreach ($result->rows as $row) {
+                $dropSql = "ALTER TABLE `{$fullTableName}` DROP FOREIGN KEY `{$row['CONSTRAINT_NAME']}`";
+                $this->db->query($dropSql);
+                $this->logQuery($dropSql);
+            }
+            
+            return $this;
+            
+        } catch (\Exception $e) {
+            $this->logError('Failed to drop foreign keys for table ' . $tableName . ': ' . $e->getMessage());
+            return $this;
+        }
+    }
+    
+    /**
+     * Truncate table (remove all data but keep structure)
+     * 
+     * @param string|null $tableName Table name to truncate (uses current table if null)
+     * @return $this
+     * @throws FrameworkException On truncate failure
+     */
+    public function truncate(?string $tableName = null): self {
+        try {
+            $table = $tableName ?: $this->table_use;
+            
+            if (empty($table)) {
+                throw new FrameworkException('No table specified for truncate operation');
+            }
+            
+            $fullTableName = CONFIG_DB_PREFIX . $table;
+            
+            // Disable foreign key checks temporarily
+            $this->db->query('SET FOREIGN_KEY_CHECKS = 0');
+            
+            $sql = "TRUNCATE TABLE `{$fullTableName}`";
+            $this->db->query($sql);
+            $this->logQuery($sql);
+            
+            // Re-enable foreign key checks
+            $this->db->query('SET FOREIGN_KEY_CHECKS = 1');
+            
+            if ($this->debug) {
+                $this->log("Truncated table: {$table}");
+            }
+            
+            return $this;
+            
+        } catch (\Exception $e) {
+            // Make sure to re-enable foreign key checks even on error
+            $this->db->query('SET FOREIGN_KEY_CHECKS = 1');
+            
+            $error = 'Table truncate failed for ' . ($tableName ?: $this->table_use) . ': ' . $e->getMessage();
+            $this->logError($error);
+            throw new FrameworkException($error);
+        }
+    }
+    
+    /**
+     * Rename table
+     * 
+     * @param string $newName New table name
+     * @param string|null $oldName Old table name (uses current table if null)
+     * @return $this
+     * @throws FrameworkException On rename failure
+     */
+    public function renameTable(string $newName, ?string $oldName = null): self {
+        try {
+            $oldTable = $oldName ?: $this->table_use;
+            
+            if (empty($oldTable)) {
+                throw new FrameworkException('No table specified for rename operation');
+            }
+            
+            $oldFullName = CONFIG_DB_PREFIX . $oldTable;
+            $newFullName = CONFIG_DB_PREFIX . $newName;
+            
+            $sql = "RENAME TABLE `{$oldFullName}` TO `{$newFullName}`";
+            $this->db->query($sql);
+            $this->logQuery($sql);
+            
+            // Update cache
+            if (isset($this->tableCache[$oldTable])) {
+                $this->tableCache[$newName] = $this->tableCache[$oldTable];
+                unset($this->tableCache[$oldTable]);
+            }
+            
+            // Update current table reference if renamed current table
+            if ($this->table_use === $oldTable) {
+                $this->table_use = $newName;
+            }
+            
+            if ($this->debug) {
+                $this->log("Renamed table: {$oldTable} -> {$newName}");
+            }
+            
+            return $this;
+            
+        } catch (\Exception $e) {
+            $error = 'Table rename failed: ' . $e->getMessage();
+            $this->logError($error);
+            throw new FrameworkException($error);
+        }
+    }
+    
+    /**
+     * Copy table structure (and optionally data)
+     * 
+     * @param string $newTableName New table name
+     * @param string|null $sourceTableName Source table name (uses current table if null)
+     * @param bool $copyData Whether to copy data as well
+     * @return $this
+     * @throws FrameworkException On copy failure
+     */
+    public function copyTable(string $newTableName, ?string $sourceTableName = null, bool $copyData = false): self {
+        try {
+            $sourceTable = $sourceTableName ?: $this->table_use;
+            
+            if (empty($sourceTable)) {
+                throw new FrameworkException('No source table specified for copy operation');
+            }
+            
+            $sourceFullName = CONFIG_DB_PREFIX . $sourceTable;
+            $newFullName = CONFIG_DB_PREFIX . $newTableName;
+            
+            // Create table structure
+            $sql = "CREATE TABLE `{$newFullName}` LIKE `{$sourceFullName}`";
+            $this->db->query($sql);
+            $this->logQuery($sql);
+            
+            // Copy data if requested
+            if ($copyData) {
+                $dataSql = "INSERT INTO `{$newFullName}` SELECT * FROM `{$sourceFullName}`";
+                $this->db->query($dataSql);
+                $this->logQuery($dataSql);
+            }
+            
+            if ($this->debug) {
+                $copyType = $copyData ? 'with data' : 'structure only';
+                $this->log("Copied table {$copyType}: {$sourceTable} -> {$newTableName}");
+            }
+            
+            return $this;
+            
+        } catch (\Exception $e) {
+            $error = 'Table copy failed: ' . $e->getMessage();
+            $this->logError($error);
+            throw new FrameworkException($error);
+        }
+    }
 
 }

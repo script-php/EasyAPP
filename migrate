@@ -1,0 +1,349 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * Migration CLI Command
+ * 
+ * Command-line interface for managing database migrations.
+ * 
+ * Usage:
+ *   php migrate                    # Run all pending migrations
+ *   php migrate --to=5             # Migrate to specific version
+ *   php migrate --rollback=3       # Rollback to version 3
+ *   php migrate --status           # Show migration status
+ *   php migrate --create="AddUserTable"  # Create new migration
+ *   php migrate --dry-run          # Show what would be executed
+ *   php migrate --help             # Show help
+ */
+
+// Set up basic path and CLI mode
+define('PATH', __DIR__ . DIRECTORY_SEPARATOR);
+define('CLI_MODE', true);
+
+// Change to application root
+chdir(PATH);
+
+// Initialize framework
+require_once PATH . 'system/Framework.php';
+
+use System\Framework\MigrationManager;
+
+// Initialize framework
+$registry = initializeFramework();
+
+// Set up database connection
+$registry->set('db', new System\Framework\Db(
+    CONFIG_DB_DRIVER,
+    CONFIG_DB_HOSTNAME, 
+    CONFIG_DB_DATABASE,
+    CONFIG_DB_USERNAME,
+    CONFIG_DB_PASSWORD,
+    CONFIG_DB_PORT,
+    '',  // encoding
+    ''   // options
+));
+
+/**
+ * Migration CLI Application
+ */
+class MigrationCLI {
+    
+    private $migrationManager;
+    private $args;
+    
+    public function __construct($registry, array $args) {
+        $this->migrationManager = new MigrationManager($registry);
+        $this->args = $this->parseArgs($args);
+    }
+    
+    /**
+     * Run the CLI command
+     */
+    public function run(): int {
+        try {
+            // Show help
+            if (isset($this->args['help']) || isset($this->args['h'])) {
+                $this->showHelp();
+                return 0;
+            }
+            
+            // Show status
+            if (isset($this->args['status'])) {
+                $this->showStatus();
+                return 0;
+            }
+            
+            // Create new migration
+            if (isset($this->args['create'])) {
+                $this->createMigration($this->args['create']);
+                return 0;
+            }
+            
+            // Rollback to version
+            if (isset($this->args['rollback'])) {
+                $targetVersion = (int)$this->args['rollback'];
+                $dryRun = isset($this->args['dry-run']);
+                $this->runRollback($targetVersion, $dryRun);
+                return 0;
+            }
+            
+            // Migrate to version or latest
+            $targetVersion = isset($this->args['to']) ? (int)$this->args['to'] : null;
+            $dryRun = isset($this->args['dry-run']);
+            $this->runMigration($targetVersion, $dryRun);
+            
+            return 0;
+            
+        } catch (\Exception $e) {
+            $this->error("Error: " . $e->getMessage());
+            return 1;
+        }
+    }
+    
+    /**
+     * Run migrations
+     */
+    private function runMigration(?int $targetVersion = null, bool $dryRun = false): void {
+        $this->info("Running Migrations");
+        $this->info("=" . str_repeat("=", 50));
+        
+        if ($dryRun) {
+            $this->warning("DRY RUN MODE - No changes will be applied");
+        }
+        
+        $results = $this->migrationManager->migrate($targetVersion, $dryRun);
+        
+        if (empty($results['executed']) && empty($results['errors'])) {
+            $this->success("No pending migrations found");
+            return;
+        }
+        
+        // Show executed migrations
+        foreach ($results['executed'] as $migration) {
+            $icon = $migration['dry_run'] ? "[DRY RUN]" : "[SUCCESS]";
+            $this->success("{$icon} {$migration['class_name']} ({$migration['execution_time']}ms)");
+            $this->info("   " . $migration['description']);
+        }
+        
+        // Show errors
+        foreach ($results['errors'] as $migration) {
+            $this->error("[ERROR] {$migration['class_name']} - {$migration['error']}");
+        }
+        
+        // Summary
+        $this->info("");
+        $this->info("Summary:");
+        $this->info("  Executed: " . count($results['executed']));
+        $this->info("  Errors: " . count($results['errors']));
+        $this->info("  Total time: {$results['total_time']}ms");
+        
+        if (count($results['errors']) > 0) {
+            $this->error("Some migrations failed!");
+        } else if (count($results['executed']) > 0) {
+            $this->success("All migrations completed successfully!");
+        }
+    }
+    
+    /**
+     * Run rollback
+     */
+    private function runRollback(int $targetVersion, bool $dryRun = false): void {
+        $this->info("Rolling Back Migrations");
+        $this->info("=" . str_repeat("=", 50));
+        
+        if ($dryRun) {
+            $this->warning("DRY RUN MODE - No changes will be applied");
+        }
+        
+        $this->info("Rolling back to version: {$targetVersion}");
+        
+        $results = $this->migrationManager->rollback($targetVersion, $dryRun);
+        
+        if (empty($results['rolled_back']) && empty($results['errors'])) {
+            $this->success("No migrations to rollback");
+            return;
+        }
+        
+        // Show rolled back migrations
+        foreach ($results['rolled_back'] as $migration) {
+            $icon = $migration['dry_run'] ? "[DRY RUN]" : "[ROLLBACK]";
+            $this->success("{$icon} {$migration['class_name']} ({$migration['execution_time']}ms)");
+            $this->info("   " . $migration['description']);
+        }
+        
+        // Show errors
+        foreach ($results['errors'] as $migration) {
+            $this->error("[ERROR] {$migration['class_name']} - {$migration['error']}");
+        }
+        
+        // Summary
+        $this->info("");
+        $this->info("Summary:");
+        $this->info("  Rolled back: " . count($results['rolled_back']));
+        $this->info("  Errors: " . count($results['errors']));
+        $this->info("  Total time: {$results['total_time']}ms");
+        
+        if (count($results['errors']) > 0) {
+            $this->error("Some rollbacks failed!");
+        } else if (count($results['rolled_back']) > 0) {
+            $this->success("Rollback completed successfully!");
+        }
+    }
+    
+    /**
+     * Show migration status
+     */
+    private function showStatus(): void {
+        $this->info("Migration Status");
+        $this->info("=" . str_repeat("=", 70));
+        
+        $status = $this->migrationManager->getStatus();
+        
+        $this->info("Database: " . CONFIG_DB_DATABASE);
+        $this->info("Current Version: " . $status['current_version']);
+        $this->info("Latest Version: " . $status['latest_version']);
+        $this->info("Total Migrations: " . $status['total_migrations']);
+        $this->info("Applied: " . $status['applied_migrations']);
+        $this->info("Pending: " . $status['pending_migrations']);
+        $this->info("");
+        
+        if (empty($status['migrations'])) {
+            $this->info("No migrations found.");
+            return;
+        }
+        
+        // Table header
+        $this->info(sprintf("%-8s %-10s %-40s %-20s", "Version", "Status", "Description", "Applied At"));
+        $this->info(str_repeat("-", 80));
+        
+        // Migration list
+        foreach ($status['migrations'] as $version => $migration) {
+            $statusIcon = $migration['applied'] ? "Applied" : "Pending";
+            $appliedAt = $migration['applied_at'] ?: '-';
+            $description = strlen($migration['description']) > 38 
+                ? substr($migration['description'], 0, 35) . '...'
+                : $migration['description'];
+                
+            $this->info(sprintf(
+                "%-8s %-10s %-40s %-20s",
+                $version,
+                $statusIcon,
+                $description,
+                $appliedAt
+            ));
+        }
+    }
+    
+    /**
+     * Create new migration
+     */
+    private function createMigration(string $name): void {
+        $this->info("Creating New Migration");
+        $this->info("=" . str_repeat("=", 50));
+        
+        $filepath = $this->migrationManager->createMigration($name);
+        
+        $this->success("Created migration file: " . basename($filepath));
+        $this->info("Path: " . $filepath);
+        $this->info("");
+        $this->info("Next steps:");
+        $this->info("1. Edit the migration file to implement up() and down() methods");
+        $this->info("2. Run 'php migrate' to apply the migration");
+    }
+    
+    /**
+     * Show help information
+     */
+    private function showHelp(): void {
+        $this->info("EasyAPP Migration System");
+        $this->info("=" . str_repeat("=", 50));
+        $this->info("");
+        $this->info("USAGE:");
+        $this->info("  php migrate [options]");
+        $this->info("");
+        $this->info("OPTIONS:");
+        $this->info("  --status                Show migration status");
+        $this->info("  --to=<version>         Migrate to specific version");
+        $this->info("  --rollback=<version>   Rollback to specific version");
+        $this->info("  --create=\"<name>\"      Create new migration");
+        $this->info("  --dry-run              Show what would be executed without running");
+        $this->info("  --help, -h             Show this help message");
+        $this->info("");
+        $this->info("EXAMPLES:");
+        $this->info("  php migrate                           # Run all pending migrations");
+        $this->info("  php migrate --status                  # Show current status");
+        $this->info("  php migrate --to=5                    # Migrate to version 5");
+        $this->info("  php migrate --rollback=3              # Rollback to version 3");
+        $this->info("  php migrate --create=\"AddUserTable\"   # Create new migration");
+        $this->info("  php migrate --dry-run                 # Preview changes");
+        $this->info("");
+        $this->info("MIGRATION FILES:");
+        $this->info("  Location: migrations/");
+        $this->info("  Format: 001_descriptive_name.php");
+        $this->info("  Class: Migration_001_DescriptiveName");
+    }
+    
+    /**
+     * Parse command line arguments
+     */
+    private function parseArgs(array $args): array {
+        $parsed = [];
+        
+        for ($i = 1; $i < count($args); $i++) {
+            $arg = $args[$i];
+            
+            if (strpos($arg, '--') === 0) {
+                $arg = substr($arg, 2);
+                
+                if (strpos($arg, '=') !== false) {
+                    [$key, $value] = explode('=', $arg, 2);
+                    $parsed[$key] = $value;
+                } else {
+                    $parsed[$arg] = true;
+                }
+            } elseif (strpos($arg, '-') === 0) {
+                $parsed[substr($arg, 1)] = true;
+            }
+        }
+        
+        return $parsed;
+    }
+    
+    /**
+     * Output success message
+     */
+    private function success(string $message): void {
+        echo "\033[32m{$message}\033[0m\n";
+    }
+    
+    /**
+     * Output info message
+     */
+    private function info(string $message): void {
+        echo "{$message}\n";
+    }
+    
+    /**
+     * Output warning message
+     */
+    private function warning(string $message): void {
+        echo "\033[33m{$message}\033[0m\n";
+    }
+    
+    /**
+     * Output error message
+     */
+    private function error(string $message): void {
+        echo "\033[31m{$message}\033[0m\n";
+    }
+}
+
+// Run CLI application
+try {
+    $cli = new MigrationCLI($registry, $argv);
+    $exitCode = $cli->run();
+    exit($exitCode);
+} catch (\Exception $e) {
+    echo "\033[31mFATAL ERROR: " . $e->getMessage() . "\033[0m\n";
+    exit(1);
+}
