@@ -46,6 +46,8 @@ EasyAPP follows the **Model-View-Controller (MVC)** architectural pattern with a
 | **Views** | Presentation layer templates | `app/view/` |
 | **Services** | Reusable business logic | `app/service/` |
 | **Languages** | Internationalization files | `app/language/` |
+| **TestRunner** | Automated test execution framework | `system/TestRunner.php` |
+| **TestBootstrap** | Test environment setup and helpers | `system/TestBootstrap.php` |
 
 ---
 

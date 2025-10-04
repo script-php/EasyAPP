@@ -323,7 +323,9 @@ class UserTest extends TestCase {
 
 ## Documentation
 
-- [Getting Started Guide](DOCUMENTATION.md)
+- [CLI Guide](CLI_GUIDE.md) - Unified command-line interface
+- [Migration Guide](MIGRATION_GUIDE.md) - Database migration system
+- [Getting Started Guide](DOCUMENTATION.md) - Framework basics
 - [Contributing](CONTRIBUTING.md)
 
 ## Contributing
