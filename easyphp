@@ -300,7 +300,7 @@ class EasyPHPCLI {
         
         $template = $this->getModelTemplate($className, strtolower($name));
         
-        if (file_put_contents($template, $template)) {
+        if (file_put_contents($filename, $template)) {
             $this->success("Model created: {$filename}");
         } else {
             $this->error("Failed to create model");
