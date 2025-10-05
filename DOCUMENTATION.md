@@ -23,7 +23,7 @@ Welcome to the EasyAPP Framework documentation! This guide will help you underst
 - [Testing](#testing)
 - [CLI Commands](#cli-commands)
 - [Performance](#performance)
-- [Configuration](#configuration)
+- [Configuration](#configuration-3)
 - [API Reference](#api-reference)
 
 ---
