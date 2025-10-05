@@ -7,10 +7,15 @@
 * @link         https://script-php.ro
 */
 
-class ModelHome extends Model {
+class ModelCommonHome extends Model {
 
-    function test() {
-        return [];
+    public $test = 'This is a test from ModelCommonHome'; // Example property
+
+    /**
+     * Example method returning an array
+     */
+    function method() {
+        return [1,2,3,4,5]; // Example method returning an array
     }
 
 }

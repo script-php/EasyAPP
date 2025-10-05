@@ -93,13 +93,13 @@ class ModelUser extends Model {
 │   ├── controller/         # Controllers
 │   ├── model/             # Models  
 │   ├── view/              # View templates
-│   ├── service/           # Business logic services
+│   ├── service/           # Execution-focused services (startup + on-demand)
 │   ├── language/          # Internationalization files
+│   ├── library/          # Reusable application libraries
 │   ├── config.php         # Application configuration
 │   └── router.php         # Route definitions
 ├── system/                # Framework core files
 │   ├── Framework/         # Core framework classes
-│   ├── Library/           # Framework libraries
 │   └── Vendor/            # Third-party libraries
 ├── storage/               # Storage directory
 │   ├── cache/             # Cache files
@@ -163,7 +163,7 @@ CACHE_TTL=3600
 <?php
 $config['platform'] = 'My EasyAPP';
 $config['debug'] = env('DEBUG', false);
-$config['services'] = ['user', 'email'];
+$config['services'] = ['user', 'email|initialize']; // Startup services
 ```
 
 ## Database Usage

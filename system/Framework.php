@@ -56,7 +56,7 @@ $config['dir_view'] = $config['dir_app'] . $config['dir_view'];
 $config['dir_service'] = $config['dir_app'] . $config['dir_service'];
 
 $config['dir_framework'] = $config['dir_system'] . $config['dir_framework'];
-$config['dir_library'] = $config['dir_system'] . $config['dir_library'];
+$config['dir_library'] = $config['dir_app'] . $config['dir_library'];
 $config['dir_assets'] = PATH . $config['dir_assets'];
 $config['dir_storage'] = PATH . $config['dir_storage'];
 
@@ -167,14 +167,11 @@ function bootstrap() {
                     }
                 }
                 else {
-                    try {
-                        $route = $request->get('route');
-                        $route = !empty($route) ? $route : CONFIG_ACTION_ROUTER;
-                        $registry->get('load')->runController($route); // run requested page or default page
-                    }
-                    catch(\Exception $e) {
-                        $registry->get('load')->runController(CONFIG_ACTION_ERROR); // run error page
-                    }
+                    $route = $request->get('route');
+                    
+                    $route = !empty($route) ? $route : CONFIG_ACTION_ROUTER;
+                    // pre($route,1);
+                    $registry->get('load')->runController($route); // run requested page or default page
                 }
             }
             else {

@@ -38,7 +38,7 @@ $config['dir_language'] = 'language/';
 // System
 $config['dir_system'] = 'system/';
 $config['dir_framework'] = 'Framework/';
-$config['dir_library'] = 'Library/';
+$config['dir_library'] = 'library/';
 $config['dir_storage'] = 'storage/';
 $config['dir_assets'] = 'assets/';
 

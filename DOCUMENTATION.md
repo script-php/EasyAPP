@@ -44,7 +44,7 @@ EasyAPP follows the **Model-View-Controller (MVC)** architectural pattern with a
 | **Controllers** | Handle HTTP requests and responses | `app/controller/` |
 | **Models** | Data access and business logic | `app/model/` |
 | **Views** | Presentation layer templates | `app/view/` |
-| **Services** | Reusable business logic | `app/service/` |
+| **Services** | Execution-focused business logic (startup + on-demand) | `app/service/` |
 | **Languages** | Internationalization files | `app/language/` |
 | **TestRunner** | Automated test execution framework | `system/TestRunner.php` |
 | **TestBootstrap** | Test environment setup and helpers | `system/TestBootstrap.php` |
@@ -595,7 +595,27 @@ $this->language->setLanguage('es-es');
 
 ## Services & Business Logic
 
-Services encapsulate reusable business logic that can be shared across multiple controllers.
+Services are **execution-focused business logic components** that provide reusable functionality across your application. Unlike controllers and models, services **execute immediately** and return results rather than cached instances.
+
+### 🔄 Two Types of Service Usage
+
+**1. Startup Services (Pre-Controller Execution):**
+Services that run automatically **before any controller is loaded**, perfect for initialization, security checks, and system preparation.
+
+**2. On-Demand Services (Manual Execution):**
+Services called explicitly from controllers, models, or other services for specific business logic operations.
+
+### Service Architecture
+
+Services follow the execution pattern: **Load → Execute → Return Result**
+
+| **Feature** | **Controller/Model** | **Service** |
+|-------------|---------------------|-------------|
+| **Purpose** | MVC components | Business logic execution |
+| **Caching** | Instance cached | No caching (fresh execution) |
+| **Return** | Object instance | Method execution result |
+| **Loading** | On-demand only | Startup + on-demand |
+| **Syntax** | `controller('name')` | `service('name\|method')` |
 
 ### Creating Services
 
@@ -613,6 +633,15 @@ class ServiceEmail extends Service {
     
     public function __construct($registry) {
         parent::__construct($registry);
+    }
+    
+    /**
+     * Default method - runs on automatic startup loading
+     */
+    public function index() {
+        // Initialize email system, configure SMTP, etc.
+        $this->initializeEmailSystem();
+        return "Email service initialized";
     }
     
     public function sendWelcomeEmail($user) {
@@ -645,38 +674,168 @@ class ServiceEmail extends Service {
     private function buildWelcomeMessage($user) {
         return $this->load->view('email/welcome.html', ['user' => $user]);
     }
-}
-```
-
-### Using Services
-
-Load and use services in controllers:
-
-```php
-public function register() {
-    if ($this->request->server('REQUEST_METHOD') === 'POST') {
-        // Create user
-        $userId = $this->load->model('user')->create($this->request->post);
-        $user = $this->load->model('user')->getById($userId);
-        
-        // Send welcome email via service
-        $this->load->service('email|sendWelcomeEmail', $user);
-        
-        $this->response->redirect('/welcome');
+    
+    private function initializeEmailSystem() {
+        // System initialization logic
     }
 }
 ```
 
-### Service Autoloading
+### 🚀 Startup Services (Pre-Controller)
 
-Configure services to be loaded automatically in `app/config.php`:
+Configure services to run automatically **before any controller loads** in `app/config.php`:
 
 ```php
 $config['services'] = [
-    'email',
-    'notification',
-    'payment'
+    // Security & Authentication (run first)
+    'security|validateIP',        // Check IP whitelist/blacklist
+    'auth|validateSession',       // Verify user sessions
+    'security|checkFirewall',     // Apply firewall rules
+    
+    // System Initialization  
+    'cache|initialize',           // Warm up cache system
+    'db|optimizeConnections',     // Prepare database connections
+    'log|rotate',                // Rotate log files if needed
+    
+    // Analytics & Monitoring
+    'analytics|trackVisit',       // Log visitor data
+    'performance|startTimer',     // Begin performance monitoring
+    
+    // Maintenance Tasks
+    'cleanup|expiredSessions',    // Clean expired sessions
+    'cleanup|tempFiles'          // Remove temporary files
 ];
+```
+
+**Execution Flow:**
+```php
+// 1. User visits: http://yoursite.com/?route=user/login
+
+// 2. Framework runs ALL startup services FIRST:
+foreach (CONFIG_SERVICES as $service) {
+    $load->service($service);  // Execute each service
+}
+
+// 3. THEN loads the requested controller:
+$load->runController('user');  // ControllerUser->index()
+```
+
+### 💼 On-Demand Services (Manual)
+
+Call services explicitly from controllers, models, or other services:
+
+```php
+class ControllerUser extends Controller {
+    
+    public function register() {
+        if ($this->request->server('REQUEST_METHOD') === 'POST') {
+            // Validate input using service
+            $validation = $this->load->service('validation|validateUser', $this->request->post);
+            
+            if (!$validation['valid']) {
+                $this->response->setOutput($validation['errors']);
+                return;
+            }
+            
+            // Create user
+            $userId = $this->load->model('user')->create($this->request->post);
+            $user = $this->load->model('user')->getById($userId);
+            
+            // Send welcome email via service
+            $emailResult = $this->load->service('email|sendWelcomeEmail', $user);
+            
+            // Log registration via service
+            $this->load->service('analytics|logEvent', 'user_registration', $userId);
+            
+            // Generate user profile via service
+            $profile = $this->load->service('profile|generateDefault', $user);
+            
+            $this->response->redirect('/welcome');
+        }
+    }
+    
+    public function login() {
+        // Authentication service with parameters
+        $authResult = $this->load->service('auth|authenticate', $username, $password);
+        
+        if ($authResult['success']) {
+            // Session management service
+            $this->load->service('session|createUserSession', $authResult['user']);
+            
+            // Security logging service
+            $this->load->service('security|logLogin', $authResult['user']['id'], 'success');
+        }
+    }
+}
+```
+
+### Service Syntax & Parameters
+
+Services support flexible method calling with parameters:
+
+```php
+// Default method (index)
+$result = $this->load->service('email');
+
+// Specific method with route|method syntax
+$result = $this->load->service('email|sendWelcome', $user);
+
+// Multiple parameters
+$result = $this->load->service('payment|charge', $amount, $card, $currency);
+
+// Variadic arguments (unlimited parameters)
+$result = $this->load->service('logger|log', $level, $message, $context, $extra);
+```
+
+### Service Security Features
+
+Services include built-in security protections:
+
+- **Route Sanitization:** Input is sanitized to prevent injection
+- **Magic Method Protection:** Prevents calls to `__construct`, `__destruct`, etc.
+- **Parameter Validation:** Uses Reflection to validate required parameters
+- **Directory Traversal Protection:** Ensures files are within service directory
+- **File Inclusion Caching:** Prevents multiple inclusions of the same file
+
+### Real-World Service Examples
+
+**Authentication Service:**
+```php
+// app/service/auth.php
+class ServiceAuth extends Service {
+    public function index() {
+        // Initialize auth system on startup
+        $this->setupSecurityHeaders();
+    }
+    
+    public function authenticate($username, $password) {
+        // Business logic for user authentication
+        return $this->validateCredentials($username, $password);
+    }
+}
+```
+
+**API Integration Service:**
+```php
+// app/service/external_api.php
+class ServiceExternalApi extends Service {
+    public function fetchUserData($apiKey, $userId) {
+        // External API integration logic
+        return $this->makeApiCall('/users/' . $userId, $apiKey);
+    }
+}
+```
+
+**Background Task Service:**
+```php
+// app/service/background.php  
+class ServiceBackground extends Service {
+    public function index() {
+        // Run background tasks on every request
+        $this->cleanupExpiredTokens();
+        $this->updateSystemStats();
+    }
+}
 ```
 
 ---

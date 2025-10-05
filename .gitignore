@@ -13,3 +13,5 @@ vendor/*
 .DS_Store
 .idea
 .vscode
+app/library/*
+!app/library/.gitkeep

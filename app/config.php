@@ -1,7 +1,19 @@
 <?php
 
-//Your app config come here
-$config['action_router'] = 'common/home'; // the name of controller file that will be shown when will not be selected a route.
-$config['action_error'] = 'error/not_found'; // the name of controller file that will be shown when will be accessed a wrong or a non-existent route.
+/**
+ * Application Configuration
+ */
+$config['action_router'] = 'home'; // controller file for default page.
+$config['action_error'] = 'not_found'; // controller file for handling errors.
 
-$config['default_language'] = 'ro-ro';
+$config['default_language'] = 'en-gb';
+
+/**
+ * Services
+ * Array of services to load at startup.
+ * Format: 'serviceName|methodName' or just 'serviceName' to call index method.
+ * These services will be loaded before any controller is executed.
+ */
+$config['services'] = [
+    //'something|index',    // Loads SomethingService->index() method
+];
