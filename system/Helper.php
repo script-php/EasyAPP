@@ -109,9 +109,23 @@ function defaultPage() {
  * @return mixed The value of the environment variable or the default value
  */
 function env($key, $default = null) {
+    // First check $_ENV (supports arrays and original types)
+    if (isset($_ENV[$key])) {
+        return $_ENV[$key];
+    }
+    
+    // Fallback to getenv() for backward compatibility
     $value = getenv($key);
     if ($value === false) {
         return $default;
+    }
+    
+    // Try to parse JSON (in case it was an array stored as JSON string)
+    if (is_string($value) && ($value[0] === '[' || $value[0] === '{')) {
+        $decoded = json_decode($value, true);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            return $decoded;
+        }
     }
     
     // Convert string booleans to actual booleans

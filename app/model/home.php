@@ -7,9 +7,9 @@
 * @link         https://script-php.ro
 */
 
-class ModelCommonHome extends Model {
+class ModelHome extends Model {
 
-    public $test = 'This is a test from ModelCommonHome'; // Example property
+    public $test = 'This is a test from ModelHome'; // Example property
 
     /**
      * Example method returning an array

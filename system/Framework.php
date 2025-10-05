@@ -8,17 +8,12 @@
 * @link         https://script-php.ro
 */
 
-// This file is part of the EasyAPP Framework.
-// EasyAPP Framework is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// EasyAPP Framework is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-// You should have received a copy of the GNU General Public License
-// along with EasyAPP Framework.  If not, see <http://www.gnu.org/licenses/>.
+/**
+ * This file initializes the EasyAPP Framework environment.
+ * It sets up error handling, autoloading, configuration, and bootstraps the application.
+ * It is included at the start of both web and CLI entry points.
+ * Do not modify this file directly. Instead, customize your application via the config files and environment variables.
+ */
 
 // Register custom autoloader for framework classes
 spl_autoload_register(function ($class) {
@@ -96,6 +91,8 @@ function initializeFramework() {
     $registry->set('version', CONFIG_VERSION);
     $registry->set('environment', CONFIG_ENVIRONMENT);
     $registry->set('debug', CONFIG_DEBUG);
+    $registry->set('default_language', defined('CONFIG_DEFAULT_LANGUAGE') ? CONFIG_DEFAULT_LANGUAGE : 'en-gb');
+    $registry->set('timezone', defined('CONFIG_TIMEZONE') ? CONFIG_TIMEZONE : 'UTC');
     $registry->set('appPath', __DIR__);
 
     $registry->set('proxy', new System\Framework\Proxy($registry));

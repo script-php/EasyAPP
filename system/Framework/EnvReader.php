@@ -121,7 +121,27 @@ class EnvReader {
         // Handle variable substitution
         $value = $this->substituteVariables($value);
 
-        $this->variables[$key] = $value;
+        // Handle array parsing
+        $parsedValue = $this->parseValue($value);
+
+        // Handle indexed array format (KEY_0, KEY_1, etc.)
+        if (preg_match('/^(.+)_(\d+)$/', $key, $matches)) {
+            $baseKey = $matches[1];
+            $index = (int)$matches[2];
+            
+            if (!isset($this->variables[$baseKey])) {
+                $this->variables[$baseKey] = [];
+            }
+            
+            if (!is_array($this->variables[$baseKey])) {
+                $this->variables[$baseKey] = [];
+            }
+            
+            $this->variables[$baseKey][$index] = $parsedValue;
+            ksort($this->variables[$baseKey]); // Keep array sorted by index
+        } else {
+            $this->variables[$key] = $parsedValue;
+        }
     }
 
     /**
@@ -169,13 +189,95 @@ class EnvReader {
     }
 
     /**
+     * Parse value and detect arrays/objects
+     * 
+     * @param string $value
+     * @return mixed
+     */
+    private function parseValue($value) {
+        // Handle empty values
+        if ($value === '') {
+            return '';
+        }
+
+        // Handle boolean values
+        $lowerValue = strtolower($value);
+        if ($lowerValue === 'true') {
+            return true;
+        }
+        if ($lowerValue === 'false') {
+            return false;
+        }
+        if ($lowerValue === 'null') {
+            return null;
+        }
+
+        // Handle numeric values
+        if (is_numeric($value)) {
+            return strpos($value, '.') !== false ? (float)$value : (int)$value;
+        }
+
+        // Try to parse as JSON (arrays and objects)
+        if ($this->looksLikeJson($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $decoded;
+            }
+        }
+
+        // Handle comma-separated values as arrays
+        if (strpos($value, ',') !== false) {
+            // Only treat as array if it has multiple values and no spaces around commas suggest it's intentional
+            $parts = array_map('trim', explode(',', $value));
+            if (count($parts) > 1) {
+                // Parse each part recursively (for nested types)
+                return array_map([$this, 'parseValue'], $parts);
+            }
+        }
+
+        // Return as string if no special parsing applies
+        return $value;
+    }
+
+    /**
+     * Check if value looks like JSON
+     * 
+     * @param string $value
+     * @return bool
+     */
+    private function looksLikeJson($value) {
+        $firstChar = $value[0] ?? '';
+        $lastChar = substr($value, -1);
+        
+        // Check for array format [...]
+        if ($firstChar === '[' && $lastChar === ']') {
+            return true;
+        }
+        
+        // Check for object format {...}
+        if ($firstChar === '{' && $lastChar === '}') {
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
      * Set environment variables using putenv() and $_ENV
      */
     private function setEnvironmentVariables() {
         foreach ($this->variables as $key => $value) {
-            putenv("$key=$value");
+            // Store the original value in $_ENV and $_SERVER (supports arrays)
             $_ENV[$key] = $value;
             $_SERVER[$key] = $value;
+            
+            // For putenv(), only set string values (arrays can't be environment variables)
+            if (is_scalar($value) || is_null($value)) {
+                putenv("$key=" . (string)$value);
+            } elseif (is_array($value)) {
+                // For arrays, store as JSON string in putenv for compatibility
+                putenv("$key=" . json_encode($value));
+            }
         }
     }
 
@@ -188,6 +290,62 @@ class EnvReader {
      */
     public function get($key, $default = null) {
         return $this->variables[$key] ?? $default;
+    }
+
+    /**
+     * Get an environment variable as an array
+     * 
+     * @param string $key
+     * @param array $default
+     * @return array
+     */
+    public function getArray($key, $default = []) {
+        $value = $this->get($key, $default);
+        
+        if (is_array($value)) {
+            return $value;
+        }
+        
+        // If it's a string, try to parse as comma-separated
+        if (is_string($value) && !empty($value)) {
+            return array_map('trim', explode(',', $value));
+        }
+        
+        return $default;
+    }
+
+    /**
+     * Get an environment variable as boolean
+     * 
+     * @param string $key
+     * @param bool $default
+     * @return bool
+     */
+    public function getBool($key, $default = false) {
+        $value = $this->get($key, $default);
+        
+        if (is_bool($value)) {
+            return $value;
+        }
+        
+        if (is_string($value)) {
+            $lowerValue = strtolower($value);
+            return in_array($lowerValue, ['true', '1', 'yes', 'on']);
+        }
+        
+        return (bool)$value;
+    }
+
+    /**
+     * Get an environment variable as integer
+     * 
+     * @param string $key
+     * @param int $default
+     * @return int
+     */
+    public function getInt($key, $default = 0) {
+        $value = $this->get($key, $default);
+        return is_numeric($value) ? (int)$value : $default;
     }
 
     /**

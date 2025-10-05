@@ -1200,6 +1200,10 @@ if ($time > 1.0) { // Log queries over 1 second
 
 ### Environment Configuration (.env)
 
+EasyAPP uses a sophisticated environment configuration system that supports various data types and array formats.
+
+#### Basic Configuration
+
 ```env
 # Application
 APP_ENV=dev
@@ -1231,6 +1235,231 @@ LOG_FILE=storage/logs/error.log
 # Performance
 COMPRESSION=6
 ```
+
+#### Advanced Array Support 🚀
+
+EasyAPP's EnvReader supports multiple array formats for complex configuration:
+
+**1. Comma-Separated Arrays (Most Common)**
+```env
+# Simple string arrays
+ALLOWED_HOSTS=localhost,127.0.0.1,::1
+EMAIL_RECIPIENTS=admin@example.com,user@example.com,support@example.com
+FEATURE_FLAGS=authentication,caching,logging,analytics
+
+# Mixed data types (auto-converted)
+MIXED_CONFIG=true,42,hello_world,3.14,null
+```
+
+**2. JSON Arrays & Objects**
+```env
+# JSON arrays
+SOCIAL_LINKS=["https://github.com/script-php","https://twitter.com","https://linkedin.com"]
+API_ENDPOINTS=["https://api1.example.com","https://api2.example.com"]
+
+# JSON objects (configuration maps)
+DATABASE_CONFIG={"timeout":30,"retries":3,"ssl_verify":true,"pool_size":10}
+MAIL_SETTINGS={"smtp_host":"smtp.gmail.com","port":587,"encryption":"tls"}
+
+# Nested structures
+APP_CONFIG={"database":{"host":"localhost","port":3306},"cache":{"driver":"redis","ttl":3600}}
+```
+
+**3. Indexed Arrays (Advanced)**
+```env
+# Auto-combined into arrays by base key
+DB_HOSTS_0=localhost
+DB_HOSTS_1=127.0.0.1
+DB_HOSTS_2=192.168.1.100
+
+# Results in: DB_HOSTS = ['localhost', '127.0.0.1', '192.168.1.100']
+
+API_KEYS_0=prod_key_12345
+API_KEYS_1=dev_key_67890
+API_KEYS_2=test_key_abcdef
+```
+
+**4. Boolean & Numeric Auto-Detection**
+```env
+# Booleans (case-insensitive)
+FEATURE_ENABLED=true
+DEBUG_MODE=false
+MAINTENANCE_MODE=TRUE
+
+# Numbers (integers and floats)
+MAX_CONNECTIONS=100
+TIMEOUT_SECONDS=30.5
+RETRY_COUNT=3
+
+# Mixed arrays with auto-typing
+SYSTEM_LIMITS=100,true,30.5,false,null
+```
+
+#### Using Environment Variables in Code
+
+**Basic Access:**
+```php
+// Simple values
+$debug = env('DEBUG');              // Returns: true (boolean)
+$appName = env('APP_NAME');         // Returns: "MyApp" (string)
+$maxConn = env('MAX_CONNECTIONS');  // Returns: 100 (integer)
+
+// With defaults
+$timeout = env('TIMEOUT', 30);      // Returns 30 if TIMEOUT not set
+```
+
+**Array Access:**
+```php
+// Arrays are returned as PHP arrays automatically
+$hosts = env('ALLOWED_HOSTS');
+// Returns: ['localhost', '127.0.0.1', '::1']
+
+$config = env('DATABASE_CONFIG');
+// Returns: ['timeout' => 30, 'retries' => 3, 'ssl_verify' => true]
+
+$socialLinks = env('SOCIAL_LINKS');
+// Returns: ['https://github.com/script-php', 'https://twitter.com', ...]
+```
+
+**Using EnvReader Methods:**
+```php
+// Type-safe access with EnvReader
+$envReader = new \System\Framework\EnvReader();
+$envReader->load();
+
+// Always returns an array (even if single value)
+$allowedHosts = $envReader->getArray('ALLOWED_HOSTS', []);
+
+// Always returns boolean
+$debugMode = $envReader->getBool('DEBUG', false);
+
+// Always returns integer
+$maxConnections = $envReader->getInt('MAX_CONNECTIONS', 100);
+
+// Check if variable exists
+if ($envReader->has('CUSTOM_CONFIG')) {
+    $customConfig = $envReader->get('CUSTOM_CONFIG');
+}
+
+// Get all loaded variables
+$allConfig = $envReader->all();
+```
+
+#### Configuration in Controllers & Services
+
+Access configuration throughout your application:
+
+```php
+class ControllerApi extends Controller {
+    public function index() {
+        // Use array configurations
+        $allowedHosts = env('ALLOWED_HOSTS');
+        $clientIp = $this->request->ip;
+        
+        if (!in_array($clientIp, $allowedHosts)) {
+            $this->response->setOutput('Access denied');
+            return;
+        }
+        
+        // Use object configurations
+        $dbConfig = env('DATABASE_CONFIG');
+        $timeout = $dbConfig['timeout'] ?? 30;
+        
+        // Process API request...
+    }
+}
+
+class ServiceEmail extends Service {
+    public function sendNotification($recipient, $message) {
+        $mailSettings = env('MAIL_SETTINGS');
+        
+        // Configure mail with environment settings
+        $this->mail->configure([
+            'host' => $mailSettings['smtp_host'],
+            'port' => $mailSettings['port'],
+            'encryption' => $mailSettings['encryption']
+        ]);
+        
+        return $this->mail->send($recipient, $message);
+    }
+}
+```
+
+#### Advanced Features
+
+**Variable Substitution:**
+```env
+# Reference other variables
+API_BASE_URL=https://api.example.com
+API_V1_URL=${API_BASE_URL}/v1
+API_V2_URL=${API_BASE_URL}/v2
+
+# Alternative syntax
+DATABASE_URL=$DB_HOST:$DB_PORT/$DB_NAME
+```
+
+**Comments & Documentation:**
+```env
+# User Authentication Configuration
+# Supported providers: local, oauth, ldap
+AUTH_PROVIDERS=local,oauth
+
+# API Rate Limiting (requests per minute)
+# Production: 1000, Development: 10000
+API_RATE_LIMIT=1000
+
+# Feature Flags - Boolean values
+# Enable new dashboard: true/false
+FEATURE_NEW_DASHBOARD=false
+```
+
+#### Best Practices
+
+1. **Use Descriptive Names:**
+   ```env
+   # Good
+   EMAIL_SMTP_SETTINGS={"host":"smtp.gmail.com","port":587}
+   
+   # Avoid
+   MAIL={"host":"smtp.gmail.com","port":587}
+   ```
+
+2. **Group Related Settings:**
+   ```env
+   # Database settings
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_NAME=myapp
+   
+   # Cache settings  
+   CACHE_ENABLED=true
+   CACHE_DRIVER=redis
+   CACHE_TTL=3600
+   ```
+
+3. **Provide Sensible Defaults:**
+   ```php
+   $cacheEnabled = env('CACHE_ENABLED', true);
+   $cacheTTL = env('CACHE_TTL', 3600);
+   ```
+
+4. **Use Arrays for Multiple Values:**
+   ```env
+   # Instead of separate variables
+   ALLOWED_HOSTS=localhost,127.0.0.1,::1
+   
+   # Rather than
+   ALLOWED_HOST_1=localhost
+   ALLOWED_HOST_2=127.0.0.1
+   ALLOWED_HOST_3=::1
+   ```
+
+#### Environment File Security
+
+- **Never commit `.env` files** to version control
+- Use `.env.example` as a template
+- Set proper file permissions (600 or 644)
+- Store sensitive data securely in production
 
 ### Application Configuration (app/config.php)
 

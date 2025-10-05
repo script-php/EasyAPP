@@ -1,8 +1,33 @@
 <?php
 date_default_timezone_set('Europe/Bucharest');
 
+/**
+ * Load environment variables from .env file
+ * This framework uses a custom EnvReader class to load environment variables.
+ * Make sure to create a .env file in the root directory of your project.
+ * The .env file should contain key-value pairs in the format KEY=VALUE.
+ * Example:
+ *   DEBUG=true
+ *   ENVIRONMENT=dev
+ * We can use arrays by separating values with commas.
+ * Example:
+ *   SERVICES=service1,service2,service3
+ *   or
+ *   SERVICES=["service1","service2","service3"]
+ *   or
+ *   SERVICES={"service1","service2","service3"}
+ * 
+ * 
+ * This config can be overridden in app/config.php file.
+ * For having different settings for app and framework.
+ */
+
 $config['debug'] = !empty(env('DEBUG')) ? env('DEBUG') : false; // show errors
-$config['environment'] = !empty(env('ENVIRONMENT')) ? env('ENVIRONMENT') : 'prod';
+$config['environment'] = !empty(env('ENVIRONMENT')) ? env('ENVIRONMENT') : 'prod'; // dev or prod
+$config['compression'] = isset($_SERVER['HTTP_ACCEPT_ENCODING']) && strpos($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip') !== false ? 1 : 0; // output compression
+
+$config['default_language'] = !empty(env('DEFAULT_LANGUAGE')) ? env('DEFAULT_LANGUAGE') : 'en-gb'; // default language code
+$config['timezone'] = !empty(env('TIMEZONE')) ? env('TIMEZONE') : 'UTC'; // default timezone
 
 $_SERVER['SERVER_NAME'] = !empty(env('DOMAIN')) ? env('DOMAIN') : 'localhost'; // TODO: change this with your domain
 
@@ -19,9 +44,4 @@ $config['db_port'] = !empty(env('DB_PORT')) ? env('DB_PORT') : '3306';
 $config['domain'] = !empty(env('DOMAIN')) ? env('DOMAIN') : 'localhost'; // used for login
 $config['session_name'] = !empty(env('SESSION_NAME')) ? env('SESSION_NAME') : 'session'; // used for login
 $config['session_time'] = !empty(env('SESSION_TIME')) ? env('SESSION_TIME') : 31556926;
-
-$config['servers_upload'] = [
-    'local' => [
-        'url' => !empty(env('SERVERS_UPLOAD_LOCAL_URL')) ? env('SERVERS_UPLOAD_LOCAL_URL') : 'http://'.$_SERVER['SERVER_NAME'].'/storage/uploads/',
-    ]
-];
+$config['services'] = !empty(env('SERVICES')) ? env('SERVICES') : []; // list of services to load (already parsed as array)

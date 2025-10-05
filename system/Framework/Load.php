@@ -374,16 +374,48 @@ class Load {
 
 
     /**
-    * Load a language file by its route
-    * @param string $route The route of the language file, e.g., 'language_name'
-    * @return array The loaded language data
+    * Load a language file by its route with event system integration
+    * @param string $route The route of the language file, e.g., 'common' or 'user/profile'
+    * @return array The loaded language data array
+    * @throws \InvalidArgumentException If the route is invalid
+    * @throws \Exception If language loading fails
     */
     public function language(string $route) {
-		$route = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
-		$trigger = $route;
-		$this->event->trigger('before:language/' . $trigger, [&$route]);
-		$language =$this->registry->get('language')->load($route);
-		$this->event->trigger('after:language/' . $trigger, [&$route, &$language]);
+        // Input validation
+        if (empty($route)) {
+            throw new \InvalidArgumentException('Language route must be a non-empty string');
+        }
+        
+        // Sanitize route using existing pattern
+		$sanitizedRoute = preg_replace('/[^a-zA-Z0-9_\/]/', '', (string)$route);
+        
+        // Validate sanitized route is not empty after sanitization
+        if (empty($sanitizedRoute)) {
+            throw new \InvalidArgumentException('Language route contains only invalid characters');
+        }
+        
+		$trigger = $sanitizedRoute;
+        
+        // Trigger before:language event
+		$this->event->trigger('before:language/' . $trigger, [&$sanitizedRoute]);
+        
+        try {
+            // Delegate to Language class for actual file loading
+            $language = $this->registry->get('language')->load($sanitizedRoute);
+            
+            // Validate loaded language data
+            if (!is_array($language)) {
+                $language = [];
+            }
+            
+        } catch (\Exception $e) {
+            // Handle language loading errors gracefully
+            throw new \Exception("Failed to load language file '{$sanitizedRoute}': " . $e->getMessage());
+        }
+        
+        // Trigger after:language event
+		$this->event->trigger('after:language/' . $trigger, [&$sanitizedRoute, &$language]);
+        
 		return $language;
 	}
 

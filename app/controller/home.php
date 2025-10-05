@@ -19,7 +19,7 @@ class ControllerHome extends Controller {
 		$data['subtitle'] = 'A Modern PHP Framework for Rapid Development'; // Page subtitle
 		$data['content'] = $this->load->view('home/index.html'); // Load view
 
-		$model = $this->load->model('common/home'); // Load model
+		$model = $this->load->model('home'); // Load model
 		// Use model data
 		$data['test'] = $model->test;
 		
@@ -63,6 +63,21 @@ class ControllerHome extends Controller {
 		// pre($data['message']);
 
 		$this->response->setOutput($this->load->view('test/view_test.html', $data));
+	}
+
+
+	function testLanguage() {
+		$data = [];
+		$data['title'] = 'Language Test';
+		
+		// Load language file
+		$this->load->language('home');
+		$data['text_title'] = $this->language->get('title');
+		$data['text_text'] = $this->language->get('text');
+
+		pre($data['text_title']);
+		pre($data['text_text']);
+
 	}
 
 }
