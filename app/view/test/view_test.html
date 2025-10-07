@@ -1,0 +1,13 @@
+<!-- Simple test view for validating improved view method -->
+<div class="test-view">
+    <h1><?php echo isset($title) ? htmlspecialchars($title) : 'Default Title'; ?></h1>
+    <p>Message: <?php echo isset($message) ? htmlspecialchars($message) : 'No message'; ?></p>
+    <p>Timestamp: <?php echo isset($timestamp) ? date('Y-m-d H:i:s', $timestamp) : date('Y-m-d H:i:s'); ?></p>
+    <?php if (isset($items) && is_array($items)): ?>
+        <ul>
+        <?php foreach ($items as $item): ?>
+            <li><?php echo htmlspecialchars($item); ?></li>
+        <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</div>
