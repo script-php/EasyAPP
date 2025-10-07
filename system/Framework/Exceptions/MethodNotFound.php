@@ -2,4 +2,7 @@
 
 namespace System\Framework\Exceptions;
 
-class MethodNotFound extends \Exception {}
+class MethodNotFound extends FrameworkException {
+    protected $statusCode = 405;
+    protected $userMessage = 'The requested method is not allowed';
+}
