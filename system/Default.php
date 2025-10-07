@@ -43,9 +43,11 @@ $config['dir_storage'] = 'storage/';
 $config['dir_assets'] = 'assets/';
 
 //output compression
-$config['compression'] = 0;
+$config['compression'] = 0; // 0 = no compression, 1-9 = gzip compression levels
 
 $config['debug'] = false;
 $config['dev_db_schema'] = false;
+
+$config['csrf_protection'] = false; // Enable CSRF protection (true/false)
 
 $config['default_language'] = 'en-gb';

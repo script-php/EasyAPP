@@ -141,3 +141,63 @@ function env($key, $default = null) {
     
     return $value;
 }
+
+/**
+ * Generate CSRF token field for forms
+ * @param string $action Optional action for token scoping
+ * @return string HTML input field for CSRF protection
+ */
+function csrf_field($action = 'default') {
+    global $registry;
+    
+    if (!defined('CONFIG_CSRF_PROTECTION') || !CONFIG_CSRF_PROTECTION) {
+        return '';
+    }
+    
+    if (isset($registry) && $registry->has('csrf')) {
+        $csrf = $registry->get('csrf');
+        return $csrf->getTokenField($action);
+    }
+    
+    return '';
+}
+
+/**
+ * Generate CSRF token value for AJAX requests
+ * @param string $action Optional action for token scoping
+ * @return string CSRF token value
+ */
+function csrf_token($action = 'default') {
+    global $registry;
+    
+    if (!defined('CONFIG_CSRF_PROTECTION') || !CONFIG_CSRF_PROTECTION) {
+        return '';
+    }
+    
+    if (isset($registry) && $registry->has('csrf')) {
+        $csrf = $registry->get('csrf');
+        return $csrf->generateToken($action);
+    }
+    
+    return '';
+}
+
+/**
+ * Validate CSRF token from current request
+ * @param string $action Optional action to validate against
+ * @return bool True if CSRF validation passes
+ */
+function csrf_check($action = 'default') {
+    global $registry;
+    
+    if (!defined('CONFIG_CSRF_PROTECTION') || !CONFIG_CSRF_PROTECTION) {
+        return true;
+    }
+    
+    if (isset($registry) && $registry->has('csrf')) {
+        $csrf = $registry->get('csrf');
+        return $csrf->validateRequest($action);
+    }
+    
+    return false;
+}

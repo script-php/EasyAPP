@@ -98,24 +98,93 @@ class Request {
 		return $return[$x];
 	}
 
-    public function csrf($method='get') {
+    /**
+     * Validate CSRF token from request - Enhanced version
+     * @param string $action Optional action to validate against
+     * @param string $method Optional HTTP method to check (deprecated - uses proper token validation now)
+     * @return bool True if CSRF validation passes
+     */
+    public function csrf($action = 'default', $method = null) {
+        // Check if CSRF protection is enabled
+        if (!defined('CONFIG_CSRF_PROTECTION') || !CONFIG_CSRF_PROTECTION) {
+            return true; // Skip validation if disabled
+        }
+        
+        // Use new CSRF system if available
+        if ($this->registry->has('csrf')) {
+            $csrf = $this->registry->get('csrf');
+            return $csrf->validateRequest($action);
+        }
+        
+        // If CSRF is enabled but no CSRF system available, validation should FAIL for security
+        // This prevents falling back to weaker validation when proper CSRF should be used
+        return false;
+    }
+    
+    /**
+     * Legacy CSRF validation (origin-based) - kept for backward compatibility
+     * @param string $method HTTP method to check
+     * @return bool True if origin validation passes
+     */
+    private function csrfLegacy($method = 'post') {
+        if (!$this->registry->has('util')) {
+            return false;
+        }
+        
         $util = $this->registry->get('util');
         $request_method = strtolower($this->server['REQUEST_METHOD']);
         $method = strtolower($method);
-		if ($request_method===$method) {
-            if($method == 'get') {
+        
+		if ($request_method === $method) {
+            if ($method == 'get') {
                 $origin = !empty($this->server['HTTP_REFERER']) ? $this->server['HTTP_REFERER'] : NULL;
-            }
-            else if($method == 'post') {
+            } else if ($method == 'post') {
                 $origin = !empty($this->server['HTTP_ORIGIN']) ? $this->server['HTTP_ORIGIN'] : NULL;
             }
+            
 			$hostname = !is_null($this->server['HTTP_HOST']) ? $this->server['HTTP_HOST'] : NULL;
-			if($origin != NULL && $util->contains($origin,$hostname)) {
+			if ($origin != NULL && $util->contains($origin, $hostname)) {
 				return true;
 			}
 		}
 		return false;
 	}
+    
+    /**
+     * Generate CSRF token for forms
+     * @param string $action Optional action for token scoping
+     * @return string CSRF token or empty string if protection disabled
+     */
+    public function generateCsrfToken($action = 'default') {
+        if (!defined('CONFIG_CSRF_PROTECTION') || !CONFIG_CSRF_PROTECTION) {
+            return '';
+        }
+        
+        if ($this->registry->has('csrf')) {
+            $csrf = $this->registry->get('csrf');
+            return $csrf->generateToken($action);
+        }
+        
+        return '';
+    }
+    
+    /**
+     * Get CSRF token HTML field for forms
+     * @param string $action Optional action for token scoping
+     * @return string HTML input field or empty string if protection disabled
+     */
+    public function getCsrfField($action = 'default') {
+        if (!defined('CONFIG_CSRF_PROTECTION') || !CONFIG_CSRF_PROTECTION) {
+            return '';
+        }
+        
+        if ($this->registry->has('csrf')) {
+            $csrf = $this->registry->get('csrf');
+            return $csrf->getTokenField($action);
+        }
+        
+        return '';
+    }
 
 	public function close() {
 		$request = $this->registry->get('request');

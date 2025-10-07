@@ -54,6 +54,26 @@ $config['dir_framework'] = $config['dir_system'] . $config['dir_framework'];
 $config['dir_library'] = $config['dir_app'] . $config['dir_library'];
 $config['dir_assets'] = PATH . $config['dir_assets'];
 $config['dir_storage'] = PATH . $config['dir_storage'];
+$config['compression'] = !empty(env('COMPRESSION')) ? env('COMPRESSION') : 0; // 0 = no compression, 1-9 = gzip compression levels
+$config['timezone'] = !empty(env('TIMEZONE')) ? env('TIMEZONE') : 'UTC'; // default timezone
+$config['debug'] = !empty(env('DEBUG')) ? env('DEBUG') : false; // show errors
+$config['environment'] = !empty(env('ENVIRONMENT')) ? env('ENVIRONMENT') : 'prod'; // dev or prod
+$config['default_language'] = !empty(env('DEFAULT_LANGUAGE')) ? env('DEFAULT_LANGUAGE') : 'en-gb'; // default language code
+
+$config['db_driver'] = !empty(env('DB_DRIVER')) ? env('DB_DRIVER') : 'mysql'; // mysql or sqlsrv
+$config['db_hostname'] = !empty(env('DB_HOSTNAME')) ? env('DB_HOSTNAME') : 'localhost';
+$config['db_database'] = !empty(env('DB_DATABASE')) ? env('DB_DATABASE') : 'test';
+$config['db_username'] = !empty(env('DB_USERNAME')) ? env('DB_USERNAME') : 'root';
+$config['db_password'] = !empty(env('DB_PASSWORD')) ? env('DB_PASSWORD') : '';
+$config['db_port'] = !empty(env('DB_PORT')) ? env('DB_PORT') : '3306';
+
+// Security settings
+$csrf_env = env('CSRF_PROTECTION');
+if ($csrf_env !== null) {
+    $config['csrf_protection'] = filter_var($csrf_env, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? (strtolower($csrf_env) === 'true');
+} else {
+    $config['csrf_protection'] = false; // Default disabled
+}
 
 if (is_file(PATH . 'config.php')) {
     include 'config.php';   
@@ -100,12 +120,23 @@ function initializeFramework() {
     $loader = new System\Framework\Load($registry);
     $registry->set('load', $loader);
 
+    // Initialize CSRF protection if enabled
+    if (defined('CONFIG_CSRF_PROTECTION') && CONFIG_CSRF_PROTECTION) {
+        $csrf = new System\Framework\Csrf($registry);
+        $registry->set('csrf', $csrf);
+    }
+
     return $registry;
 }
 
 // Bootstrap web application (only called from index.php)
 function bootstrap() {
     global $config;
+    
+    // Start output buffering for framework-level compression
+    if (CONFIG_COMPRESSION > 0) {
+        ob_start();
+    }
     
     try {
         $registry = initializeFramework();
@@ -175,7 +206,39 @@ function bootstrap() {
                 defaultPage(); // run default page
             }
         }
-        $registry->get('response')->output(); // send output to browser
+        
+        // Handle framework-level compression
+        $response = $registry->get('response');
+        
+        if (CONFIG_COMPRESSION > 0) {
+            // Get all captured output (echo, pre, runController, etc.)
+            $directOutput = ob_get_clean();
+            
+            // Get response system output (setOutput content)
+            $responseOutput = $response->getOutput();
+            
+            // Combine all output streams
+            $allOutput = $directOutput;
+            if ($responseOutput) {
+                $allOutput .= $responseOutput;
+            }
+            
+            // Compress the complete output
+            $compressedOutput = $response->compressOutput($allOutput, CONFIG_COMPRESSION);
+            
+            // Send all headers (including Content-Encoding from compression)
+            if (!headers_sent()) {
+                foreach ($response->getHeaders() as $header) {
+                    header($header, true);
+                }
+            }
+            
+            // Send the compressed content
+            echo $compressedOutput;
+        } else {
+            // No compression - send output normally
+            $response->output();
+        }
 
     } 
     catch (\Exception $e) {

@@ -15,7 +15,7 @@ class Config {
     private $loaded = [];
     
     public function __construct() {
-        $this->loadDefaults();
+        //$this->loadDefaults();
     }
     
     public static function getInstance() {
@@ -79,7 +79,7 @@ class Config {
             // Debug & Security
             'debug' => env('DEBUG', false),
             'dev_db_schema' => env('DEV_DB_SCHEMA', false),
-            'csrf_protection' => env('CSRF_PROTECTION', true),
+            'csrf_protection' => env('CSRF_PROTECTION', false),
             'input_sanitization' => env('INPUT_SANITIZATION', true),
             
             // Localization
