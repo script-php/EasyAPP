@@ -146,10 +146,10 @@ APP_URL=http://localhost
 
 # Database
 DB_DRIVER=mysql
-DB_HOST=localhost
-DB_NAME=easyapp
-DB_USER=root
-DB_PASS=
+DB_HOSTNAME=localhost
+DB_DATABASE=easyapp
+DB_USERNAME=root
+DB_PASSWORD=
 DB_PORT=3306
 
 # Cache

@@ -2,188 +2,421 @@
 
 /**
 * @package      EasyAPP Framework
-* @version      v1.5.1
+* @version      v1.7.0
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
 */
 
-// This file is part of the EasyAPP Framework.
-// EasyAPP Framework is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// EasyAPP Framework is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-// You should have received a copy of the GNU General Public License
-// along with EasyAPP Framework.  If not, see <http://www.gnu.org/licenses/>.
-
-use System\Framework\Exceptions;
+/**
+ * This file initializes the EasyAPP Framework environment.
+ * It sets up error handling, autoloading, configuration, and bootstraps the application.
+ * It is included at the start of both web and CLI entry points.
+ * Do not modify this file directly. Instead, customize your application via the config files and environment variables.
+ */
 
 session_start();
 
-// config
-include PATH . 'system/Default.php'; // Framework default config.
-include PATH . 'system/Helper.php'; // Helper functions - some functions that will help you to develope your app fast.
-
-if(defined('DIR_APP')) {
-    $config['dir_app'] = DIR_APP;
+/**
+ * Enable Composer autoloader for framework classes and third-party packages
+ * Make sure to run `composer install` to generate the autoload files.
+ */
+if (is_file(PATH . 'system/Vendor/autoload.php')) {
+    require 'system/Vendor/autoload.php';   
 }
 
-$config['dir_controller'] = $config['dir_app'] . $config['dir_controller'];
-$config['dir_model'] = $config['dir_app'] . $config['dir_model'];
-$config['dir_language'] = $config['dir_app'] . $config['dir_language'];
-$config['dir_view'] = $config['dir_app'] . $config['dir_view'];
-$config['dir_service'] = $config['dir_app'] . $config['dir_service'];
+/**
+ * Helper functions - some functions that will help you to develope your app fast.
+ */
+include PATH . 'system/Helper.php';
 
-$config['dir_framework'] = $config['dir_system'] . $config['dir_framework'];
-$config['dir_library'] = $config['dir_system'] . $config['dir_library'];
-$config['dir_assets'] = PATH . $config['dir_assets'];
-$config['dir_storage'] = PATH . $config['dir_storage'];
+/**
+ * Environment variables - load from .env file if it exists
+ */
+if (is_file(PATH . '.env')) {
+    $env = new System\Framework\EnvReader('.env');
+    $env->load();
+}
 
+/**
+ * config - Initialize modern configuration system
+ */
+$configManager = System\Framework\Config::getInstance();
+
+/**
+ * Load additional config files
+ */
 if (is_file(PATH . 'config.php')) {
-    include 'config.php';   
+    $configManager->load(PATH . 'config.php');   
 }
-if(is_file($config['dir_app'] . 'config.php')) {
-    include $config['dir_app'] . 'config.php'; // app config
-}
-if(is_file($config['dir_app'] . 'helper.php')) {
-    include $config['dir_app'] . 'helper.php'; // custom functions
+if (is_file(PATH . 'app/config.php')) {
+    $configManager->load(PATH . 'app/config.php'); // app config
 }
 
-foreach($config as $key => $value) {
-    define("CONFIG_" . strtoupper($key), $value);
-}
+/**
+ * Get final configuration array for backward compatibility
+ */
+$config = $configManager->all();
 
-if($config['debug']) {
+/** 
+ * Enable error display in debug mode 
+ */
+if ($config['debug']) {
     ini_set('display_errors', 1);
     ini_set('display_startup_errors', 1);
     error_reporting(E_ALL);
 }
 
+/**
+ * Apply directory overrides if needed
+ */
+if (defined('DIR_APP')) {
+    $config['dir_app'] = DIR_APP;
+    $configManager->set('dir_app', DIR_APP);
+}
+
+/**
+ * System directories
+ * These are the full paths to important directories used by the framework.
+ * Adjust these paths in config.php if your directory structure is different.
+ */
+$config['dir_framework'] = $config['dir_system'] . $config['dir_framework'];
+$config['dir_assets'] = PATH . $config['dir_assets'];
+$config['dir_storage'] = PATH . $config['dir_storage'];
+
+
+/**
+ * Framework directories
+ * These are the full paths to important directories used by the framework.
+ * Adjust these paths in config.php if your directory structure is different.
+ */
+$config['dir_controller'] = $config['dir_app'] . $config['dir_controller'];
+$config['dir_model'] = $config['dir_app'] . $config['dir_model'];
+$config['dir_language'] = $config['dir_app'] . $config['dir_language'];
+$config['dir_view'] = $config['dir_app'] . $config['dir_view'];
+$config['dir_service'] = $config['dir_app'] . $config['dir_service'];
+$config['dir_library'] = $config['dir_app'] . $config['dir_library'];
+
+/**
+ * Include core framework classes
+ */
 include $config['dir_system'] . 'Controller.php';
 include $config['dir_system'] . 'Model.php';
 include $config['dir_system'] . 'Library.php';
 include $config['dir_system'] . 'Service.php';
 
-if (is_file(PATH . 'system/Vendor/autoload.php')) {
-    require 'system/Vendor/autoload.php';   
-}
-else {
-    include rtrim($config['dir_system'], '\\/ ') . DIRECTORY_SEPARATOR . 'Autoloader.php';
-
-    $loader = new System\Autoloader();
-    
-    $loader->load([
-        'namespace' => 'System\Framework',
-        'directory' => CONFIG_DIR_FRAMEWORK,
-        'recursive' => true
-    ]);
-    
-    $loader->load([
-        'namespace' => 'System\Library',
-        'directory' => $config['dir_library'],
-        'recursive' => true
-    ]);
+/**
+ * Load app helper functions if they exist
+ */
+if (is_file($config['dir_app'] . 'helper.php')) {
+    include $config['dir_app'] . 'helper.php'; // custom functions
 }
 
+/**
+ * Set the default timezone for the application
+ * This ensures that all date/time functions use the correct timezone.
+ */
+date_default_timezone_set($config['timezone']);
+
+/**
+ * Create configuration constants for backward compatibility
+ * These constants are prefixed with CONFIG_ to avoid naming conflicts.
+ */
+$configManager->createConstants($config);
+
+/**
+ * Initialize the framework registry (used by both CLI and web)
+ * The registry stores global objects and configuration accessible throughout the application.
+ */
 $registry = new System\Framework\Registry();
-
-$registry->set('appName', 'Framework');
-$registry->set('version', '1.0.0');
-$registry->set('environment', 'development');
-$registry->set('debug', true);
+$registry->set('appName', $config['platform']);
+$registry->set('version', $config['version']);
+$registry->set('app_env', $config['app_env']);
+$registry->set('debug', $config['debug']);
+$registry->set('default_language', $config['default_language']);
+$registry->set('timezone', $config['timezone']);
 $registry->set('appPath', __DIR__);
-
+$registry->set('config', $config);
 $registry->set('proxy', new System\Framework\Proxy($registry));
+$registry->set('load', new System\Framework\Load($registry));
 
-$loader = new System\Framework\Load($registry);
+/**
+ * Initialize CSRF protection if enabled
+ * Make sure to include CSRF tokens in your forms and validate them on submission.
+ * Example form input:
+ * <input type="hidden" name="csrf_token" value="<?php echo $csrf->getToken(); ?>">
+ */
+if ($config['csrf_protection']) {
+    $csrf = new System\Framework\Csrf($registry);
+    $registry->set('csrf', $csrf);
+}
 
-$registry->set('load', $loader);
-
-$request = $registry->get('request');
-
-$errorConfig = [
-    RouteNotFound::class => [404, "The requested page was not found."],
-    MethodNotFound::class => [405, "The requested method is not allowed."],
-    MagicMethodCall::class => [500, "An internal server error occurred."],
-    ControllerNotFound::class => [404, "The requested page was not found."],
-    ModelNotFound::class => [500, "An internal server error occurred."],
-    LibraryNotFound::class => [500, "An internal server error occurred."],
-    ViewNotFound::class => [500, "An internal server error occurred."],
-    ServiceNotFound::class => [500, "An internal server error occurred."],
+/**
+ * Initialize the framework for web requests
+ * If CLI_MODE is defined, we are in CLI context (easyphp).
+ * This prevents conflicts between web and CLI initializations.
+ */
+if(defined('CLI_MODE') !== true) {
     
-    DatabaseConfiguration::class => [500, "Database configuration error."],
-    PDOExtensionNotFound::class => [500, "PDO extension not found."],
-    DatabaseConnection::class => [500, "Database connection error."],
-    DatabaseQuery::class => [500, "Database query error."],
-
-    \Exception::class => [500, "An internal server error occurred."],
-];
-
-try {
-    if (!empty(CONFIG_SERVICES)) {
-        foreach (CONFIG_SERVICES as $action) {
-            ($registry->get('load'))->service($action);
-        }
+    /**
+     * Start output buffering for framework-level compression
+     * This captures all output (echo, print, etc.) for compression before sending to the client.
+     * Make sure to call ob_end_flush() or ob_get_clean() later to send the output.
+     */
+    if ($config['compression'] > 0) {
+        ob_start();
     }
 
-    if(isset($request->get['rewrite'])) {
+    try {
+        /**
+         * Map specific exceptions to HTTP status codes and messages.
+         * This allows for consistent error handling and user-friendly messages.
+         */
+        $errorConfig = [
+            System\Framework\Exceptions\RouteNotFound::class => [404, "The requested page was not found."],
+            System\Framework\Exceptions\MethodNotFound::class => [405, "The requested method is not allowed."],
+            System\Framework\Exceptions\MagicMethodCall::class => [500, "An internal server error occurred."],
+            System\Framework\Exceptions\ControllerNotFound::class => [404, "The requested page was not found."],
+            System\Framework\Exceptions\ModelNotFound::class => [500, "An internal server error occurred."],
+            System\Framework\Exceptions\LibraryNotFound::class => [500, "An internal server error occurred."],
+            System\Framework\Exceptions\ViewNotFound::class => [500, "An internal server error occurred."],
+            System\Framework\Exceptions\ServiceNotFound::class => [500, "An internal server error occurred."],
+            
+            System\Framework\Exceptions\DatabaseConfiguration::class => [500, "Database configuration error."],
+            System\Framework\Exceptions\PDOExtensionNotFound::class => [500, "PDO extension not found."],
+            System\Framework\Exceptions\DatabaseConnection::class => [500, "Database connection error."],
+            System\Framework\Exceptions\DatabaseQuery::class => [500, "Database query error."]
+        ];
+        
+        /**
+         * Add catch-all for unexpected exceptions
+         */
+        $errorConfig[\Exception::class] = [500, "An internal server error occurred."];
 
+        /**
+         * Initialize and configure the router
+         * The router handles incoming HTTP requests and maps them to the appropriate controllers/actions.
+         * It supports custom routing rules defined in app/router.php.
+         */
         $registry->set('router', new System\Framework\Router($registry));
-
         $router = $registry->get('router');
-
         if(is_file($config['dir_app'] . 'router.php')) {
             include $config['dir_app'] . 'router.php'; // app config
         }
 
-        if(is_file(PATH . 'router.php')) {
-            include 'router.php'; // app config
+        /**
+         * Only initialize database if credentials are provided
+         * This prevents unnecessary database connections for apps that don't use a database.
+         * The database connection is established using the configuration parameters defined in config.php or environment variables.
+         */
+        if (!empty($config['db_hostname']) && !empty($config['db_database']) && !empty($config['db_username'])) {
+            $registry->set('db', new System\Framework\Db($config['db_driver'], $config['db_hostname'], $config['db_database'], $config['db_username'], $config['db_password'], $config['db_port'], '', ''));
         }
 
-        $router->dispatch();
-    }
-    else {
-        // Determine and execute route
-        if (empty($request->get['route'])) {
-            $route = CONFIG_ACTION_ROUTER;
-        } elseif (isset($request->get['route']) && !empty($request->get['route'])) {
-            $route = $request->get['route'];
+        /**
+         * Load configured services
+         * Services are reusable components that provide specific functionality (e.g. authentication, caching, etc.).
+         * They are defined in the config 'services' array and loaded automatically during initialization.
+         * Example config:
+         * 'services' => ['analytics|init', 'notifications|start']
+         * This will load the 'analytics' service and call its 'init' method, then load the 'notifications' service and call its 'start' method.
+         * Services are loaded in a try-catch block to prevent a single service failure from breaking the entire application.
+         */
+        if (!empty($config['services'])) {
+            foreach ($config['services'] as $action) {
+                try {
+                    ($registry->get('load'))->service($action);
+                } catch (\Exception $e) {
+                    error_log("Failed to load service: " . $action); // Log service loading failure but don't stop execution
+                }
+            }
+        }
+
+        /**
+         * Get the current request object
+         * This object contains information about the current HTTP request.
+         * It is used to retrieve request parameters, headers, and other relevant data.
+         */
+        $request = $registry->get('request');
+
+        /**
+         * Determine and dispatch the appropriate route
+         * If a custom 'rewrite' parameter is present, use the custom router.
+         * If no 'rewrite' parameter but a 'route' parameter exists, use default routing
+         */
+        if(isset($request->get['rewrite']) || (!isset($request->get['rewrite']) && !isset($request->get['route']))) {
+
+            /**
+             * Use custom router if 'rewrite' parameter is set or no 'route' parameter
+             */
+            $router->dispatch();
+
+        }
+        else {
+            /**
+             * If no custom router, fall back to default routing behavior
+             */
+            if (isset($request->get['route']) && !isset($request->get['rewrite'])) {
+
+                $route = $request->get('route');
+                if(empty($config['app_home']) && empty($config['app_error'])) {
+                    if(!empty($route)) {
+
+                        /**
+                         * Run the requested page
+                         */
+                        $registry->get('load')->runController($route);
+
+                    }
+                    else {
+
+                        /**
+                         * Run the default page
+                         */
+                        defaultPage();
+                        exit(); // just to be sure
+
+                    }
+                }
+                else {
+
+                    /**
+                     * Run the requested page or default page
+                     */
+                    $route = $request->get('route');
+                    $route = !empty($route) ? $route : $config['app_home'];
+                    /**
+                     * Run the requested page or default page
+                     */
+                    $registry->get('load')->runController($route);
+
+                }
+
+            }
+            else {
+                /**
+                 * Run the default page
+                 */
+                defaultPage();
+            }
+        }
+
+        /**
+         * Handle framework-level compression
+         */
+        $response = $registry->get('response');
+        
+        /**
+         * If compression is enabled, capture all output (echo, pre, etc.) and compress it before sending to the client.
+         * This ensures that all output, regardless of how it was generated, is compressed consistently.
+         */
+        if ($config['compression'] > 0) {
+
+            /**
+             * Get all captured output (echo, pre, runController, etc.)
+             */
+            $directOutput = ob_get_clean();
+
+            /**
+             * Get response system output (setOutput content)
+             */
+            $responseOutput = $response->getOutput();
+
+            /**
+             * Combine all output streams
+             */
+            $allOutput = $directOutput;
+            if ($responseOutput) {
+                $allOutput .= $responseOutput;
+            }
+            
+            /**
+             * Compress the complete output
+             */
+            $compressedOutput = $response->compressOutput($allOutput, $config['compression']);
+            
+            /**
+             * Send all headers (including Content-Encoding from compression)
+             */
+            if (!headers_sent()) {
+                foreach ($response->getHeaders() as $header) {
+                    header($header, true);
+                }
+            }
+            
+            /**
+             * Send the compressed content
+             */
+            echo $compressedOutput;
+
         } else {
-            $route = CONFIG_ACTION_ERROR;
+            /**
+             * If no compression, just flush any output buffer that may exist.
+             * This ensures that any output captured by ob_start() at the beginning is sent to the client.
+             */
+            ob_end_flush();
+            // No compression - send output normally
+            $response->output();
         }
 
-        $registry->get('load')->runController($route);
-    }
-    
-    $registry->get('response')->output();
-} 
-catch (\Exception $e) {
+    } 
+    catch (\Exception $e) {
 
-    $exceptionClass = get_class($e);
-    
-    if (isset($errorConfig[$exceptionClass])) {
-        list($statusCode, $errorMessage) = $errorConfig[$exceptionClass];
-    } else {
-        $statusCode = 500;
-        $errorMessage = "An unexpected error occurred.";
-    }
-    
-    // Set HTTP status code
-    http_response_code($statusCode);
-    
-    // Log error
-    $debug = new System\Framework\DebugError();
-    $debug->log($e);
-    
-    // Display error
-    if (defined('CONFIG_DEBUG') && CONFIG_DEBUG) {
-        $debug->display($e);
-    } else {
-        displayErrorPage($statusCode, $errorMessage);
+        /**
+         * Handle exceptions and display user-friendly error pages
+         * Uses the $errorConfig mapping to determine the appropriate HTTP status code and message.
+         * In debug mode, a detailed error page with stack trace is shown.
+         * In production mode, a generic error page is displayed to avoid exposing sensitive information.
+         */
+        $exceptionClass = get_class($e);
+        
+        /**
+         * Determine the appropriate status code and message based on the exception class.
+         * If the exception class is not mapped, default to 500 Internal Server Error.
+         */
+        if (isset($errorConfig[$exceptionClass])) {
+            list($statusCode, $errorMessage) = $errorConfig[$exceptionClass];
+        } else {
+            $statusCode = 500;
+            $errorMessage = "An unexpected error occurred.";
+        }
+
+        /**
+         * Set HTTP status code
+         */
+        http_response_code($statusCode);
+
+        /**
+         * Log error
+         * The error is logged using the DebugError class to ensure consistent logging format.
+         * This helps with debugging and monitoring application issues.
+         */
+        $debug = new System\Framework\DebugError();
+        $debug->log($e);
+
+        /**
+         * Display error
+         * Uses the $errorConfig mapping to determine the appropriate HTTP status code and message.
+         * In debug mode, a detailed error page with stack trace is shown.
+         * In production mode, a generic error page is displayed to avoid exposing sensitive information.
+         */
+        if (defined('CONFIG_DEBUG') && CONFIG_DEBUG) {
+            $debug->display($e);
+        } else {
+            displayErrorPage($statusCode, $errorMessage);
+        }
+
     }
 
+}
+
+/**
+ * Initialize the framework for CLI requests
+ * If CLI_MODE is defined, we are in CLI context (easyphp).
+ * This prevents conflicts between web and CLI initializations.
+ */
+if(defined('CLI_MODE')) {
+    include PATH . 'system/Cli.php';
+
+   
 }

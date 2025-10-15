@@ -46,8 +46,6 @@ EasyAPP follows the **Model-View-Controller (MVC)** architectural pattern with a
 | **Views** | Presentation layer templates | `app/view/` |
 | **Services** | Execution-focused business logic (startup + on-demand) | `app/service/` |
 | **Languages** | Internationalization files | `app/language/` |
-| **TestRunner** | Automated test execution framework | `system/TestRunner.php` |
-| **TestBootstrap** | Test environment setup and helpers | `system/TestBootstrap.php` |
 
 ---
 
@@ -350,10 +348,10 @@ Set up your database in `.env`:
 
 ```env
 DB_DRIVER=mysql
-DB_HOST=localhost
-DB_NAME=your_database
-DB_USER=your_username
-DB_PASS=your_password
+DB_HOSTNAME=localhost
+DB_DATABASE=your_database
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
 DB_PORT=3306
 DB_ENCODING=utf8mb4
 ```
@@ -1020,7 +1018,7 @@ SESSION_LIFETIME=7200
 
 ## Testing
 
-EasyAPP includes a built-in testing framework for unit and integration tests.
+EasyAPP includes a streamlined testing framework with a simple yet powerful `TestCase` base class for unit and integration tests.
 
 ### Creating Tests
 
@@ -1061,14 +1059,59 @@ class UserTest extends TestCase {
 }
 ```
 
+### Framework Access in Tests
+
+The `TestCase` class automatically provides access to the full framework through the registry:
+
+```php
+class MyTest extends TestCase {
+    
+    public function testDatabaseAccess() {
+        // Full framework access through $this->registry
+        $this->assertTrue($this->registry->has('db'));
+        
+        // Direct access to models, services, etc.
+        $users = $this->load->model('user')->getAll();
+        $this->assertTrue(is_array($users));
+    }
+    
+    public function testServiceIntegration() {
+        // Test services directly
+        $result = $this->load->service('email|sendWelcome', $userData);
+        $this->assertTrue($result);
+    }
+}
+```
+
 ### Running Tests
+
+#### Using CLI Commands
 
 ```bash
 # Run all tests
-php test
+php easyphp test
 
-# Run specific test
-php test tests/UserTest.php
+# Run unit tests only
+php easyphp test:unit
+
+# Run integration tests only  
+php easyphp test:integration
+```
+
+#### Running Individual Tests
+
+```php
+// tests/IndividualTest.php
+if (basename($_SERVER['SCRIPT_NAME']) === 'IndividualTest.php') {
+    $test = new IndividualTest($registry);
+    $success = $test->run();
+    exit($success ? 0 : 1);
+}
+```
+
+Then run directly:
+```bash
+php tests/IndividualTest.php
 ```
 
 ### Test Assertions
@@ -1085,6 +1128,31 @@ $this->assertNotNull($value);
 $this->assertCount($expectedCount, $array);
 $this->assertContains($needle, $haystack);
 ```
+
+### Test Lifecycle
+
+Each test method automatically gets:
+
+```php
+protected function setUp() {
+    // Override for test setup
+    // Called before each test method
+}
+
+protected function tearDown() {
+    // Override for cleanup
+    // Called after each test method
+}
+```
+
+### Simple Architecture
+
+The testing system is intentionally simple:
+- **TestCase**: Base class with framework access and assertions
+- **CLI Integration**: Commands in `system/Cli.php` for test execution
+- **No Complex Dependencies**: Direct test execution without heavy infrastructure
+
+This streamlined approach provides powerful testing capabilities while maintaining simplicity and avoiding over-engineering.
 
 ---
 
@@ -1213,10 +1281,10 @@ APP_NAME=MyApp
 
 # Database
 DB_DRIVER=mysql
-DB_HOST=localhost
-DB_NAME=myapp_db
-DB_USER=root
-DB_PASS=secret
+DB_HOSTNAME=localhost
+DB_DATABASE=myapp_db
+DB_USERNAME=root
+DB_PASSWORD=secret
 DB_PORT=3306
 
 # Cache
@@ -1268,11 +1336,11 @@ APP_CONFIG={"database":{"host":"localhost","port":3306},"cache":{"driver":"redis
 **3. Indexed Arrays (Advanced)**
 ```env
 # Auto-combined into arrays by base key
-DB_HOSTS_0=localhost
-DB_HOSTS_1=127.0.0.1
-DB_HOSTS_2=192.168.1.100
+DB_HOSTNAME_0=localhost
+DB_HOSTNAME_1=127.0.0.1
+DB_HOSTNAME_2=192.168.1.100
 
-# Results in: DB_HOSTS = ['localhost', '127.0.0.1', '192.168.1.100']
+# Results in: DB_HOSTNAME = ['localhost', '127.0.0.1', '192.168.1.100']
 
 API_KEYS_0=prod_key_12345
 API_KEYS_1=dev_key_67890
@@ -1427,9 +1495,9 @@ FEATURE_NEW_DASHBOARD=false
 2. **Group Related Settings:**
    ```env
    # Database settings
-   DB_HOST=localhost
+   DB_HOSTNAME=localhost
    DB_PORT=3306
-   DB_NAME=myapp
+   DB_DATABASE=myapp
    
    # Cache settings  
    CACHE_ENABLED=true

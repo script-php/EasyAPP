@@ -3,8 +3,8 @@
 /**
  * Application Configuration
  */
-$config['action_router'] = 'home'; // controller file for default page.
-$config['action_error'] = 'not_found'; // controller file for handling errors.
+$config['app_home'] = 'home'; // controller file for default page.
+$config['app_error'] = 'not_found'; // controller file for handling errors.
 
 $config['default_language'] = 'fr-fr'; // default language code
 $config['timezone'] = 'UTC'; // default timezone

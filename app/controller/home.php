@@ -19,24 +19,26 @@ class ControllerHome extends Controller {
 		$data['subtitle'] = 'A Modern PHP Framework for Rapid Development'; // Page subtitle
 		$data['content'] = $this->load->view('home/index.html'); // Load view
 
+		// pre('eee');
+		// pre($this->config);
+
 		$model = $this->load->model('home'); // Load model
 		// Use model data
 		$data['test'] = $model->test;
 
 		// Test runController functionality - capture all output properly
-		// ob_start();
-		echo "<h1>Home Controller Working</h1>";
-		echo "<p>Before runController call</p>";
+		// echo "<h1>Home Controller Working</h1>";
+		// echo "<p>Before runController call</p>";
 		
-		// Try runController
-		try {
-			$this->load->runController('other');
-			echo "<p>After runController call - SUCCESS</p>";
-		} catch (Exception $e) {
-			echo "<p>ERROR: " . $e->getMessage() . "</p>";
-		}
+		// // Try runController
+		// try {
+		// 	$this->load->runController('other');
+		// 	echo "<p>After runController call - SUCCESS</p>";
+		// } catch (Exception $e) {
+		// 	echo "<p>ERROR: " . $e->getMessage() . "</p>";
+		// }
 		
-		echo "<p>End of home controller</p>";
+		// echo "<p>End of home controller</p>";
 		
 		// When using direct echo, don't use setOutput to avoid conflicts
 		$this->response->setOutput($this->load->view('base.html', $data)); // Render view
@@ -71,6 +73,8 @@ class ControllerHome extends Controller {
 	function testLibrary() {
 		$data = [];
 		$data['title'] = 'Library Test';
+
+		
 		
 		// Load custom library
 		// $appLibrary = $this->load->library('test');

@@ -71,12 +71,35 @@ class Response {
 		$this->output = $output;
 	}
 	
+	/**
+	 * Get headers array for framework-level compression
+	 */
+	public function getHeaders() {
+		return $this->headers;
+	}
+	
+	/**
+	 * Public compression method for framework-level compression
+	 */
+	public function compressOutput($data, $level = 0) {
+		return $this->compress($data, $level);
+	}
+	
 	private function compress($data, $level = 0) {
-		if (isset($_SERVER['HTTP_ACCEPT_ENCODING']) && (strpos($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip') !== false)) {
+		// Get the actual browser accept-encoding header, not env override
+		$acceptEncoding = $_SERVER['HTTP_ACCEPT_ENCODING'] ?? '';
+		
+		// If env file overrode it with a number, get original from getallheaders()
+		if (is_numeric($acceptEncoding) || empty($acceptEncoding)) {
+			$headers = function_exists('getallheaders') ? getallheaders() : [];
+			$acceptEncoding = $headers['Accept-Encoding'] ?? $headers['accept-encoding'] ?? '';
+		}
+		
+		if (!empty($acceptEncoding) && (strpos($acceptEncoding, 'gzip') !== false)) {
 			$encoding = 'gzip';
 		}
 
-		if (isset($_SERVER['HTTP_ACCEPT_ENCODING']) && (strpos($_SERVER['HTTP_ACCEPT_ENCODING'], 'x-gzip') !== false)) {
+		if (!empty($acceptEncoding) && (strpos($acceptEncoding, 'x-gzip') !== false)) {
 			$encoding = 'x-gzip';
 		}
 
@@ -102,16 +125,23 @@ class Response {
 	}
 	
 	public function output() {
-		if ($this->output) {
-			$output = $this->level ? $this->compress($this->output, $this->level) : $this->output;
-			
-			if (!headers_sent()) {
-				foreach ($this->headers as $header) {
-					header($header, true);
-				}
+		// Send headers
+		if (!headers_sent()) {
+			foreach ($this->headers as $header) {
+				header($header, true);
 			}
-			
-			echo $output;
+		}
+		
+		// Output content based on compression handling
+		if ($this->output) {
+			if (CONFIG_COMPRESSION == 0) {
+				// No framework compression - handle response-level compression
+				$output = $this->level ? $this->compress($this->output, $this->level) : $this->output;
+				echo $output;
+			} else {
+				// Framework handles compression - don't output content here
+				// Content will be handled by framework compression logic
+			}
 		}
 	}
 }

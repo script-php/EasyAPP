@@ -87,7 +87,7 @@ class Router {
         }
 
         // No route found
-        throw new RouteNotFound("Route not found: {$uri}");
+        throw new \System\Framework\Exceptions\RouteNotFound("Route not found: {$uri}");
     }
 
     protected function getCurrentUri() {

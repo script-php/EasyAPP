@@ -424,8 +424,8 @@ public function up(): void {
 }
 
 private function shouldApplyChanges(): bool {
-    // Check some condition (config, environment, etc.)
-    return CONFIG_ENVIRONMENT === 'production';
+    // Check some condition (config, app_env, etc.)
+    return CONFIG_APP_ENV === 'production';
 }
 ```
 

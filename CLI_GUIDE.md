@@ -369,7 +369,7 @@ class UserService extends Service {
 
 ### Overview
 
-Testing commands provide comprehensive test execution:
+Testing commands provide simple test execution using the streamlined TestCase framework:
 
 ```bash
 php easyphp test              # Run all tests
@@ -390,29 +390,20 @@ php easyphp test
 ```
 Running All Tests
 ==================================================
-Found 5 test file(s)
+Found 3 test file(s)
 
-Running: UserValidationUnitTest.php [PASSED]
-Running: UserSystemIntegrationTest.php [PASSED]
-Running: SecurityFixesTest.php [PASSED]
+Running: UserTest.php [PASSED]
+Running: SecurityTest.php [PASSED]  
+Running: IntegrationTest.php [PASSED]
 
 ==================================================
 Test Results Summary
 ==================================================
-Total Tests: 5
-Passed: 5
+Total Tests: 3
+Passed: 3
 Failed: 0
 
 ✅ All tests passed!
-
-===================================================
-All Tests Summary:
-===================================================
-Total Tests: 5
-Passed: 5
-Failed: 0
-
-All All Tests completed successfully!
 ```
 
 ### test:unit
@@ -440,21 +431,18 @@ Unit tests focus on individual components in isolation
 - No external dependencies (database, APIs)
 - Pure logic validation
 
-Running Unit Tests
-==================================================
 Found 1 test file(s)
 
-Running: UserValidationUnitTest.php
+Running: UserValidationTest.php
 ==================================================
-Running tests for UserValidationUnitTest
+Running tests for UserValidationTest
 ==================================================
 ✓ testEmailValidation
 ✓ testPasswordStrength
 ✓ testUsernameValidation
 ✓ testDataSanitization
-✓ testArrayOperations
 
-Results: 5/5 tests passed
+Results: 4/4 tests passed
 [PASSED]
 
 ===================================================
@@ -492,19 +480,16 @@ Integration tests verify component interaction
 - Uses real dependencies (database, files)
 - End-to-end workflow validation
 
-Running Integration Tests
-==================================================
-Found 4 test file(s)
+Found 2 test file(s)
 
-Running: ComplexRelationshipTest.php [PASSED]
-Running: SecurityFixesTest.php [PASSED]
-Running: UserSystemIntegrationTest.php [PASSED]
+Running: DatabaseIntegrationTest.php [PASSED]
+Running: SystemIntegrationTest.php [PASSED]
 
 ===================================================
 Integration Tests Summary:
 ===================================================
-Total Tests: 4
-Passed: 4
+Total Tests: 2
+Passed: 2
 Failed: 0
 
 All Integration Tests completed successfully!
@@ -512,7 +497,7 @@ All Integration Tests completed successfully!
 
 ### Test Organization
 
-The **TestRunner** is a core framework component located in `system/TestRunner.php` that automatically categorizes tests based on:
+The CLI testing system automatically categorizes tests based on:
 
 **Unit Test Detection:**
 - Filename contains 'Unit' or 'unit'
@@ -522,25 +507,39 @@ The **TestRunner** is a core framework component located in `system/TestRunner.p
 **Integration Test Detection:**
 - Filename contains 'Integration' or 'integration' 
 - File content includes database operations (`$this->db`)
-- Uses `require_once` or framework initialization
+- Uses framework functionality and real dependencies
 - Tests real component interaction
 
-**Framework Integration:**
-- TestRunner and TestBootstrap are part of the core EasyAPP Framework
-- TestBootstrap (`system/TestBootstrap.php`) - Environment setup and helper functions
-- TestRunner (`system/TestRunner.php`) - Core test execution engine
-- Integrates seamlessly with the framework registry and database connections
-- Provides consistent testing API across all applications
-- Safe from tests directory deletion or deployment exclusions
+**Simple Architecture:**
+- **TestCase**: Core testing class with framework access and assertions
+- **CLI Integration**: Direct test execution through `system/Cli.php`
+- **No Complex Dependencies**: Streamlined execution without heavy infrastructure
 
 **Test File Examples:**
 ```
 tests/
 ├── UserValidationUnitTest.php          # Unit test
-├── UserSystemIntegrationTest.php       # Integration test
-├── ComplexRelationshipTest.php         # Integration test (detected)
-├── SecurityFixesTest.php               # Integration test (detected)
+├── DatabaseIntegrationTest.php         # Integration test
 └── ExampleTest.php                     # Unit test (detected)
+```
+
+### Framework Integration
+
+Tests have full access to the EasyAPP Framework through the TestCase class:
+
+```php
+class MyTest extends TestCase {
+    public function __construct($registry = null) {
+        parent::__construct($registry); // Framework access provided
+    }
+    
+    public function testFrameworkAccess() {
+        // Direct access to models, services, database, etc.
+        $this->assertTrue($this->registry->has('db'));
+        $users = $this->load->model('user')->getAll();
+        $this->assertTrue(is_array($users));
+    }
+}
 ```
 
 ---
