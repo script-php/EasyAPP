@@ -10,10 +10,28 @@ abstract class TestCase {
     protected $registry;
     protected $passed = 0;
     protected $failed = 0;
+    protected $load;
     
     public function __construct($registry = null) {
         $this->registry = $registry;
-        pre($registry);
+        
+        // Provide framework component access if registry is available
+        if ($this->registry && $this->registry->has('load')) {
+            $this->load = $this->registry->get('load');
+        }
+    }
+    
+    /**
+     * Magic method to provide access to registry components
+     * Allows $this->db, $this->request, $this->response, etc.
+     */
+    public function __get($name) {
+        if ($this->registry && $this->registry->has($name)) {
+            return $this->registry->get($name);
+        }
+        
+        // Return null for undefined properties to avoid fatal errors
+        return null;
     }
     
     public function run() {
