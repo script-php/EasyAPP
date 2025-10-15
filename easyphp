@@ -1,0 +1,25 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * EasyPHP CLI Tool - Unified Command Interface
+ * 
+ * @package      EasyAPP Framework
+ * @author       YoYo
+ * @copyright    Copyright (c) 2022, script-php.ro
+ * @link         https://script-php.ro
+ */
+
+define('PATH', __DIR__ . DIRECTORY_SEPARATOR);
+define('CLI_MODE', true);
+
+// Include framework
+require_once PATH . 'system/Framework.php';
+require_once PATH . 'system/TestCase.php';
+
+/**
+ * Main Execution
+ * Initialize and run the CLI application
+ */
+$cli = new System\Cli($registry);
+$cli->run($argv);

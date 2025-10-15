@@ -1,23 +1,24 @@
 <?php
-date_default_timezone_set('Europe/Bucharest');
 
-$config['base_url'] = 'http://'.$_SERVER['SERVER_NAME'].'/tests/'; 
-$config['url'] = 'http://'.$_SERVER['SERVER_NAME'].'/tests/';
-    
-$config['db_hostname'] = ''; 
-$config['db_database'] = '';
-$config['db_username'] = '';
-$config['db_password'] = '';
+/**
+ * Load environment variables from .env file
+ * This framework uses a custom EnvReader class to load environment variables.
+ * Make sure to create a .env file in the root directory of your project.
+ * The .env file should contain key-value pairs in the format KEY=VALUE.
+ * Example:
+ *   DEBUG=true
+ *   APP_ENV=dev
+ * We can use arrays by separating values with commas.
+ * Example:
+ *   SERVICES=service1,service2,service3
+ *   or
+ *   SERVICES=["service1","service2","service3"]
+ *   or
+ *   SERVICES={"service1","service2","service3"}
+ * 
+ * 
+ * This config can be overridden in app/config.php file.
+ * For having different settings for app and framework.
+ */
 
-$config['domain'] = $_SERVER['SERVER_NAME']; // used for login
-$config['session_name'] = 'adm-ck'; // used for login
-$config['session_time'] = 31556926;
-
-$config['servers_upload'] = [
-    'local' => [
-        'url' => 'http://'.$_SERVER['SERVER_NAME'].'/storage/uploads/',
-    ]
-];
-
-$config['debug'] = true;
 
