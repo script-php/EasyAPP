@@ -93,11 +93,26 @@ class Router {
     protected function getCurrentUri() {
         $request = $this->registry->get('request');
         
-        if (!isset($request->get['rewrite'])) {
-            $request->get['rewrite'] = '';
+        // Check if using old 'rewrite' parameter (backward compatibility)
+        if (isset($request->get['rewrite'])) {
+            return '/' . trim($request->get['rewrite'], '/');
         }
         
-        return '/' . trim($request->get['rewrite'], '/');
+        // Get URI from REQUEST_URI (clean URLs)
+        $uri = $request->server['REQUEST_URI'] ?? '/';
+        
+        // Remove query string if present
+        if (($pos = strpos($uri, '?')) !== false) {
+            $uri = substr($uri, 0, $pos);
+        }
+        
+        // Remove script name if present (e.g., /index.php)
+        $scriptName = $request->server['SCRIPT_NAME'] ?? '';
+        if (!empty($scriptName) && strpos($uri, $scriptName) === 0) {
+            $uri = substr($uri, strlen($scriptName));
+        }
+        
+        return '/' . trim($uri, '/');
     }
 
     protected function matchRoute($route, $uri) {

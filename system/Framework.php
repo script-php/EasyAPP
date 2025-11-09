@@ -241,13 +241,13 @@ if(defined('CLI_MODE') !== true) {
 
         /**
          * Determine and dispatch the appropriate route
-         * If a custom 'rewrite' parameter is present, use the custom router.
-         * If no 'rewrite' parameter but a 'route' parameter exists, use default routing
+         * If 'route' parameter exists, use legacy routing
+         * Otherwise, use the modern router with clean URLs
          */
-        if(isset($request->get['rewrite']) || (!isset($request->get['rewrite']) && !isset($request->get['route']))) {
+        if(!isset($request->get['route'])) {
 
             /**
-             * Use custom router if 'rewrite' parameter is set or no 'route' parameter
+             * Use custom router for clean URLs
              */
             $router->dispatch();
 

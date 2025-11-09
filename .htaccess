@@ -58,7 +58,7 @@ RewriteRule ^app/(.*) index.php?route=error [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_URI} !.*\.(ico|gif|jpg|jpeg|png|webp|js|css|svg)
-RewriteRule ^([^?]*) index.php?rewrite=$1 [L,QSA]
+RewriteRule ^(.*)$ index.php [L,QSA]
 
 ## Optional error documents
 #ErrorDocument 400 /index.php?route=error
