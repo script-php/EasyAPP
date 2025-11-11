@@ -201,3 +201,17 @@ function csrf_check($action = 'default') {
     
     return false;
 }
+
+/**
+ * Get database connection from registry
+ * @return System\Framework\Db|null Database connection or null if not available
+ */
+function db() {
+    $registry = System\Framework\Registry::getInstance();
+    
+    if ($registry->has('db')) {
+        return $registry->get('db');
+    }
+    
+    return null;
+}

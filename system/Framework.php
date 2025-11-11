@@ -153,7 +153,7 @@ if ($config['csrf_protection']) {
 
 /**
  * Initialize the framework for web requests
- * If CLI_MODE is defined, we are in CLI context (easyphp).
+ * If CLI_MODE is defined, we are in CLI context (easy).
  * This prevents conflicts between web and CLI initializations.
  */
 if(defined('CLI_MODE') !== true) {
@@ -412,7 +412,7 @@ if(defined('CLI_MODE') !== true) {
 
 /**
  * Initialize the framework for CLI requests
- * If CLI_MODE is defined, we are in CLI context (easyphp).
+ * If CLI_MODE is defined, we are in CLI context (easy).
  * This prevents conflicts between web and CLI initializations.
  */
 if(defined('CLI_MODE')) {
