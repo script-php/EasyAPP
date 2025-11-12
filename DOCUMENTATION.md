@@ -1089,13 +1089,13 @@ class MyTest extends TestCase {
 
 ```bash
 # Run all tests
-php easyphp test
+php easy test
 
 # Run unit tests only
-php easyphp test:unit
+php easy test:unit
 
 # Run integration tests only  
-php easyphp test:integration
+php easy test:integration
 ```
 
 #### Running Individual Tests

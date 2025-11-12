@@ -322,7 +322,7 @@ class Cli {
         
         // Check if table exists
         try {
-            $result = $db->query("SHOW TABLES LIKE ?", [$tableName]);
+            $result = $db->query("SHOW TABLES LIKE '{$tableName}'");
             if (empty($result->rows)) {
                 $this->error("Table '{$tableName}' does not exist in the database.");
                 return;
@@ -954,6 +954,28 @@ class Cli {
             $template .= "    ];\n";
         }
         
+        // Generate validation rules
+        $rules = $this->generateValidationRulesFromColumns($columns);
+        if (!empty($rules)) {
+            $template .= "    \n";
+            $template .= "    // ==================== VALIDATION ====================\n";
+            $template .= "    \n";
+            $template .= "    /**\n";
+            $template .= "     * Validation rules\n";
+            $template .= "     * Auto-generated from table schema\n";
+            $template .= "     * \n";
+            $template .= "     * Uncomment to enable automatic validation on save/create\n";
+            $template .= "     */\n";
+            $template .= "    // public function rules() {\n";
+            $template .= "    //     return [\n";
+            foreach ($rules as $rule) {
+                $template .= "    //         {$rule}\n";
+            }
+            $template .= "    //     ];\n";
+            $template .= "    // }\n";
+            $template .= "    \n";
+        }
+        
         // Relationships
         if (!empty($foreignKeys)) {
             $template .= "    \n";
@@ -996,6 +1018,93 @@ class Cli {
         } catch (\Exception $e) {
             return [];
         }
+    }
+    
+    /**
+     * Generate validation rules from table columns
+     */
+    private function generateValidationRulesFromColumns($columns) {
+        $rules = [];
+        
+        foreach ($columns as $column) {
+            $name = $column['Field'];
+            $type = strtolower($column['Type']);
+            $nullable = $column['Null'] === 'YES';
+            $isAutoIncrement = $column['Extra'] === 'auto_increment';
+            
+            // Skip auto-increment and timestamp columns
+            if ($isAutoIncrement || in_array($name, ['created_at', 'updated_at', 'deleted_at'])) {
+                continue;
+            }
+            
+            $ruleString = '';
+            
+            // Required if not nullable
+            if (!$nullable) {
+                $ruleString .= 'required';
+            } else {
+                $ruleString .= 'optional';
+            }
+            
+            // Type-specific rules
+            if (strpos($type, 'varchar') !== false || strpos($type, 'char') !== false) {
+                // Extract max length from type like varchar(255)
+                if (preg_match('/\((\d+)\)/', $type, $matches)) {
+                    $maxLength = $matches[1];
+                    $ruleString .= '|string|maxLength:' . $maxLength;
+                } else {
+                    $ruleString .= '|string';
+                }
+                
+                // Special field names
+                if ($name === 'email') {
+                    $ruleString .= '|email';
+                } elseif (strpos($name, 'phone') !== false) {
+                    $ruleString .= '|phone';
+                } elseif (strpos($name, 'url') !== false || strpos($name, 'website') !== false) {
+                    $ruleString .= '|url';
+                } elseif (strpos($name, 'name') !== false) {
+                    $ruleString .= '|minLength:2';
+                }
+            } elseif (strpos($type, 'text') !== false) {
+                $ruleString .= '|string';
+            } elseif (strpos($type, 'int') !== false || strpos($type, 'bigint') !== false || strpos($type, 'smallint') !== false) {
+                $ruleString .= '|integer';
+                
+                // Special field names
+                if ($name === 'age') {
+                    $ruleString .= '|min:0|max:150';
+                } elseif (strpos($name, 'year') !== false) {
+                    $ruleString .= '|min:1900|max:2100';
+                } elseif (strpos($name, 'quantity') !== false || strpos($name, 'count') !== false) {
+                    $ruleString .= '|min:0';
+                }
+            } elseif (strpos($type, 'decimal') !== false || strpos($type, 'float') !== false || strpos($type, 'double') !== false) {
+                $ruleString .= '|numeric';
+                
+                if (strpos($name, 'price') !== false || strpos($name, 'amount') !== false) {
+                    $ruleString .= '|min:0';
+                }
+            } elseif (strpos($type, 'tinyint(1)') !== false || strpos($type, 'boolean') !== false) {
+                $ruleString .= '|boolean';
+            } elseif (strpos($type, 'date') !== false && strpos($type, 'datetime') === false) {
+                $ruleString .= '|date';
+            } elseif (strpos($type, 'datetime') !== false || strpos($type, 'timestamp') !== false) {
+                $ruleString .= '|datetime';
+            } elseif (strpos($type, 'enum') !== false) {
+                // Extract enum values
+                if (preg_match('/enum\((.*?)\)/', $type, $matches)) {
+                    $enumValues = str_replace("'", "", $matches[1]);
+                    $ruleString .= '|in:' . $enumValues;
+                }
+            }
+            
+            if ($ruleString) {
+                $rules[] = "['{$name}', '{$ruleString}'],";
+            }
+        }
+        
+        return $rules;
     }
     
     /**

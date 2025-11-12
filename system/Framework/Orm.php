@@ -66,6 +66,9 @@ abstract class Orm {
     protected $original = [];
     protected $exists = false;
     protected $relations = [];
+    protected $inverseRelation = null;
+    protected $validationErrors = [];
+    protected $scenario = 'default';
 
     /**
      * Query builder state
@@ -80,8 +83,16 @@ abstract class Orm {
     protected $queryGroupBy = [];
     protected $queryHaving = [];
     protected $queryWith = [];
+    protected $queryWithCount = [];
+    protected $queryJoinWith = [];
     protected $withTrashed = false;
     protected $onlyTrashed = false;
+    protected $asArray = false;
+
+    /**
+     * Schema cache
+     */
+    protected static $schemaCache = [];
 
     /**
      * Constructor
@@ -135,10 +146,17 @@ abstract class Orm {
     }
 
     /**
-     * Find record by ID
+     * Find record by ID (static method - creates new query)
      */
     public static function find($id) {
         return static::query()->where(static::$primaryKey, '=', $id)->first();
+    }
+    
+    /**
+     * Find record by ID (instance method - uses existing query state)
+     */
+    protected function findInstance($id) {
+        return $this->where(static::$primaryKey, '=', $id)->first();
     }
 
     /**
@@ -160,10 +178,35 @@ abstract class Orm {
     }
 
     /**
+     * Find records using raw SQL
+     * 
+     * @param string $sql SQL query with placeholders
+     * @param array $params Parameters to bind
+     * @return Collection
+     */
+    public static function findBySql($sql, $params = []) {
+        $db = static::getConnection();
+        $result = $db->query($sql, $params);
+
+        $instances = [];
+        if (!empty($result->rows)) {
+            foreach ($result->rows as $row) {
+                $instance = new static();
+                $instance->setRawAttributes($row);
+                $instance->exists = true;
+                $instance->original = $row;
+                $instances[] = $instance;
+            }
+        }
+
+        return new Collection($instances);
+    }
+
+    /**
      * Get first record
      */
-    public static function first() {
-        return static::query()->limit(1)->get()[0] ?? null;
+    public function first() {
+        return $this->limit(1)->get()->first();
     }
 
     /**
@@ -281,6 +324,38 @@ abstract class Orm {
     }
 
     /**
+     * AND WHERE clause (alias for where)
+     */
+    public function andWhere($column, $operator = null, $value = null) {
+        return $this->where($column, $operator, $value);
+    }
+
+    /**
+     * Filter WHERE clause - ignores null and empty string values
+     */
+    public function filterWhere($column, $operator = null, $value = null) {
+        // Handle shorthand
+        if ($value === null && $operator !== null) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        // Skip if value is null or empty string
+        if ($value === null || $value === '') {
+            return $this;
+        }
+
+        return $this->where($column, $operator, $value);
+    }
+
+    /**
+     * AND Filter WHERE clause
+     */
+    public function andFilterWhere($column, $operator = null, $value = null) {
+        return $this->filterWhere($column, $operator, $value);
+    }
+
+    /**
      * OR WHERE clause
      */
     public function orWhere($column, $operator = null, $value = null) {
@@ -303,10 +378,75 @@ abstract class Orm {
      * WHERE IN clause
      */
     public function whereIn($column, array $values) {
+        if (empty($values)) {
+            // Handle empty array - always false condition
+            $this->queryWhere[] = [
+                'type' => 'AND',
+                'column' => $column,
+                'operator' => 'IN',
+                'value' => [null] // Will never match
+            ];
+        } else {
+            $this->queryWhere[] = [
+                'type' => 'AND',
+                'column' => $column,
+                'operator' => 'IN',
+                'value' => $values
+            ];
+        }
+
+        return $this;
+    }
+
+    /**
+     * WHERE NOT IN clause
+     */
+    public function whereNotIn($column, array $values) {
+        if (empty($values)) {
+            // Empty NOT IN means all records match
+            return $this;
+        }
+
         $this->queryWhere[] = [
             'type' => 'AND',
             'column' => $column,
-            'operator' => 'IN',
+            'operator' => 'NOT IN',
+            'value' => $values
+        ];
+
+        return $this;
+    }
+
+    /**
+     * WHERE BETWEEN clause
+     */
+    public function whereBetween($column, array $values) {
+        if (count($values) !== 2) {
+            throw new \Exception('whereBetween requires exactly 2 values [min, max]');
+        }
+
+        $this->queryWhere[] = [
+            'type' => 'AND',
+            'column' => $column,
+            'operator' => 'BETWEEN',
+            'value' => $values
+        ];
+
+        return $this;
+    }
+
+    /**
+     * WHERE NOT BETWEEN clause
+     */
+    public function whereNotBetween($column, array $values) {
+        if (count($values) !== 2) {
+            throw new \Exception('whereNotBetween requires exactly 2 values [min, max]');
+        }
+
+        $this->queryWhere[] = [
+            'type' => 'AND',
+            'column' => $column,
+            'operator' => 'NOT BETWEEN',
             'value' => $values
         ];
 
@@ -342,10 +482,91 @@ abstract class Orm {
     }
 
     /**
+     * WHERE DATE clause - match date part only
+     */
+    public function whereDate($column, $operator, $value = null) {
+        if ($value === null) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        $this->queryWhere[] = [
+            'type' => 'AND',
+            'column' => $column,
+            'operator' => 'DATE_' . $operator,
+            'value' => $value
+        ];
+
+        return $this;
+    }
+
+    /**
+     * WHERE MONTH clause - match month part
+     */
+    public function whereMonth($column, $operator, $value = null) {
+        if ($value === null) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        $this->queryWhere[] = [
+            'type' => 'AND',
+            'column' => $column,
+            'operator' => 'MONTH_' . $operator,
+            'value' => $value
+        ];
+
+        return $this;
+    }
+
+    /**
+     * WHERE YEAR clause - match year part
+     */
+    public function whereYear($column, $operator, $value = null) {
+        if ($value === null) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        $this->queryWhere[] = [
+            'type' => 'AND',
+            'column' => $column,
+            'operator' => 'YEAR_' . $operator,
+            'value' => $value
+        ];
+
+        return $this;
+    }
+
+    /**
+     * WHERE TIME clause - match time part
+     */
+    public function whereTime($column, $operator, $value = null) {
+        if ($value === null) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        $this->queryWhere[] = [
+            'type' => 'AND',
+            'column' => $column,
+            'operator' => 'TIME_' . $operator,
+            'value' => $value
+        ];
+
+        return $this;
+    }
+
+    /**
      * SELECT columns
      */
     public function select(...$columns) {
-        $this->querySelect = $columns;
+        // Handle both select('col1', 'col2') and select(['col1', 'col2'])
+        if (count($columns) === 1 && is_array($columns[0])) {
+            $this->querySelect = $columns[0];
+        } else {
+            $this->querySelect = $columns;
+        }
         return $this;
     }
 
@@ -413,7 +634,43 @@ abstract class Orm {
     public function count($column = '*') {
         $this->querySelect = ["COUNT({$column}) as count"];
         $result = $this->get();
-        return $result[0]->count ?? 0;
+        return $result->first()->count ?? 0;
+    }
+
+    /**
+     * Get the maximum value of a column
+     */
+    public function max($column) {
+        $this->querySelect = ["MAX({$column}) as aggregate"];
+        $result = $this->get();
+        return $result->first()->aggregate ?? null;
+    }
+
+    /**
+     * Get the minimum value of a column
+     */
+    public function min($column) {
+        $this->querySelect = ["MIN({$column}) as aggregate"];
+        $result = $this->get();
+        return $result->first()->aggregate ?? null;
+    }
+
+    /**
+     * Get the sum of a column
+     */
+    public function sum($column) {
+        $this->querySelect = ["SUM({$column}) as aggregate"];
+        $result = $this->get();
+        return $result->first()->aggregate ?? 0;
+    }
+
+    /**
+     * Get the average value of a column
+     */
+    public function avg($column) {
+        $this->querySelect = ["AVG({$column}) as aggregate"];
+        $result = $this->get();
+        return $result->first()->aggregate ?? 0;
     }
 
     /**
@@ -516,6 +773,68 @@ abstract class Orm {
     }
 
     /**
+     * Count related records without loading them
+     * Adds a {relation}_count column to each model
+     * 
+     * @param mixed ...$relations Relation names or associative array with custom counts
+     * @return $this
+     * 
+     * @example
+     * User::withCount('posts')->get(); // Adds posts_count column
+     * User::withCount('posts', 'comments')->get(); // Multiple counts
+     * User::withCount(['posts' => function($query) {
+     *     $query->where('published', 1);
+     * }])->get(); // Filtered count
+     */
+    public function withCount(...$relations) {
+        foreach ($relations as $relation => $constraints) {
+            // Handle both string and array syntax
+            if (is_numeric($relation)) {
+                $relation = $constraints;
+                $constraints = null;
+            }
+            
+            $this->queryWithCount[$relation] = $constraints;
+        }
+        return $this;
+    }
+
+    /**
+     * Join with a relationship and optionally eager load it
+     * Automatically handles JOIN logic based on relationship definition
+     * 
+     * @param string|array $relations Relation name(s) or array with constraints
+     * @param string $joinType JOIN type (INNER, LEFT, RIGHT)
+     * @return $this
+     * 
+     * @example
+     * Post::joinWith('user')->get(); // INNER JOIN with users table
+     * Post::joinWith('user', 'LEFT')->get(); // LEFT JOIN
+     * Post::joinWith(['comments' => function($query) {
+     *     $query->where('approved', 1);
+     * }])->get();
+     */
+    public function joinWith($relations, $joinType = 'INNER') {
+        if (is_string($relations)) {
+            $relations = [$relations => null];
+        }
+
+        foreach ($relations as $relation => $constraints) {
+            if (is_numeric($relation)) {
+                $relation = $constraints;
+                $constraints = null;
+            }
+
+            $this->queryJoinWith[$relation] = [
+                'constraints' => $constraints,
+                'joinType' => $joinType
+            ];
+        }
+
+        return $this;
+    }
+
+    /**
      * Paginate results
      */
     public function paginate($perPage = 15, $page = null) {
@@ -534,7 +853,7 @@ abstract class Orm {
         // Get paginated results
         $results = $this->limit($perPage)->offset($offset)->get();
         
-        return (object) [
+        return [
             'data' => $results,
             'total' => $total,
             'per_page' => $perPage,
@@ -549,12 +868,53 @@ abstract class Orm {
     }
 
     /**
+     * Process records in chunks to avoid memory issues
+     * 
+     * @param int $count Number of records per chunk
+     * @param callable $callback Function to call for each chunk
+     * @return bool
+     */
+    public function chunk($count, callable $callback) {
+        $page = 1;
+        
+        do {
+            // Clone the query to avoid state pollution
+            $query = clone $this;
+            
+            // Get chunk of results
+            $results = $query->limit($count)->offset(($page - 1) * $count)->get();
+            
+            // If no results, we're done
+            if (empty($results)) {
+                break;
+            }
+            
+            // Call the callback with the chunk
+            // If callback returns false, stop processing
+            if ($callback($results, $page) === false) {
+                return false;
+            }
+            
+            $page++;
+            
+            // Continue while we have a full chunk (meaning there might be more)
+        } while (count($results) === $count);
+        
+        return true;
+    }
+
+    /**
      * Execute query and get results
      */
     public function get() {
         $sql = $this->buildSelectQuery();
         $db = static::getConnection();
         $result = $db->query($sql, $this->queryParams);
+
+        if ($this->asArray) {
+            // Return as plain arrays
+            return new Collection($result->rows ?? []);
+        }
 
         $instances = [];
         if (!empty($result->rows)) {
@@ -572,7 +932,61 @@ abstract class Orm {
             $this->eagerLoadRelations($instances);
         }
 
-        return $instances;
+        // Load relationship counts
+        if (!empty($this->queryWithCount) && !empty($instances)) {
+            $this->loadRelationCounts($instances);
+        }
+
+        return new Collection($instances);
+    }
+
+    /**
+     * Return results as arrays instead of model instances
+     */
+    public function asArray() {
+        $this->asArray = true;
+        return $this;
+    }
+
+    /**
+     * Get a single column's value from the first result
+     */
+    public function scalar() {
+        $result = $this->limit(1)->get();
+        
+        if ($result->isEmpty()) {
+            return null;
+        }
+
+        $first = $result->first();
+        
+        if (is_array($first)) {
+            return reset($first);
+        }
+        
+        // Get first attribute from model
+        $attributes = $first->attributes;
+        return reset($attributes);
+    }
+
+    /**
+     * Get all values of a single column
+     */
+    public function column() {
+        $results = $this->asArray()->get();
+        
+        if ($results->isEmpty()) {
+            return [];
+        }
+
+        $first = $results->first();
+        $columnName = is_array($first) ? array_key_first($first) : null;
+        
+        if (!$columnName) {
+            return [];
+        }
+
+        return $results->pluck($columnName)->all();
     }
 
     /**
@@ -605,7 +1019,18 @@ abstract class Orm {
                         // Attach to instances
                         foreach ($instances as $instance) {
                             $foreignKeyValue = $instance->{$relationInstance->foreignKey};
-                            $instance->setRelation($relation, $relatedMap[$foreignKeyValue] ?? []);
+                            $relatedRecords = $relatedMap[$foreignKeyValue] ?? [];
+                            $instance->setRelation($relation, $relatedRecords);
+                            
+                            // Handle inverseOf - populate the inverse relationship
+                            if ($relationInstance->inverseRelation && !empty($relatedRecords)) {
+                                foreach ($relatedRecords as $relatedRecord) {
+                                    // For hasMany, the inverse is the parent instance
+                                    if (!isset($relatedRecord->relations[$relationInstance->inverseRelation])) {
+                                        $relatedRecord->setRelation($relationInstance->inverseRelation, $instance);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -622,10 +1047,292 @@ abstract class Orm {
     }
 
     /**
+     * Load relationship counts for a collection of models
+     */
+    protected function loadRelationCounts(array $instances) {
+        foreach ($this->queryWithCount as $relation => $constraints) {
+            // Get the relationship query from the first instance
+            if (!method_exists($instances[0], $relation)) {
+                continue;
+            }
+
+            $relationQuery = $instances[0]->$relation();
+            
+            if (!($relationQuery instanceof Orm)) {
+                continue;
+            }
+
+            // Determine relationship type and count accordingly
+            if (isset($relationQuery->foreignKey) && isset($relationQuery->ownerKey)) {
+                // hasMany relationship
+                $this->loadHasManyCount($instances, $relation, $relationQuery, $constraints);
+            } elseif (isset($relationQuery->pivotTable)) {
+                // belongsToMany relationship
+                $this->loadBelongsToManyCount($instances, $relation, $relationQuery, $constraints);
+            }
+        }
+    }
+
+    /**
+     * Load count for hasMany relationships
+     */
+    protected function loadHasManyCount(array $instances, $relation, $relationQuery, $constraints) {
+        $foreignKey = $relationQuery->foreignKey;
+        $ownerKey = $relationQuery->ownerKey;
+        $relatedTable = $relationQuery::getTable();
+
+        // Collect parent IDs
+        $ids = [];
+        foreach ($instances as $instance) {
+            $ids[] = $instance->{$ownerKey};
+        }
+        $ids = array_unique(array_filter($ids));
+
+        if (empty($ids)) {
+            return;
+        }
+
+        // Build count query
+        $db = static::getConnection();
+        $placeholders = implode(', ', array_fill(0, count($ids), '?'));
+        
+        $sql = "SELECT `{$foreignKey}`, COUNT(*) as aggregate FROM `{$relatedTable}` WHERE `{$foreignKey}` IN ({$placeholders})";
+        $params = $ids;
+
+        // Apply custom constraints if provided
+        if (is_callable($constraints)) {
+            $tempQuery = new $relationQuery();
+            $constraints($tempQuery);
+            
+            // Add WHERE clauses from constraints
+            if (!empty($tempQuery->queryWhere)) {
+                foreach ($tempQuery->queryWhere as $where) {
+                    if ($where['operator'] === 'IN' || $where['operator'] === 'NOT IN') {
+                        $wherePlaceholders = implode(', ', array_fill(0, count($where['value']), '?'));
+                        $sql .= " AND `{$where['column']}` {$where['operator']} ({$wherePlaceholders})";
+                        $params = array_merge($params, $where['value']);
+                    } elseif ($where['operator'] === 'IS NULL' || $where['operator'] === 'IS NOT NULL') {
+                        $sql .= " AND `{$where['column']}` {$where['operator']}";
+                    } else {
+                        $sql .= " AND `{$where['column']}` {$where['operator']} ?";
+                        $params[] = $where['value'];
+                    }
+                }
+            }
+        }
+
+        $sql .= " GROUP BY `{$foreignKey}`";
+
+        $result = $db->query($sql, $params);
+        
+        // Map counts to instances
+        $counts = [];
+        if (!empty($result->rows)) {
+            foreach ($result->rows as $row) {
+                $counts[$row[$foreignKey]] = (int)$row['aggregate'];
+            }
+        }
+
+        // Set count attribute on each instance
+        $countKey = $relation . '_count';
+        foreach ($instances as $instance) {
+            $instance->attributes[$countKey] = $counts[$instance->{$ownerKey}] ?? 0;
+        }
+    }
+
+    /**
+     * Load count for belongsToMany relationships
+     */
+    protected function loadBelongsToManyCount(array $instances, $relation, $relationQuery, $constraints) {
+        $pivotTable = $relationQuery->pivotTable;
+        $foreignPivotKey = $relationQuery->foreignPivotKey;
+        $relatedPivotKey = $relationQuery->relatedPivotKey;
+        $parentKey = $relationQuery->parentKey;
+
+        // Collect parent IDs
+        $ids = [];
+        foreach ($instances as $instance) {
+            $ids[] = $instance->{$parentKey};
+        }
+        $ids = array_unique(array_filter($ids));
+
+        if (empty($ids)) {
+            return;
+        }
+
+        // Build count query
+        $db = static::getConnection();
+        $placeholders = implode(', ', array_fill(0, count($ids), '?'));
+        
+        $sql = "SELECT `{$foreignPivotKey}`, COUNT(*) as aggregate FROM `{$pivotTable}` WHERE `{$foreignPivotKey}` IN ({$placeholders})";
+        $params = $ids;
+
+        // Apply custom constraints if provided (would need JOIN to related table)
+        if (is_callable($constraints)) {
+            $relatedTable = $relationQuery::getTable();
+            $relatedKey = $relationQuery->relatedKey;
+            
+            $sql = "SELECT `{$pivotTable}`.`{$foreignPivotKey}`, COUNT(*) as aggregate " .
+                   "FROM `{$pivotTable}` " .
+                   "INNER JOIN `{$relatedTable}` ON `{$relatedTable}`.`{$relatedKey}` = `{$pivotTable}`.`{$relatedPivotKey}` " .
+                   "WHERE `{$pivotTable}`.`{$foreignPivotKey}` IN ({$placeholders})";
+            
+            $tempQuery = new $relationQuery();
+            $constraints($tempQuery);
+            
+            // Add WHERE clauses from constraints
+            if (!empty($tempQuery->queryWhere)) {
+                foreach ($tempQuery->queryWhere as $where) {
+                    if ($where['operator'] === 'IN' || $where['operator'] === 'NOT IN') {
+                        $wherePlaceholders = implode(', ', array_fill(0, count($where['value']), '?'));
+                        $sql .= " AND `{$relatedTable}`.`{$where['column']}` {$where['operator']} ({$wherePlaceholders})";
+                        $params = array_merge($params, $where['value']);
+                    } elseif ($where['operator'] === 'IS NULL' || $where['operator'] === 'IS NOT NULL') {
+                        $sql .= " AND `{$relatedTable}`.`{$where['column']}` {$where['operator']}";
+                    } else {
+                        $sql .= " AND `{$relatedTable}`.`{$where['column']}` {$where['operator']} ?";
+                        $params[] = $where['value'];
+                    }
+                }
+            }
+        }
+
+        $sql .= " GROUP BY `{$foreignPivotKey}`";
+
+        $result = $db->query($sql, $params);
+        
+        // Map counts to instances
+        $counts = [];
+        if (!empty($result->rows)) {
+            foreach ($result->rows as $row) {
+                $counts[$row[$foreignPivotKey]] = (int)$row['aggregate'];
+            }
+        }
+
+        // Set count attribute on each instance
+        $countKey = $relation . '_count';
+        foreach ($instances as $instance) {
+            $instance->attributes[$countKey] = $counts[$instance->{$parentKey}] ?? 0;
+        }
+    }
+
+    /**
      * Get a relationship
      */
     public function getRelation($name) {
         return $this->relations[$name] ?? null;
+    }
+
+    /**
+     * Process joinWith relationships and convert them to JOIN clauses
+     */
+    protected function processJoinWithRelations() {
+        $tempInstance = new static();
+        
+        foreach ($this->queryJoinWith as $relation => $config) {
+            if (!method_exists($tempInstance, $relation)) {
+                continue;
+            }
+
+            // Get the relationship definition
+            $relationQuery = $tempInstance->$relation();
+            
+            if (!($relationQuery instanceof Orm)) {
+                continue;
+            }
+
+            $joinType = $config['joinType'];
+            $constraints = $config['constraints'];
+
+            // Handle hasMany and hasOne relationships
+            if (isset($relationQuery->foreignKey) && isset($relationQuery->ownerKey)) {
+                $relatedTable = $relationQuery::getTable();
+                $foreignKey = $relationQuery->foreignKey;
+                $ownerKey = $relationQuery->ownerKey;
+                $parentTable = static::getTable();
+
+                $this->join(
+                    $relatedTable,
+                    "{$parentTable}.{$ownerKey}",
+                    '=',
+                    "{$relatedTable}.{$foreignKey}",
+                    $joinType
+                );
+
+                // Apply custom constraints
+                if (is_callable($constraints)) {
+                    $tempQuery = new $relationQuery();
+                    $constraints($tempQuery);
+                    
+                    // Add WHERE clauses from constraints
+                    if (!empty($tempQuery->queryWhere)) {
+                        foreach ($tempQuery->queryWhere as $where) {
+                            $where['column'] = "{$relatedTable}.{$where['column']}";
+                            $this->queryWhere[] = $where;
+                        }
+                    }
+                }
+            }
+            // Handle belongsToMany relationships
+            elseif (isset($relationQuery->pivotTable)) {
+                $relatedTable = $relationQuery::getTable();
+                $pivotTable = $relationQuery->pivotTable;
+                $foreignPivotKey = $relationQuery->foreignPivotKey;
+                $relatedPivotKey = $relationQuery->relatedPivotKey;
+                $parentKey = $relationQuery->parentKey;
+                $relatedKey = $relationQuery->relatedKey;
+                $parentTable = static::getTable();
+
+                // Join pivot table
+                $this->join(
+                    $pivotTable,
+                    "{$parentTable}.{$parentKey}",
+                    '=',
+                    "{$pivotTable}.{$foreignPivotKey}",
+                    $joinType
+                );
+
+                // Join related table
+                $this->join(
+                    $relatedTable,
+                    "{$pivotTable}.{$relatedPivotKey}",
+                    '=',
+                    "{$relatedTable}.{$relatedKey}",
+                    $joinType
+                );
+
+                // Apply custom constraints
+                if (is_callable($constraints)) {
+                    $tempQuery = new $relationQuery();
+                    $constraints($tempQuery);
+                    
+                    // Add WHERE clauses from constraints
+                    if (!empty($tempQuery->queryWhere)) {
+                        foreach ($tempQuery->queryWhere as $where) {
+                            $where['column'] = "{$relatedTable}.{$where['column']}";
+                            $this->queryWhere[] = $where;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Properly quote a column name, handling qualified names like 'table.column'
+     * 
+     * @param string $column Column name, may include table prefix
+     * @return string Properly quoted column name
+     */
+    protected function quoteColumn($column) {
+        // If column contains a dot, it's qualified with a table name
+        if (strpos($column, '.') !== false) {
+            $parts = explode('.', $column);
+            return '`' . implode('`.`', $parts) . '`';
+        }
+        
+        // Simple column name
+        return "`{$column}`";
     }
 
     /**
@@ -636,6 +1343,11 @@ abstract class Orm {
         $select = implode(', ', $this->querySelect);
         
         $sql = "SELECT {$select} FROM `{$table}`";
+
+        // Process joinWith relationships first
+        if (!empty($this->queryJoinWith)) {
+            $this->processJoinWithRelations();
+        }
 
         // Add JOINs
         foreach ($this->queryJoins as $join) {
@@ -657,14 +1369,42 @@ abstract class Orm {
             foreach ($this->queryWhere as $index => $where) {
                 $type = (empty($whereClauses) && $index === 0) ? '' : $where['type'] . ' ';
                 
-                if ($where['operator'] === 'IN') {
+                if ($where['operator'] === 'IN' || $where['operator'] === 'NOT IN') {
                     $placeholders = implode(', ', array_fill(0, count($where['value']), '?'));
-                    $whereClauses[] = "{$type}`{$where['column']}` IN ({$placeholders})";
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}{$quotedColumn} {$where['operator']} ({$placeholders})";
                     $this->queryParams = array_merge($this->queryParams, $where['value']);
+                } elseif ($where['operator'] === 'BETWEEN' || $where['operator'] === 'NOT BETWEEN') {
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}{$quotedColumn} {$where['operator']} ? AND ?";
+                    $this->queryParams[] = $where['value'][0];
+                    $this->queryParams[] = $where['value'][1];
                 } elseif ($where['operator'] === 'IS NULL' || $where['operator'] === 'IS NOT NULL') {
-                    $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']}";
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}{$quotedColumn} {$where['operator']}";
+                } elseif (strpos($where['operator'], 'DATE_') === 0) {
+                    $op = str_replace('DATE_', '', $where['operator']);
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}DATE({$quotedColumn}) {$op} ?";
+                    $this->queryParams[] = $where['value'];
+                } elseif (strpos($where['operator'], 'MONTH_') === 0) {
+                    $op = str_replace('MONTH_', '', $where['operator']);
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}MONTH({$quotedColumn}) {$op} ?";
+                    $this->queryParams[] = $where['value'];
+                } elseif (strpos($where['operator'], 'YEAR_') === 0) {
+                    $op = str_replace('YEAR_', '', $where['operator']);
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}YEAR({$quotedColumn}) {$op} ?";
+                    $this->queryParams[] = $where['value'];
+                } elseif (strpos($where['operator'], 'TIME_') === 0) {
+                    $op = str_replace('TIME_', '', $where['operator']);
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}TIME({$quotedColumn}) {$op} ?";
+                    $this->queryParams[] = $where['value'];
                 } else {
-                    $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ?";
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}{$quotedColumn} {$where['operator']} ?";
                     $this->queryParams[] = $where['value'];
                 }
             }
@@ -676,16 +1416,18 @@ abstract class Orm {
 
         // Add GROUP BY
         if (!empty($this->queryGroupBy)) {
-            $sql .= " GROUP BY " . implode(', ', array_map(function($col) {
-                return "`{$col}`";
-            }, $this->queryGroupBy));
+            $quotedColumns = array_map(function($col) {
+                return $this->quoteColumn($col);
+            }, $this->queryGroupBy);
+            $sql .= " GROUP BY " . implode(', ', $quotedColumns);
         }
 
         // Add HAVING
         if (!empty($this->queryHaving)) {
             $havingClauses = [];
             foreach ($this->queryHaving as $having) {
-                $havingClauses[] = "`{$having['column']}` {$having['operator']} ?";
+                $quotedColumn = $this->quoteColumn($having['column']);
+                $havingClauses[] = "{$quotedColumn} {$having['operator']} ?";
                 $this->queryParams[] = $having['value'];
             }
             $sql .= " HAVING " . implode(' AND ', $havingClauses);
@@ -744,10 +1486,14 @@ abstract class Orm {
             foreach ($this->queryWhere as $index => $where) {
                 $type = $index === 0 ? '' : $where['type'] . ' ';
                 
-                if ($where['operator'] === 'IN') {
+                if ($where['operator'] === 'IN' || $where['operator'] === 'NOT IN') {
                     $placeholders = implode(', ', array_fill(0, count($where['value']), '?'));
-                    $whereClauses[] = "{$type}`{$where['column']}` IN ({$placeholders})";
+                    $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ({$placeholders})";
                     $params = array_merge($params, $where['value']);
+                } elseif ($where['operator'] === 'BETWEEN' || $where['operator'] === 'NOT BETWEEN') {
+                    $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ? AND ?";
+                    $params[] = $where['value'][0];
+                    $params[] = $where['value'][1];
                 } else {
                     $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ?";
                     $params[] = $where['value'];
@@ -772,18 +1518,22 @@ abstract class Orm {
 
         // Soft delete if enabled
         if (static::$softDelete && $this->exists) {
-            $this->fireEvent('deleting');
+            if ($this->fireEvent('beforeDelete', true) === false) {
+                return false;
+            }
             $this->attributes[static::$deletedAtColumn] = date('Y-m-d H:i:s');
-            $this->save();
-            $this->fireEvent('deleted');
-            return 1;
+            $result = $this->save();
+            $this->fireEvent('afterDelete');
+            return $result;
         } elseif (static::$softDelete && !$this->exists) {
             // Soft delete via query
             return $this->update([static::$deletedAtColumn => date('Y-m-d H:i:s')]);
         }
 
         // Hard delete
-        $this->fireEvent('deleting');
+        if ($this->exists && $this->fireEvent('beforeDelete', true) === false) {
+            return false;
+        }
 
         $table = static::getTable();
         $sql = "DELETE FROM `{$table}`";
@@ -800,10 +1550,14 @@ abstract class Orm {
                 foreach ($this->queryWhere as $index => $where) {
                     $type = $index === 0 ? '' : $where['type'] . ' ';
                     
-                    if ($where['operator'] === 'IN') {
+                    if ($where['operator'] === 'IN' || $where['operator'] === 'NOT IN') {
                         $placeholders = implode(', ', array_fill(0, count($where['value']), '?'));
-                        $whereClauses[] = "{$type}`{$where['column']}` IN ({$placeholders})";
+                        $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ({$placeholders})";
                         $params = array_merge($params, $where['value']);
+                    } elseif ($where['operator'] === 'BETWEEN' || $where['operator'] === 'NOT BETWEEN') {
+                        $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ? AND ?";
+                        $params[] = $where['value'][0];
+                        $params[] = $where['value'][1];
                     } else {
                         $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ?";
                         $params[] = $where['value'];
@@ -821,7 +1575,7 @@ abstract class Orm {
         if ($this->exists) {
             $this->exists = false;
             $this->attributes = [];
-            $this->fireEvent('deleted');
+            $this->fireEvent('afterDelete');
         }
         
         return $affected;
@@ -875,8 +1629,19 @@ abstract class Orm {
 
     /**
      * Save the model (insert or update)
+     * Automatically validates before saving if rules are defined
+     * 
+     * @param bool $runValidation Whether to run validation (default: true)
+     * @return bool
      */
-    public function save() {
+    public function save($runValidation = true) {
+        // Run validation if enabled and rules exist
+        if ($runValidation && !empty($this->rules())) {
+            if (!$this->validate()) {
+                return false; // Validation failed
+            }
+        }
+        
         if ($this->exists) {
             return $this->performUpdate();
         } else {
@@ -885,11 +1650,47 @@ abstract class Orm {
     }
 
     /**
+     * Refresh the model from the database
+     * Discards any unsaved changes
+     * 
+     * @return bool
+     */
+    public function refresh() {
+        if (!$this->exists) {
+            return false;
+        }
+
+        $primaryKey = static::$primaryKey;
+        $id = $this->attributes[$primaryKey] ?? null;
+
+        if (!$id) {
+            return false;
+        }
+
+        $fresh = static::find($id);
+
+        if (!$fresh) {
+            return false;
+        }
+
+        $this->attributes = $fresh->attributes;
+        $this->original = $fresh->original;
+        $this->relations = [];
+
+        return true;
+    }
+
+    /**
      * Perform INSERT
      */
     protected function performInsert() {
-        $this->fireEvent('creating');
-        $this->fireEvent('saving');
+        // Fire before events
+        if ($this->fireEvent('beforeSave', true) === false) {
+            return false;
+        }
+        if ($this->fireEvent('beforeInsert', true) === false) {
+            return false;
+        }
 
         $attributes = $this->attributes;
 
@@ -919,8 +1720,9 @@ abstract class Orm {
         $this->original = $this->attributes;
         $this->exists = true;
 
-        $this->fireEvent('created');
-        $this->fireEvent('saved');
+        // Fire after events
+        $this->fireEvent('afterInsert');
+        $this->fireEvent('afterSave');
 
         return true;
     }
@@ -929,14 +1731,22 @@ abstract class Orm {
      * Perform UPDATE
      */
     protected function performUpdate() {
-        $this->fireEvent('updating');
-        $this->fireEvent('saving');
-
         $dirty = $this->getDirty();
         
         if (empty($dirty)) {
             return true; // Nothing to update
         }
+
+        // Fire before events
+        if ($this->fireEvent('beforeSave', true) === false) {
+            return false;
+        }
+        if ($this->fireEvent('beforeUpdate', true) === false) {
+            return false;
+        }
+
+        // Store changed attributes for afterUpdate event
+        $changedAttributes = $dirty;
 
         // Add timestamps
         if (static::$timestamps) {
@@ -962,20 +1772,35 @@ abstract class Orm {
         $this->original = array_merge($this->original, $dirty);
         $this->attributes = array_merge($this->attributes, $dirty);
 
-        $this->fireEvent('updated');
-        $this->fireEvent('saved');
+        // Fire after events with changed attributes
+        $this->fireEvent('afterUpdate', false, $changedAttributes);
+        $this->fireEvent('afterSave');
 
         return true;
     }
 
     /**
      * Fire model event
+     * 
+     * @param string $event Event name
+     * @param bool $checkReturn Whether to check return value (false = cancel operation)
+     * @param mixed $data Additional data to pass to event
+     * @return mixed
      */
-    protected function fireEvent($event) {
+    protected function fireEvent($event, $checkReturn = false, $data = null) {
         $method = $event;
+        
         if (method_exists($this, $method)) {
-            $this->$method();
+            $result = $data !== null ? $this->$method($data) : $this->$method();
+            
+            if ($checkReturn && $result === false) {
+                return false;
+            }
+            
+            return $result;
         }
+        
+        return null;
     }
 
     /**
@@ -1021,6 +1846,294 @@ abstract class Orm {
 
         return true;
     }
+
+    // ==================== VALIDATION ====================
+
+    /**
+     * Define validation rules for the model
+     * Override this method in child classes
+     * 
+     * @return array
+     * 
+     * @example
+     * public function rules() {
+     *     return [
+     *         ['name', 'required'],
+     *         ['email', 'required|email'],
+     *         ['age', 'integer|min:18|max:120'],
+     *         ['name', 'string|minLength:3|maxLength:50'],
+     *         ['phone', 'optional|phone'],
+     *         ['website', 'optional|url'],
+     *     ];
+     * }
+     */
+    public function rules() {
+        return [];
+    }
+
+    /**
+     * Define scenarios for different contexts
+     * Override this method in child classes
+     * 
+     * @return array
+     * 
+     * @example
+     * public function scenarios() {
+     *     return [
+     *         'register' => ['name', 'email', 'password'],
+     *         'update' => ['name', 'email'],
+     *         'login' => ['email', 'password'],
+     *     ];
+     * }
+     */
+    public function scenarios() {
+        return [];
+    }
+
+    /**
+     * Set the scenario for validation context
+     * 
+     * @param string $scenario
+     * @return $this
+     */
+    public function setScenario($scenario) {
+        $this->scenario = $scenario;
+        return $this;
+    }
+
+    /**
+     * Get the current scenario
+     * 
+     * @return string
+     */
+    public function getScenario() {
+        return $this->scenario;
+    }
+
+    /**
+     * Validate the model attributes using defined rules
+     * 
+     * @return bool
+     */
+    public function validate() {
+        $rules = $this->rules();
+        
+        if (empty($rules)) {
+            return true; // No rules defined = always valid
+        }
+
+        $validator = Validator::make($this->attributes);
+        
+        foreach ($rules as $rule) {
+            $field = $rule[0]; // Field name
+            $ruleString = $rule[1]; // Rule string like "required|email"
+            
+            // Check if rule applies to current scenario
+            if (isset($rule['on']) && !in_array($this->scenario, (array)$rule['on'])) {
+                continue; // Skip this rule for current scenario
+            }
+            
+            // Parse rule string
+            $ruleParts = explode('|', $ruleString);
+            
+            // Skip validation for optional fields that don't exist in attributes
+            $isOptional = in_array('optional', $ruleParts);
+            $fieldExists = array_key_exists($field, $this->attributes);
+            
+            if ($isOptional && !$fieldExists) {
+                continue; // Skip validation for optional field that's not present
+            }
+            
+            $validator->field($field);
+            
+            foreach ($ruleParts as $rulePart) {
+                $this->applyValidationRule($validator, $rulePart);
+            }
+        }
+        
+        if ($validator->hasErrors()) {
+            $this->validationErrors = $validator->getErrors();
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Apply a single validation rule to the validator
+     * 
+     * @param Validator $validator
+     * @param string $rule
+     */
+    protected function applyValidationRule($validator, $rule) {
+        // Parse rule with parameters (e.g., "min:18" or "between:18,120")
+        if (strpos($rule, ':') !== false) {
+            list($ruleName, $params) = explode(':', $rule, 2);
+            $params = explode(',', $params);
+        } else {
+            $ruleName = $rule;
+            $params = [];
+        }
+        
+        // Map rules to Validator methods
+        switch ($ruleName) {
+            case 'required':
+                $validator->notEmpty();
+                break;
+            case 'optional':
+                $validator->optional();
+                break;
+            case 'email':
+                $validator->isEmail();
+                break;
+            case 'url':
+                $validator->isUrl();
+                break;
+            case 'phone':
+                $validator->isPhone();
+                break;
+            case 'uuid':
+                $validator->isUuid();
+                break;
+            case 'json':
+                $validator->isJson();
+                break;
+            case 'ip':
+                $validator->isIpAddress();
+                break;
+            case 'alpha':
+                $validator->isAlpha();
+                break;
+            case 'alphaNumeric':
+                $validator->isAlphaNumeric();
+                break;
+            case 'string':
+                $validator->isString();
+                break;
+            case 'integer':
+            case 'int':
+                $validator->isInt();
+                break;
+            case 'float':
+                $validator->isFloat();
+                break;
+            case 'numeric':
+                $validator->isNumeric();
+                break;
+            case 'boolean':
+            case 'bool':
+                $validator->isBool();
+                break;
+            case 'array':
+                $validator->isArray();
+                break;
+            case 'date':
+                $format = $params[0] ?? 'Y-m-d';
+                $validator->isDate($format);
+                break;
+            case 'minLength':
+                $validator->minLength((int)$params[0]);
+                break;
+            case 'maxLength':
+                $validator->maxLength((int)$params[0]);
+                break;
+            case 'min':
+                $validator->minValue($params[0]);
+                break;
+            case 'max':
+                $validator->maxValue($params[0]);
+                break;
+            case 'between':
+                $validator->between($params[0], $params[1]);
+                break;
+            case 'in':
+                $validator->containsValue($params);
+                break;
+            case 'notIn':
+                $validator->notContainsValue($params);
+                break;
+            case 'regex':
+                $validator->matchesRegex($params[0]);
+                break;
+            case 'unique':
+                $this->validateUnique($validator, $params);
+                break;
+            // Add more rule mappings as needed
+        }
+    }
+
+    /**
+     * Validate unique constraint in database
+     * 
+     * @param Validator $validator
+     * @param array $params
+     */
+    protected function validateUnique($validator, $params = []) {
+        $field = $validator->getValue();
+        $table = static::getTable();
+        $column = $params[0] ?? $validator->getValue();
+        
+        $query = static::query()->where($column, $field);
+        
+        // Exclude current record if updating
+        if ($this->exists) {
+            $query->where(static::$primaryKey, '!=', $this->attributes[static::$primaryKey]);
+        }
+        
+        if ($query->count() > 0) {
+            $validator->custom(function() { return false; }, 'is already taken');
+        }
+    }
+
+    /**
+     * Get validation errors
+     * 
+     * @return array
+     */
+    public function getErrors() {
+        return $this->validationErrors;
+    }
+
+    /**
+     * Get first validation error
+     * 
+     * @return string|null
+     */
+    public function getFirstError() {
+        return empty($this->validationErrors) ? null : $this->validationErrors[0];
+    }
+
+    /**
+     * Check if model has validation errors
+     * 
+     * @return bool
+     */
+    public function hasErrors() {
+        return !empty($this->validationErrors);
+    }
+
+    /**
+     * Add a custom validation error
+     * 
+     * @param string $message
+     * @return $this
+     */
+    public function addError($message) {
+        $this->validationErrors[] = $message;
+        return $this;
+    }
+
+    /**
+     * Clear validation errors
+     * 
+     * @return $this
+     */
+    public function clearErrors() {
+        $this->validationErrors = [];
+        return $this;
+    }
+
+    // ==================== END VALIDATION ====================
 
     /**
      * Set attribute value
@@ -1144,6 +2257,11 @@ abstract class Orm {
         $foreignKey = $foreignKey ?: strtolower((new \ReflectionClass($this))->getShortName()) . '_id';
         $localKey = $localKey ?: static::$primaryKey;
 
+        // Check if local key exists in attributes
+        if (!isset($this->attributes[$localKey])) {
+            return $instance->where($foreignKey, null); // Return empty query
+        }
+
         $query = $instance->where($foreignKey, $this->attributes[$localKey]);
         $query->foreignKey = $foreignKey;
         $query->ownerKey = $localKey;
@@ -1200,10 +2318,320 @@ abstract class Orm {
 
         $relatedTable = $instance::getTable();
         
-        return $instance
+        $query = $instance
             ->select("{$relatedTable}.*")
             ->join($pivotTable, "{$relatedTable}.{$relatedKey}", '=', "{$pivotTable}.{$relatedPivotKey}")
             ->where("{$pivotTable}.{$foreignPivotKey}", $this->attributes[$parentKey]);
+        
+        // Store pivot table information for attach/detach/sync
+        $query->pivotTable = $pivotTable;
+        $query->foreignPivotKey = $foreignPivotKey;
+        $query->relatedPivotKey = $relatedPivotKey;
+        $query->parentKey = $parentKey;
+        $query->relatedKey = $relatedKey;
+        $query->parentInstance = $this;
+        
+        return $query;
+    }
+
+    /**
+     * Set the inverse relationship name for bi-directional optimization
+     * When loading relations, this will automatically populate the inverse side
+     * 
+     * @param string $relation The name of the inverse relationship
+     * @return $this
+     * 
+     * @example
+     * // In Post model:
+     * public function user() {
+     *     return $this->belongsTo(User::class)->inverseOf('posts');
+     * }
+     * 
+     * // In User model:
+     * public function posts() {
+     *     return $this->hasMany(Post::class)->inverseOf('user');
+     * }
+     * 
+     * // Now when you load: $posts = Post::with('user')->get();
+     * // Each $post->user will automatically have $user->posts = [$post]
+     */
+    public function inverseOf($relation) {
+        $this->inverseRelation = $relation;
+        return $this;
+    }
+
+    /**
+     * Define a many-to-many relationship via an intermediate table with more control
+     * Similar to belongsToMany but allows custom queries on the pivot table
+     * 
+     * @param string $related Related model class
+     * @param string $viaTable Intermediate/pivot table name
+     * @param array $link Link configuration [from_column => to_column] for first join
+     * @param array $extraColumns Additional pivot columns to select
+     * @return $this
+     * 
+     * @example
+     * // Basic usage:
+     * public function permissions() {
+     *     return $this->viaTable(
+     *         Permission::class,
+     *         'user_permission',
+     *         ['id' => 'user_id'],  // Current model's id = pivot's user_id
+     *         ['permission_id' => 'id']  // Pivot's permission_id = Permission's id
+     *     );
+     * }
+     * 
+     * // With additional pivot columns:
+     * public function permissions() {
+     *     return $this->viaTable(
+     *         Permission::class,
+     *         'user_permission',
+     *         ['id' => 'user_id'],
+     *         ['permission_id' => 'id'],
+     *         ['granted_at', 'granted_by']  // Include these pivot columns
+     *     );
+     * }
+     * 
+     * // Then you can add conditions on pivot table:
+     * $user->viaTable(...)->where('user_permission.granted_by', $adminId)->get();
+     */
+    protected function viaTable($related, $viaTable, array $link, array $viaLink, array $extraColumns = []) {
+        $instance = new $related();
+        $relatedTable = $instance::getTable();
+        $currentTable = static::getTable();
+
+        // Determine the join columns
+        $currentColumn = array_key_first($link);
+        $viaCurrentColumn = $link[$currentColumn];
+        
+        $viaRelatedColumn = array_key_first($viaLink);
+        $relatedColumn = $viaLink[$viaRelatedColumn];
+
+        // Build SELECT with pivot columns if requested
+        $selectColumns = ["{$relatedTable}.*"];
+        foreach ($extraColumns as $col) {
+            $selectColumns[] = "{$viaTable}.{$col} as pivot_{$col}";
+        }
+
+        // Create the query with joins
+        $query = $instance
+            ->select(...$selectColumns)
+            ->join($viaTable, "{$relatedTable}.{$relatedColumn}", '=', "{$viaTable}.{$viaRelatedColumn}")
+            ->where("{$viaTable}.{$viaCurrentColumn}", $this->attributes[$currentColumn]);
+
+        // Store via table information for later use
+        $query->viaTableName = $viaTable;
+        $query->viaTableLink = $link;
+        $query->viaTableViaLink = $viaLink;
+        $query->viaTableExtraColumns = $extraColumns;
+        $query->parentInstance = $this;
+
+        return $query;
+    }
+
+    /**
+     * Attach models to a many-to-many relationship
+     * 
+     * @param mixed $ids Single ID, array of IDs, or array of ID => attributes
+     * @param array $attributes Additional pivot attributes for all attachments
+     * @return int Number of rows inserted
+     */
+    public function attach($ids, array $attributes = []) {
+        if (!isset($this->pivotTable)) {
+            throw new \Exception('attach() can only be called on belongsToMany relationships');
+        }
+
+        $db = static::getConnection();
+        $parentId = $this->parentInstance->attributes[$this->parentKey];
+        
+        // Normalize IDs to array
+        if (!is_array($ids)) {
+            $ids = [$ids => []];
+        } elseif (array_keys($ids) === range(0, count($ids) - 1)) {
+            // Sequential array, convert to associative
+            $ids = array_fill_keys($ids, []);
+        }
+
+        $inserted = 0;
+        foreach ($ids as $relatedId => $pivotAttributes) {
+            // Merge global attributes with per-ID attributes
+            $data = array_merge($attributes, is_array($pivotAttributes) ? $pivotAttributes : []);
+            $data[$this->foreignPivotKey] = $parentId;
+            $data[$this->relatedPivotKey] = $relatedId;
+
+            // Check if relationship already exists
+            $exists = $db->query(
+                "SELECT COUNT(*) as count FROM `{$this->pivotTable}` WHERE `{$this->foreignPivotKey}` = ? AND `{$this->relatedPivotKey}` = ?",
+                [$parentId, $relatedId]
+            );
+
+            if (($exists->rows[0]['count'] ?? 0) == 0) {
+                $columns = array_keys($data);
+                $placeholders = array_fill(0, count($columns), '?');
+                
+                $sql = "INSERT INTO `{$this->pivotTable}` (`" . implode('`, `', $columns) . "`) VALUES (" . implode(', ', $placeholders) . ")";
+                $db->query($sql, array_values($data));
+                $inserted++;
+            }
+        }
+
+        return $inserted;
+    }
+
+    /**
+     * Detach models from a many-to-many relationship
+     * 
+     * @param mixed $ids Single ID, array of IDs, or null to detach all
+     * @return int Number of rows deleted
+     */
+    public function detach($ids = null) {
+        if (!isset($this->pivotTable)) {
+            throw new \Exception('detach() can only be called on belongsToMany relationships');
+        }
+
+        $db = static::getConnection();
+        $parentId = $this->parentInstance->attributes[$this->parentKey];
+
+        if ($ids === null) {
+            // Detach all
+            $sql = "DELETE FROM `{$this->pivotTable}` WHERE `{$this->foreignPivotKey}` = ?";
+            $db->query($sql, [$parentId]);
+        } else {
+            // Detach specific IDs
+            $ids = is_array($ids) ? $ids : [$ids];
+            $placeholders = implode(', ', array_fill(0, count($ids), '?'));
+            
+            $sql = "DELETE FROM `{$this->pivotTable}` WHERE `{$this->foreignPivotKey}` = ? AND `{$this->relatedPivotKey}` IN ({$placeholders})";
+            $params = array_merge([$parentId], $ids);
+            $db->query($sql, $params);
+        }
+
+        return $db->countAffected();
+    }
+
+    /**
+     * Sync models in a many-to-many relationship (replace all)
+     * 
+     * @param array $ids Array of IDs or array of ID => attributes
+     * @param bool $detaching Whether to remove non-matching records (default true)
+     * @return array ['attached' => [...], 'detached' => [...], 'updated' => [...]]
+     */
+    public function sync(array $ids, $detaching = true) {
+        if (!isset($this->pivotTable)) {
+            throw new \Exception('sync() can only be called on belongsToMany relationships');
+        }
+
+        $db = static::getConnection();
+        $parentId = $this->parentInstance->attributes[$this->parentKey];
+
+        // Normalize IDs
+        if (array_keys($ids) === range(0, count($ids) - 1)) {
+            $ids = array_fill_keys($ids, []);
+        }
+
+        $changes = [
+            'attached' => [],
+            'detached' => [],
+            'updated' => []
+        ];
+
+        // Get current relationships
+        $current = $db->query(
+            "SELECT `{$this->relatedPivotKey}` as id FROM `{$this->pivotTable}` WHERE `{$this->foreignPivotKey}` = ?",
+            [$parentId]
+        );
+        $currentIds = array_column($current->rows ?? [], 'id');
+
+        // Determine what to attach and detach
+        $newIds = array_keys($ids);
+        $toAttach = array_diff($newIds, $currentIds);
+        $toDetach = $detaching ? array_diff($currentIds, $newIds) : [];
+        $toUpdate = array_intersect($currentIds, $newIds);
+
+        // Detach removed relationships
+        if (!empty($toDetach)) {
+            $this->detach($toDetach);
+            $changes['detached'] = $toDetach;
+        }
+
+        // Attach new relationships
+        if (!empty($toAttach)) {
+            $attachData = [];
+            foreach ($toAttach as $id) {
+                $attachData[$id] = $ids[$id];
+            }
+            $this->attach($attachData);
+            $changes['attached'] = $toAttach;
+        }
+
+        // Update existing relationships with new pivot data
+        foreach ($toUpdate as $id) {
+            if (!empty($ids[$id])) {
+                $pivotData = $ids[$id];
+                $setClauses = [];
+                $params = [];
+                
+                foreach ($pivotData as $column => $value) {
+                    $setClauses[] = "`{$column}` = ?";
+                    $params[] = $value;
+                }
+                
+                if (!empty($setClauses)) {
+                    $params[] = $parentId;
+                    $params[] = $id;
+                    
+                    $sql = "UPDATE `{$this->pivotTable}` SET " . implode(', ', $setClauses) . 
+                           " WHERE `{$this->foreignPivotKey}` = ? AND `{$this->relatedPivotKey}` = ?";
+                    $db->query($sql, $params);
+                    $changes['updated'][] = $id;
+                }
+            }
+        }
+
+        return $changes;
+    }
+
+    /**
+     * Toggle models in a many-to-many relationship
+     * If attached, detach. If detached, attach.
+     * 
+     * @param mixed $ids Single ID or array of IDs
+     * @param array $attributes Additional pivot attributes for attachments
+     * @return array ['attached' => [...], 'detached' => [...]]
+     */
+    public function toggle($ids, array $attributes = []) {
+        if (!isset($this->pivotTable)) {
+            throw new \Exception('toggle() can only be called on belongsToMany relationships');
+        }
+
+        $db = static::getConnection();
+        $parentId = $this->parentInstance->attributes[$this->parentKey];
+        $ids = is_array($ids) ? $ids : [$ids];
+
+        $changes = [
+            'attached' => [],
+            'detached' => []
+        ];
+
+        foreach ($ids as $relatedId) {
+            // Check if relationship exists
+            $exists = $db->query(
+                "SELECT COUNT(*) as count FROM `{$this->pivotTable}` WHERE `{$this->foreignPivotKey}` = ? AND `{$this->relatedPivotKey}` = ?",
+                [$parentId, $relatedId]
+            );
+
+            if (($exists->rows[0]['count'] ?? 0) > 0) {
+                // Exists, so detach
+                $this->detach($relatedId);
+                $changes['detached'][] = $relatedId;
+            } else {
+                // Doesn't exist, so attach
+                $this->attach($relatedId, $attributes);
+                $changes['attached'][] = $relatedId;
+            }
+        }
+
+        return $changes;
     }
 
     /**
@@ -1215,8 +2643,11 @@ abstract class Orm {
             return $this->relations[$key];
         }
 
-        // Check if it's a relationship method
-        if (method_exists($this, $key)) {
+        // Check if it's a relationship method (but exclude aggregate/query builder methods)
+        $excludedMethods = ['count', 'sum', 'avg', 'min', 'max', 'get', 'first', 'find', 'all', 
+                           'where', 'orderBy', 'limit', 'offset', 'select', 'join', 'groupBy', 'having'];
+        
+        if (method_exists($this, $key) && !in_array($key, $excludedMethods)) {
             $relation = $this->$key();
             $this->relations[$key] = $relation;
             return $relation;
@@ -1251,6 +2682,399 @@ abstract class Orm {
      */
     public function __toString() {
         return $this->toJson(JSON_PRETTY_PRINT);
+    }
+
+    /**
+     * Handle dynamic static method calls
+     * This allows calling query builder methods statically: User::where()->get()
+     */
+    public static function __callStatic($method, $parameters) {
+        return (new static())->$method(...$parameters);
+    }
+
+    // ==================== TRANSACTION HELPERS ====================
+
+    /**
+     * Execute a callback within a database transaction
+     * 
+     * @param callable $callback Function to execute within transaction
+     * @return mixed Result of the callback
+     * @throws \Exception
+     */
+    public static function transaction(callable $callback) {
+        $db = static::getConnection();
+        
+        $db->beginTransaction();
+        
+        try {
+            $result = $callback();
+            $db->commit();
+            return $result;
+        } catch (\Exception $e) {
+            $db->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Begin a database transaction
+     */
+    public static function beginTransaction() {
+        return static::getConnection()->beginTransaction();
+    }
+
+    /**
+     * Commit the active database transaction
+     */
+    public static function commit() {
+        return static::getConnection()->commit();
+    }
+
+    /**
+     * Rollback the active database transaction
+     */
+    public static function rollBack() {
+        return static::getConnection()->rollBack();
+    }
+
+    // ==================== SCHEMA INSPECTION ====================
+
+    /**
+     * Get the complete table schema
+     * 
+     * @param bool $refresh Force refresh the cache
+     * @return array Table schema information
+     */
+    public static function getTableSchema($refresh = false) {
+        $table = static::getTable();
+        
+        if ($refresh || !isset(static::$schemaCache[$table])) {
+            static::$schemaCache[$table] = [
+                'table' => $table,
+                'columns' => static::getColumns($refresh),
+                'primaryKey' => static::getPrimaryKey(),
+                'indexes' => static::getIndexes($refresh),
+                'foreignKeys' => static::getForeignKeys($refresh),
+            ];
+        }
+        
+        return static::$schemaCache[$table];
+    }
+
+    /**
+     * Get all columns information for the table
+     * 
+     * @param bool $refresh Force refresh the cache
+     * @return array Column definitions
+     */
+    public static function getColumns($refresh = false) {
+        $table = static::getTable();
+        $cacheKey = $table . '_columns';
+        
+        if ($refresh || !isset(static::$schemaCache[$cacheKey])) {
+            $db = static::getConnection();
+            
+            // Get column information from INFORMATION_SCHEMA
+            $sql = "SELECT 
+                        COLUMN_NAME as name,
+                        DATA_TYPE as type,
+                        COLUMN_TYPE as fullType,
+                        CHARACTER_MAXIMUM_LENGTH as maxLength,
+                        `NUMERIC_PRECISION` as `precision`,
+                        `NUMERIC_SCALE` as scale,
+                        IS_NULLABLE as nullable,
+                        COLUMN_DEFAULT as defaultValue,
+                        COLUMN_KEY as keyType,
+                        EXTRA as extra,
+                        COLUMN_COMMENT as comment
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = ?
+                    ORDER BY ORDINAL_POSITION";
+            
+            $result = $db->query($sql, [$table]);
+            $columns = $result->rows ?? [];
+            
+            // Process column information
+            $processed = [];
+            foreach ($columns as $column) {
+                $processed[$column['name']] = [
+                    'name' => $column['name'],
+                    'type' => $column['type'],
+                    'fullType' => $column['fullType'],
+                    'maxLength' => $column['maxLength'] ? (int)$column['maxLength'] : null,
+                    'precision' => $column['precision'] ? (int)$column['precision'] : null,
+                    'scale' => $column['scale'] ? (int)$column['scale'] : null,
+                    'nullable' => $column['nullable'] === 'YES',
+                    'defaultValue' => $column['defaultValue'],
+                    'isPrimaryKey' => $column['keyType'] === 'PRI',
+                    'isUnique' => $column['keyType'] === 'UNI',
+                    'isAutoIncrement' => strpos($column['extra'], 'auto_increment') !== false,
+                    'comment' => $column['comment'],
+                    'phpType' => static::getPhpType($column['type']),
+                ];
+            }
+            
+            static::$schemaCache[$cacheKey] = $processed;
+        }
+        
+        return static::$schemaCache[$cacheKey];
+    }
+
+    /**
+     * Get a specific column information
+     * 
+     * @param string $columnName Column name
+     * @param bool $refresh Force refresh the cache
+     * @return array|null Column definition or null if not found
+     */
+    public static function getColumn($columnName, $refresh = false) {
+        $columns = static::getColumns($refresh);
+        return $columns[$columnName] ?? null;
+    }
+
+    /**
+     * Check if a column exists in the table
+     * 
+     * @param string $columnName Column name
+     * @return bool
+     */
+    public static function hasColumn($columnName) {
+        $columns = static::getColumns();
+        return isset($columns[$columnName]);
+    }
+
+    /**
+     * Get column names
+     * 
+     * @param bool $refresh Force refresh the cache
+     * @return array List of column names
+     */
+    public static function getColumnNames($refresh = false) {
+        return array_keys(static::getColumns($refresh));
+    }
+
+    /**
+     * Get the primary key column(s)
+     * 
+     * @return string|array Primary key column name(s)
+     */
+    public static function getPrimaryKey() {
+        return static::$primaryKey;
+    }
+
+    /**
+     * Get all indexes for the table
+     * 
+     * @param bool $refresh Force refresh the cache
+     * @return array Index definitions
+     */
+    public static function getIndexes($refresh = false) {
+        $table = static::getTable();
+        $cacheKey = $table . '_indexes';
+        
+        if ($refresh || !isset(static::$schemaCache[$cacheKey])) {
+            $db = static::getConnection();
+            
+            $sql = "SHOW INDEXES FROM " . $table;
+            $result = $db->query($sql);
+            $indexes = $result->rows ?? [];
+            
+            // Group by index name
+            $processed = [];
+            foreach ($indexes as $index) {
+                $name = $index['Key_name'];
+                
+                if (!isset($processed[$name])) {
+                    $processed[$name] = [
+                        'name' => $name,
+                        'columns' => [],
+                        'unique' => $index['Non_unique'] == 0,
+                        'primary' => $name === 'PRIMARY',
+                        'type' => $index['Index_type'],
+                    ];
+                }
+                
+                $processed[$name]['columns'][] = $index['Column_name'];
+            }
+            
+            static::$schemaCache[$cacheKey] = $processed;
+        }
+        
+        return static::$schemaCache[$cacheKey];
+    }
+
+    /**
+     * Get foreign keys for the table
+     * 
+     * @param bool $refresh Force refresh the cache
+     * @return array Foreign key definitions
+     */
+    public static function getForeignKeys($refresh = false) {
+        $table = static::getTable();
+        $cacheKey = $table . '_foreign_keys';
+        
+        if ($refresh || !isset(static::$schemaCache[$cacheKey])) {
+            $db = static::getConnection();
+            
+            $sql = "SELECT 
+                        kcu.CONSTRAINT_NAME as name,
+                        kcu.COLUMN_NAME as `column`,
+                        kcu.REFERENCED_TABLE_NAME as referencedTable,
+                        kcu.REFERENCED_COLUMN_NAME as referencedColumn,
+                        rc.UPDATE_RULE as onUpdate,
+                        rc.DELETE_RULE as onDelete
+                    FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                    LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc 
+                        ON kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME 
+                        AND kcu.TABLE_SCHEMA = rc.CONSTRAINT_SCHEMA
+                    WHERE kcu.TABLE_SCHEMA = DATABASE()
+                    AND kcu.TABLE_NAME = ?
+                    AND kcu.REFERENCED_TABLE_NAME IS NOT NULL";
+            
+            $result = $db->query($sql, [$table]);
+            $foreignKeys = $result->rows ?? [];
+            
+            // Group by constraint name
+            $processed = [];
+            foreach ($foreignKeys as $fk) {
+                $name = $fk['name'];
+                
+                if (!isset($processed[$name])) {
+                    $processed[$name] = [
+                        'name' => $name,
+                        'columns' => [],
+                        'referencedTable' => $fk['referencedTable'],
+                        'referencedColumns' => [],
+                        'onUpdate' => $fk['onUpdate'],
+                        'onDelete' => $fk['onDelete'],
+                    ];
+                }
+                
+                $processed[$name]['columns'][] = $fk['column'];
+                $processed[$name]['referencedColumns'][] = $fk['referencedColumn'];
+            }
+            
+            static::$schemaCache[$cacheKey] = $processed;
+        }
+        
+        return static::$schemaCache[$cacheKey];
+    }
+
+    /**
+     * Map database type to PHP type
+     * 
+     * @param string $dbType Database column type
+     * @return string PHP type
+     */
+    protected static function getPhpType($dbType) {
+        $typeMap = [
+            // Integer types
+            'tinyint' => 'int',
+            'smallint' => 'int',
+            'mediumint' => 'int',
+            'int' => 'int',
+            'integer' => 'int',
+            'bigint' => 'int',
+            
+            // Float types
+            'float' => 'float',
+            'double' => 'float',
+            'decimal' => 'float',
+            'numeric' => 'float',
+            
+            // String types
+            'char' => 'string',
+            'varchar' => 'string',
+            'text' => 'string',
+            'tinytext' => 'string',
+            'mediumtext' => 'string',
+            'longtext' => 'string',
+            'enum' => 'string',
+            'set' => 'string',
+            
+            // Binary types
+            'binary' => 'string',
+            'varbinary' => 'string',
+            'blob' => 'string',
+            'tinyblob' => 'string',
+            'mediumblob' => 'string',
+            'longblob' => 'string',
+            
+            // Date/Time types
+            'date' => 'string',
+            'datetime' => 'string',
+            'timestamp' => 'string',
+            'time' => 'string',
+            'year' => 'int',
+            
+            // Boolean
+            'bool' => 'bool',
+            'boolean' => 'bool',
+            
+            // JSON
+            'json' => 'array',
+        ];
+        
+        return $typeMap[strtolower($dbType)] ?? 'string';
+    }
+
+    /**
+     * Clear the schema cache
+     * 
+     * @param string|null $table Specific table or null for all
+     */
+    public static function clearSchemaCache($table = null) {
+        if ($table === null) {
+            static::$schemaCache = [];
+        } else {
+            unset(
+                static::$schemaCache[$table],
+                static::$schemaCache[$table . '_columns'],
+                static::$schemaCache[$table . '_indexes'],
+                static::$schemaCache[$table . '_foreign_keys']
+            );
+        }
+    }
+
+    /**
+     * Get table statistics
+     * 
+     * @return array Table statistics (rows, size, etc.)
+     */
+    public static function getTableStats() {
+        $table = static::getTable();
+        $db = static::getConnection();
+        
+        $sql = "SELECT 
+                    TABLE_ROWS as rowCount,
+                    AVG_ROW_LENGTH as avgRowLength,
+                    DATA_LENGTH as dataSize,
+                    INDEX_LENGTH as indexSize,
+                    AUTO_INCREMENT as autoIncrement,
+                    CREATE_TIME as createdAt,
+                    UPDATE_TIME as updatedAt,
+                    TABLE_COLLATION as collation,
+                    ENGINE as engine
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = ?";
+        
+        $result = $db->query($sql, [$table]);
+        $stats = $result->row ?? [];
+        
+        if ($stats) {
+            $stats['rowCount'] = (int)$stats['rowCount'];
+            $stats['avgRowLength'] = (int)$stats['avgRowLength'];
+            $stats['dataSize'] = (int)$stats['dataSize'];
+            $stats['indexSize'] = (int)$stats['indexSize'];
+            $stats['totalSize'] = $stats['dataSize'] + $stats['indexSize'];
+            $stats['dataSizeMB'] = round($stats['dataSize'] / 1024 / 1024, 2);
+            $stats['indexSizeMB'] = round($stats['indexSize'] / 1024 / 1024, 2);
+            $stats['totalSizeMB'] = round($stats['totalSize'] / 1024 / 1024, 2);
+        }
+        
+        return $stats ?: [];
     }
 
 }
