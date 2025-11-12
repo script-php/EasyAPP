@@ -19,24 +19,25 @@ class Tag extends Orm {
     ];
     
     
-    // ==================== VALIDATION ====================
+    // ATTRIBUTE LABELS
     
-    /**
-     * Validation rules
-     * Auto-generated from table schema
-     * 
-     * Uncomment to enable automatic validation on save/create
-     */
-    public function rules() {
+    public function attributeLabels() {
         return [
-            ['name', 'required|string|maxLength:100|minLength:2'],
-            ['slug', 'required|string|maxLength:100'],
+            'id' => 'ID',
+            'name' => 'Name',
+            'slug' => 'Slug',
+            'created_at' => 'Created At',
+            'updated_at' => 'Updated At',
         ];
     }
     
-    // Example relationships:
-    // public function posts() {
-    //     return $this->hasMany(Post::class);
-    // }
+    // VALIDATION
+    
+    public function rules() {
+        return [
+             ['name', 'required|string|maxLength:100|minLength:2'],
+             ['slug', 'required|string|maxLength:100'],
+         ];
+     }
     
 }

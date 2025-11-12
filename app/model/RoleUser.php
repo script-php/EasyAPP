@@ -24,41 +24,33 @@ class RoleUser extends Orm {
         'role_id' => 'int',
     ];
     
-    // ==================== VALIDATION ====================
+    // ATTRIBUTE LABELS
     
-    /**
-     * Validation rules
-     * Auto-generated from table schema
-     * 
-     * Uncomment to enable automatic validation on save/create
-     */
-    public function rules() {
+    public function attributeLabels() {
         return [
-            ['user_id', 'required|integer'],
-            ['role_id', 'required|integer'],
+            'user_id' => 'User ID',
+            'role_id' => 'Role ID',
         ];
     }
     
+    // VALIDATION
     
-    // ==================== RELATIONSHIPS ====================
+    public function rules() {
+        return [
+             ['user_id', 'required|integer'],
+             ['role_id', 'required|integer'],
+         ];
+     }
     
-    /**
-     * Get the User that this RoleUser belongs to
-     */
+    
+    // RELATIONSHIPS
+    
     public function user() {
         return $this->belongsTo(User::class, 'user_id');
     }
     
-    /**
-     * Get the Role that this RoleUser belongs to
-     */
     public function role() {
         return $this->belongsTo(Role::class, 'role_id');
     }
-    
-    // Example relationships:
-    // public function posts() {
-    //     return $this->hasMany(Post::class);
-    // }
     
 }

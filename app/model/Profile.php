@@ -26,37 +26,38 @@ class Profile extends Orm {
         'user_id' => 'int',
     ];
     
-    // ==================== VALIDATION ====================
+    // ATTRIBUTE LABELS
     
-    /**
-     * Validation rules
-     * Auto-generated from table schema
-     * 
-     * Uncomment to enable automatic validation on save/create
-     */
-    public function rules() {
+    public function attributeLabels() {
         return [
-            ['user_id', 'required|integer'],
-            ['bio', 'optional|string'],
-            ['avatar', 'optional|string|maxLength:255'],
-            ['website', 'optional|string|maxLength:255|url'],
-            ['location', 'optional|string|maxLength:255'],
+            'id' => 'ID',
+            'user_id' => 'User ID',
+            'bio' => 'Bio',
+            'avatar' => 'Avatar',
+            'website' => 'Website',
+            'location' => 'Location',
+            'created_at' => 'Created At',
+            'updated_at' => 'Updated At',
         ];
     }
     
+    // VALIDATION
     
-    // ==================== RELATIONSHIPS ====================
+    public function rules() {
+        return [
+             ['user_id', 'required|integer'],
+             ['bio', 'optional|string'],
+             ['avatar', 'optional|string|maxLength:255'],
+             ['website', 'optional|string|maxLength:255|url'],
+             ['location', 'optional|string|maxLength:255'],
+         ];
+     }
     
-    /**
-     * Get the User that this Profile belongs to
-     */
+    
+    // RELATIONSHIPS
+    
     public function user() {
         return $this->belongsTo(User::class, 'user_id');
     }
-    
-    // Example relationships:
-    // public function posts() {
-    //     return $this->hasMany(Post::class);
-    // }
     
 }

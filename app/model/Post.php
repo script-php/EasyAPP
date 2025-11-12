@@ -31,39 +31,43 @@ class Post extends Orm {
         'published_at' => 'datetime',
     ];
     
-    // ==================== VALIDATION ====================
+    // ATTRIBUTE LABELS
     
-    /**
-     * Validation rules
-     * Auto-generated from table schema
-     * 
-     * Uncomment to enable automatic validation on save/create
-     */
-    public function rules() {
+    public function attributeLabels() {
         return [
-            ['user_id', 'required|integer'],
-            ['title', 'required|string|maxLength:255'],
-            ['slug', 'required|string|maxLength:255'],
-            ['content', 'required|string'],
-            ['status', 'optional|in:draft,published,archived'],
-            ['views', 'optional|integer'],
-            ['published_at', 'optional|datetime'],
+            'id' => 'ID',
+            'user_id' => 'User ID',
+            'title' => 'Title',
+            'slug' => 'Slug',
+            'content' => 'Content',
+            'status' => 'Status',
+            'views' => 'Views',
+            'published_at' => 'Published At',
+            'created_at' => 'Created At',
+            'updated_at' => 'Updated At',
+            'deleted_at' => 'Deleted At',
         ];
     }
     
+    // VALIDATION
     
-    // ==================== RELATIONSHIPS ====================
+    public function rules() {
+        return [
+             ['user_id', 'required|integer'],
+             ['title', 'required|string|maxLength:255'],
+             ['slug', 'required|string|maxLength:255'],
+             ['content', 'required|string'],
+             ['status', 'optional|in:draft,published,archived'],
+             ['views', 'optional|integer'],
+             ['published_at', 'optional|datetime'],
+         ];
+     }
     
-    /**
-     * Get the User that this Post belongs to
-     */
+    
+    // RELATIONSHIPS
+    
     public function user() {
         return $this->belongsTo(User::class, 'user_id');
     }
-    
-    // Example relationships:
-    // public function posts() {
-    //     return $this->hasMany(Post::class);
-    // }
     
 }

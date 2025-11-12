@@ -29,51 +29,47 @@ class Comment extends Orm {
         'parent_id' => 'int',
     ];
     
-    // ==================== VALIDATION ====================
+    // ATTRIBUTE LABELS
     
-    /**
-     * Validation rules
-     * Auto-generated from table schema
-     * 
-     * Uncomment to enable automatic validation on save/create
-     */
-    public function rules() {
+    public function attributeLabels() {
         return [
-            ['post_id', 'required|integer'],
-            ['user_id', 'required|integer'],
-            ['parent_id', 'optional|integer'],
-            ['content', 'required|string'],
-            ['status', 'optional|in:pending,approved,rejected'],
+            'id' => 'ID',
+            'post_id' => 'Post ID',
+            'user_id' => 'User ID',
+            'parent_id' => 'Parent ID',
+            'content' => 'Content',
+            'status' => 'Status',
+            'created_at' => 'Created At',
+            'updated_at' => 'Updated At',
+            'deleted_at' => 'Deleted At',
         ];
     }
     
+    // VALIDATION
     
-    // ==================== RELATIONSHIPS ====================
+    public function rules() {
+        return [
+             ['post_id', 'required|integer'],
+             ['user_id', 'required|integer'],
+             ['parent_id', 'optional|integer'],
+             ['content', 'required|string'],
+             ['status', 'optional|in:pending,approved,rejected'],
+         ];
+     }
     
-    /**
-     * Get the Post that this Comment belongs to
-     */
+    
+    // RELATIONSHIPS
+    
     public function post() {
         return $this->belongsTo(Post::class, 'post_id');
     }
     
-    /**
-     * Get the User that this Comment belongs to
-     */
     public function user() {
         return $this->belongsTo(User::class, 'user_id');
     }
     
-    /**
-     * Get the Comment that this Comment belongs to
-     */
     public function comment() {
         return $this->belongsTo(Comment::class, 'parent_id');
     }
-    
-    // Example relationships:
-    // public function posts() {
-    //     return $this->hasMany(Post::class);
-    // }
     
 }

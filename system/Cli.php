@@ -954,53 +954,52 @@ class Cli {
             $template .= "    ];\n";
         }
         
+        // Generate attribute labels
+        $labels = $this->generateAttributeLabels($columns);
+        if (!empty($labels)) {
+            $template .= "    \n";
+            $template .= "    // ATTRIBUTE LABELS \n";
+            $template .= "    \n";
+            $template .= "    public function attributeLabels() {\n";
+            $template .= "        return [\n";
+            foreach ($labels as $field => $label) {
+                $template .= "            '{$field}' => '{$label}',\n";
+            }
+            $template .= "        ];\n";
+            $template .= "    }\n";
+            $template .= "    \n";
+        }
+        
         // Generate validation rules
         $rules = $this->generateValidationRulesFromColumns($columns);
         if (!empty($rules)) {
+            $template .= "    // VALIDATION \n";
             $template .= "    \n";
-            $template .= "    // ==================== VALIDATION ====================\n";
-            $template .= "    \n";
-            $template .= "    /**\n";
-            $template .= "     * Validation rules\n";
-            $template .= "     * Auto-generated from table schema\n";
-            $template .= "     * \n";
-            $template .= "     * Uncomment to enable automatic validation on save/create\n";
-            $template .= "     */\n";
-            $template .= "    // public function rules() {\n";
-            $template .= "    //     return [\n";
+            $template .= "    public function rules() {\n";
+            $template .= "        return [\n";
             foreach ($rules as $rule) {
-                $template .= "    //         {$rule}\n";
+                $template .= "             {$rule}\n";
             }
-            $template .= "    //     ];\n";
-            $template .= "    // }\n";
+            $template .= "         ];\n";
+            $template .= "     }\n";
             $template .= "    \n";
         }
         
         // Relationships
         if (!empty($foreignKeys)) {
             $template .= "    \n";
-            $template .= "    // ==================== RELATIONSHIPS ====================\n";
+            $template .= "    // RELATIONSHIPS \n";
             $template .= "    \n";
             
             foreach ($foreignKeys as $fk) {
                 $relatedClass = $this->tableNameToClassName($fk['referenced_table']);
                 $methodName = lcfirst($relatedClass);
-                $template .= "    /**\n";
-                $template .= "     * Get the {$relatedClass} that this {$className} belongs to\n";
-                $template .= "     */\n";
                 $template .= "    public function {$methodName}() {\n";
                 $template .= "        return \$this->belongsTo({$relatedClass}::class, '{$fk['column']}');\n";
                 $template .= "    }\n";
                 $template .= "    \n";
             }
         }
-        
-        // Add example relationship comments
-        $template .= "    // Example relationships:\n";
-        $template .= "    // public function posts() {\n";
-        $template .= "    //     return \$this->hasMany(Post::class);\n";
-        $template .= "    // }\n";
-        $template .= "    \n";
         
         $template .= "}\n";
         
@@ -1105,6 +1104,62 @@ class Cli {
         }
         
         return $rules;
+    }
+    
+    /**
+     * Generate attribute labels from columns
+     */
+    private function generateAttributeLabels($columns) {
+        $labels = [];
+        
+        foreach ($columns as $column) {
+            $name = $column['Field'];
+            $label = $this->columnNameToLabel($name);
+            $labels[$name] = $label;
+        }
+        
+        return $labels;
+    }
+    
+    /**
+     * Convert column name to human-readable label
+     * Examples: user_id -> User ID, created_at -> Created At, name -> Name
+     */
+    private function columnNameToLabel($columnName) {
+        // Handle special cases
+        $specialCases = [
+            'id' => 'ID',
+            'url' => 'URL',
+            'api' => 'API',
+            'ip' => 'IP',
+            'ssl' => 'SSL',
+            'html' => 'HTML',
+            'xml' => 'XML',
+            'json' => 'JSON',
+            'pdf' => 'PDF',
+            'csv' => 'CSV',
+        ];
+        
+        // Check if entire column name is a special case
+        if (isset($specialCases[strtolower($columnName)])) {
+            return $specialCases[strtolower($columnName)];
+        }
+        
+        // Split by underscore
+        $parts = explode('_', $columnName);
+        $labelParts = [];
+        
+        foreach ($parts as $part) {
+            // Check if part is a special case
+            if (isset($specialCases[strtolower($part)])) {
+                $labelParts[] = $specialCases[strtolower($part)];
+            } else {
+                // Capitalize first letter
+                $labelParts[] = ucfirst(strtolower($part));
+            }
+        }
+        
+        return implode(' ', $labelParts);
     }
     
     /**

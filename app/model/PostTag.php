@@ -24,41 +24,33 @@ class PostTag extends Orm {
         'tag_id' => 'int',
     ];
     
-    // ==================== VALIDATION ====================
+    // ATTRIBUTE LABELS
     
-    /**
-     * Validation rules
-     * Auto-generated from table schema
-     * 
-     * Uncomment to enable automatic validation on save/create
-     */
-    public function rules() {
+    public function attributeLabels() {
         return [
-            ['post_id', 'required|integer'],
-            ['tag_id', 'required|integer'],
+            'post_id' => 'Post ID',
+            'tag_id' => 'Tag ID',
         ];
     }
     
+    // VALIDATION
     
-    // ==================== RELATIONSHIPS ====================
+    public function rules() {
+        return [
+             ['post_id', 'required|integer'],
+             ['tag_id', 'required|integer'],
+         ];
+     }
     
-    /**
-     * Get the Post that this PostTag belongs to
-     */
+    
+    // RELATIONSHIPS
+    
     public function post() {
         return $this->belongsTo(Post::class, 'post_id');
     }
     
-    /**
-     * Get the Tag that this PostTag belongs to
-     */
     public function tag() {
         return $this->belongsTo(Tag::class, 'tag_id');
     }
-    
-    // Example relationships:
-    // public function posts() {
-    //     return $this->hasMany(Post::class);
-    // }
     
 }

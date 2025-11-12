@@ -31,29 +31,36 @@ class User extends Orm {
         'status' => 'int',
     ];
     
-    // ==================== VALIDATION ====================
+    // ATTRIBUTE LABELS
     
-    /**
-     * Validation rules
-     * Auto-generated from table schema
-     * 
-     * Uncomment to enable automatic validation on save/create
-     */
-    public function rules() {
+    public function attributeLabels() {
         return [
-            ['name', 'required|string|maxLength:255|minLength:2'],
-            ['email', 'required|string|maxLength:255|email'],
-            ['password', 'required|string|maxLength:255'],
-            ['role', 'optional|in:user,admin,moderator'],
-            ['status', 'optional|integer'],
+            'id' => 'ID',
+            'name' => 'Name',
+            'email' => 'Email',
+            'password' => 'Password',
+            'role' => 'Role',
+            'status' => 'Status',
+            'created_at' => 'Created At',
+            'updated_at' => 'Updated At',
+            'deleted_at' => 'Deleted At',
         ];
     }
     
-    // ==================== RELATIONSHIPS ====================
+    // VALIDATION
     
-    /**
-     * Get all Posts that belong to this User
-     */
+    public function rules() {
+        return [
+             ['name', 'required|string|maxLength:255|minLength:2'],
+             ['email', 'required|string|maxLength:255|email'],
+             ['password', 'required|string|maxLength:255'],
+             ['role', 'optional|in:user,admin,moderator'],
+             ['status', 'optional|integer'],
+         ];
+     }
+    
+    // RELATIONSHIPS
+    
     public function posts() {
         return $this->hasMany(Post::class, 'user_id');
     }

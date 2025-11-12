@@ -27,27 +27,29 @@ class FrameworkMigration extends Orm {
         'execution_time' => 'int',
     ];
     
-    // ==================== VALIDATION ====================
+    // ATTRIBUTE LABELS
     
-    /**
-     * Validation rules
-     * Auto-generated from table schema
-     * 
-     * Uncomment to enable automatic validation on save/create
-     */
-    public function rules() {
+    public function attributeLabels() {
         return [
-            ['version', 'required|string|maxLength:10'],
-            ['class_name', 'required|string|maxLength:255|minLength:2'],
-            ['description', 'optional|string'],
-            ['applied_at', 'required|datetime'],
-            ['execution_time', 'optional|integer'],
+            'id' => 'ID',
+            'version' => 'Version',
+            'class_name' => 'Class Name',
+            'description' => 'Description',
+            'applied_at' => 'Applied At',
+            'execution_time' => 'Execution Time',
         ];
     }
     
-    // Example relationships:
-    // public function posts() {
-    //     return $this->hasMany(Post::class);
-    // }
+    // VALIDATION
+    
+    public function rules() {
+        return [
+             ['version', 'required|string|maxLength:10'],
+             ['class_name', 'required|string|maxLength:255|minLength:2'],
+             ['description', 'optional|string'],
+             ['applied_at', 'required|datetime'],
+             ['execution_time', 'optional|integer'],
+         ];
+     }
     
 }
