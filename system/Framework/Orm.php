@@ -146,10 +146,17 @@ abstract class Orm {
     }
 
     /**
-     * Find record by ID
+     * Find record by ID (static method - creates new query)
      */
     public static function find($id) {
         return static::query()->where(static::$primaryKey, '=', $id)->first();
+    }
+    
+    /**
+     * Find record by ID (instance method - uses existing query state)
+     */
+    protected function findInstance($id) {
+        return $this->where(static::$primaryKey, '=', $id)->first();
     }
 
     /**
@@ -198,8 +205,8 @@ abstract class Orm {
     /**
      * Get first record
      */
-    public static function first() {
-        return static::query()->limit(1)->get()->first();
+    public function first() {
+        return $this->limit(1)->get()->first();
     }
 
     /**
@@ -554,7 +561,12 @@ abstract class Orm {
      * SELECT columns
      */
     public function select(...$columns) {
-        $this->querySelect = $columns;
+        // Handle both select('col1', 'col2') and select(['col1', 'col2'])
+        if (count($columns) === 1 && is_array($columns[0])) {
+            $this->querySelect = $columns[0];
+        } else {
+            $this->querySelect = $columns;
+        }
         return $this;
     }
 
@@ -623,6 +635,42 @@ abstract class Orm {
         $this->querySelect = ["COUNT({$column}) as count"];
         $result = $this->get();
         return $result->first()->count ?? 0;
+    }
+
+    /**
+     * Get the maximum value of a column
+     */
+    public function max($column) {
+        $this->querySelect = ["MAX({$column}) as aggregate"];
+        $result = $this->get();
+        return $result->first()->aggregate ?? null;
+    }
+
+    /**
+     * Get the minimum value of a column
+     */
+    public function min($column) {
+        $this->querySelect = ["MIN({$column}) as aggregate"];
+        $result = $this->get();
+        return $result->first()->aggregate ?? null;
+    }
+
+    /**
+     * Get the sum of a column
+     */
+    public function sum($column) {
+        $this->querySelect = ["SUM({$column}) as aggregate"];
+        $result = $this->get();
+        return $result->first()->aggregate ?? 0;
+    }
+
+    /**
+     * Get the average value of a column
+     */
+    public function avg($column) {
+        $this->querySelect = ["AVG({$column}) as aggregate"];
+        $result = $this->get();
+        return $result->first()->aggregate ?? 0;
     }
 
     /**
@@ -805,7 +853,7 @@ abstract class Orm {
         // Get paginated results
         $results = $this->limit($perPage)->offset($offset)->get();
         
-        return (object) [
+        return [
             'data' => $results,
             'total' => $total,
             'per_page' => $perPage,
@@ -1271,6 +1319,23 @@ abstract class Orm {
     }
 
     /**
+     * Properly quote a column name, handling qualified names like 'table.column'
+     * 
+     * @param string $column Column name, may include table prefix
+     * @return string Properly quoted column name
+     */
+    protected function quoteColumn($column) {
+        // If column contains a dot, it's qualified with a table name
+        if (strpos($column, '.') !== false) {
+            $parts = explode('.', $column);
+            return '`' . implode('`.`', $parts) . '`';
+        }
+        
+        // Simple column name
+        return "`{$column}`";
+    }
+
+    /**
      * Build SELECT query
      */
     protected function buildSelectQuery() {
@@ -1306,32 +1371,40 @@ abstract class Orm {
                 
                 if ($where['operator'] === 'IN' || $where['operator'] === 'NOT IN') {
                     $placeholders = implode(', ', array_fill(0, count($where['value']), '?'));
-                    $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ({$placeholders})";
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}{$quotedColumn} {$where['operator']} ({$placeholders})";
                     $this->queryParams = array_merge($this->queryParams, $where['value']);
                 } elseif ($where['operator'] === 'BETWEEN' || $where['operator'] === 'NOT BETWEEN') {
-                    $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ? AND ?";
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}{$quotedColumn} {$where['operator']} ? AND ?";
                     $this->queryParams[] = $where['value'][0];
                     $this->queryParams[] = $where['value'][1];
                 } elseif ($where['operator'] === 'IS NULL' || $where['operator'] === 'IS NOT NULL') {
-                    $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']}";
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}{$quotedColumn} {$where['operator']}";
                 } elseif (strpos($where['operator'], 'DATE_') === 0) {
                     $op = str_replace('DATE_', '', $where['operator']);
-                    $whereClauses[] = "{$type}DATE(`{$where['column']}`) {$op} ?";
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}DATE({$quotedColumn}) {$op} ?";
                     $this->queryParams[] = $where['value'];
                 } elseif (strpos($where['operator'], 'MONTH_') === 0) {
                     $op = str_replace('MONTH_', '', $where['operator']);
-                    $whereClauses[] = "{$type}MONTH(`{$where['column']}`) {$op} ?";
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}MONTH({$quotedColumn}) {$op} ?";
                     $this->queryParams[] = $where['value'];
                 } elseif (strpos($where['operator'], 'YEAR_') === 0) {
                     $op = str_replace('YEAR_', '', $where['operator']);
-                    $whereClauses[] = "{$type}YEAR(`{$where['column']}`) {$op} ?";
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}YEAR({$quotedColumn}) {$op} ?";
                     $this->queryParams[] = $where['value'];
                 } elseif (strpos($where['operator'], 'TIME_') === 0) {
                     $op = str_replace('TIME_', '', $where['operator']);
-                    $whereClauses[] = "{$type}TIME(`{$where['column']}`) {$op} ?";
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}TIME({$quotedColumn}) {$op} ?";
                     $this->queryParams[] = $where['value'];
                 } else {
-                    $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ?";
+                    $quotedColumn = $this->quoteColumn($where['column']);
+                    $whereClauses[] = "{$type}{$quotedColumn} {$where['operator']} ?";
                     $this->queryParams[] = $where['value'];
                 }
             }
@@ -1343,16 +1416,18 @@ abstract class Orm {
 
         // Add GROUP BY
         if (!empty($this->queryGroupBy)) {
-            $sql .= " GROUP BY " . implode(', ', array_map(function($col) {
-                return "`{$col}`";
-            }, $this->queryGroupBy));
+            $quotedColumns = array_map(function($col) {
+                return $this->quoteColumn($col);
+            }, $this->queryGroupBy);
+            $sql .= " GROUP BY " . implode(', ', $quotedColumns);
         }
 
         // Add HAVING
         if (!empty($this->queryHaving)) {
             $havingClauses = [];
             foreach ($this->queryHaving as $having) {
-                $havingClauses[] = "`{$having['column']}` {$having['operator']} ?";
+                $quotedColumn = $this->quoteColumn($having['column']);
+                $havingClauses[] = "{$quotedColumn} {$having['operator']} ?";
                 $this->queryParams[] = $having['value'];
             }
             $sql .= " HAVING " . implode(' AND ', $havingClauses);
@@ -1861,6 +1936,14 @@ abstract class Orm {
             // Parse rule string
             $ruleParts = explode('|', $ruleString);
             
+            // Skip validation for optional fields that don't exist in attributes
+            $isOptional = in_array('optional', $ruleParts);
+            $fieldExists = array_key_exists($field, $this->attributes);
+            
+            if ($isOptional && !$fieldExists) {
+                continue; // Skip validation for optional field that's not present
+            }
+            
             $validator->field($field);
             
             foreach ($ruleParts as $rulePart) {
@@ -2173,6 +2256,11 @@ abstract class Orm {
         $instance = new $related();
         $foreignKey = $foreignKey ?: strtolower((new \ReflectionClass($this))->getShortName()) . '_id';
         $localKey = $localKey ?: static::$primaryKey;
+
+        // Check if local key exists in attributes
+        if (!isset($this->attributes[$localKey])) {
+            return $instance->where($foreignKey, null); // Return empty query
+        }
 
         $query = $instance->where($foreignKey, $this->attributes[$localKey]);
         $query->foreignKey = $foreignKey;
@@ -2555,8 +2643,11 @@ abstract class Orm {
             return $this->relations[$key];
         }
 
-        // Check if it's a relationship method
-        if (method_exists($this, $key)) {
+        // Check if it's a relationship method (but exclude aggregate/query builder methods)
+        $excludedMethods = ['count', 'sum', 'avg', 'min', 'max', 'get', 'first', 'find', 'all', 
+                           'where', 'orderBy', 'limit', 'offset', 'select', 'join', 'groupBy', 'having'];
+        
+        if (method_exists($this, $key) && !in_array($key, $excludedMethods)) {
             $relation = $this->$key();
             $this->relations[$key] = $relation;
             return $relation;

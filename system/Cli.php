@@ -963,14 +963,16 @@ class Cli {
             $template .= "    /**\n";
             $template .= "     * Validation rules\n";
             $template .= "     * Auto-generated from table schema\n";
+            $template .= "     * \n";
+            $template .= "     * Uncomment to enable automatic validation on save/create\n";
             $template .= "     */\n";
-            $template .= "    public function rules() {\n";
-            $template .= "        return [\n";
+            $template .= "    // public function rules() {\n";
+            $template .= "    //     return [\n";
             foreach ($rules as $rule) {
-                $template .= "            {$rule}\n";
+                $template .= "    //         {$rule}\n";
             }
-            $template .= "        ];\n";
-            $template .= "    }\n";
+            $template .= "    //     ];\n";
+            $template .= "    // }\n";
             $template .= "    \n";
         }
         
@@ -1056,7 +1058,7 @@ class Cli {
                 
                 // Special field names
                 if ($name === 'email') {
-                    $ruleString .= '|email|unique';
+                    $ruleString .= '|email';
                 } elseif (strpos($name, 'phone') !== false) {
                     $ruleString .= '|phone';
                 } elseif (strpos($name, 'url') !== false || strpos($name, 'website') !== false) {

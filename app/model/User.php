@@ -30,19 +30,37 @@ class User extends Orm {
         'id' => 'int',
         'status' => 'int',
     ];
-
-    public function getFullNameAttribute() {
-        return $this->name; // Example accessor
+    
+    // ==================== VALIDATION ====================
+    
+    /**
+     * Validation rules
+     * Auto-generated from table schema
+     * 
+     * Note: Validation is optional. Uncomment to enable.
+     * For password, we allow up to 255 chars to accommodate bcrypt hashes (60 chars)
+     */
+    public function rules() {
+        return [
+            ['name', 'required|string|maxLength:255|minLength:2'],
+            ['email', 'required|string|maxLength:255|email'],
+            // Password is optional for updates (when not changing password)
+            // For creates, it should be present
+            ['password', 'optional|string|maxLength:255'],
+            ['role', 'optional|in:user,admin,moderator'],
+            ['status', 'optional|integer'],
+        ];
     }
-
-    public function setPasswordAttribute($value) {
-        $this->attributes['password'] = password_hash($value, PASSWORD_BCRYPT); // Example mutator
+    
+    // ==================== RELATIONSHIPS ====================
+    
+    /**
+     * Get all posts for this user
+     */
+    public function posts() {
+        return $this->hasMany(\App\Model\Post::class, 'user_id');
     }
-
-    public function changeStatus($newStatus) {
-        $this->status = $newStatus;
-        $this->save();
-    }
+    
     // Example relationships:
     // public function posts() {
     //     return $this->hasMany(Post::class);

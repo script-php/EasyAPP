@@ -45,4 +45,24 @@ class Post extends Orm {
     //     return $this->hasMany(Post::class);
     // }
     
+    // ==================== VALIDATION ====================
+    
+    /**
+     * Validation rules
+     * Auto-generated from table schema
+     * 
+     * Note: Validation is optional. Uncomment to enable.
+     */
+    public function rules() {
+        return [
+            ['user_id', 'required|integer'],
+            ['title', 'required|string|maxLength:255'],
+            ['slug', 'required|string|maxLength:255'],
+            ['content', 'required|string'],
+            ['status', 'optional|in:draft,published,archived'],
+            ['views', 'optional|integer'],
+            ['published_at', 'optional|datetime'],
+        ];
+    }
+    
 }
