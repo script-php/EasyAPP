@@ -24,7 +24,7 @@ class PostTag extends Orm {
         'tag_id' => 'int',
     ];
     
-    // ATTRIBUTE LABELS
+    // ATTRIBUTE LABELS 
     
     public function attributeLabels() {
         return [
@@ -33,7 +33,7 @@ class PostTag extends Orm {
         ];
     }
     
-    // VALIDATION
+    // VALIDATION 
     
     public function rules() {
         return [
@@ -43,7 +43,7 @@ class PostTag extends Orm {
      }
     
     
-    // RELATIONSHIPS
+    // RELATIONSHIPS 
     
     public function post() {
         return $this->belongsTo(Post::class, 'post_id');

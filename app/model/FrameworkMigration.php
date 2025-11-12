@@ -27,7 +27,7 @@ class FrameworkMigration extends Orm {
         'execution_time' => 'int',
     ];
     
-    // ATTRIBUTE LABELS
+    // ATTRIBUTE LABELS 
     
     public function attributeLabels() {
         return [
@@ -40,7 +40,7 @@ class FrameworkMigration extends Orm {
         ];
     }
     
-    // VALIDATION
+    // VALIDATION 
     
     public function rules() {
         return [

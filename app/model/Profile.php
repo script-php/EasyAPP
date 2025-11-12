@@ -26,7 +26,7 @@ class Profile extends Orm {
         'user_id' => 'int',
     ];
     
-    // ATTRIBUTE LABELS
+    // ATTRIBUTE LABELS 
     
     public function attributeLabels() {
         return [
@@ -41,7 +41,7 @@ class Profile extends Orm {
         ];
     }
     
-    // VALIDATION
+    // VALIDATION 
     
     public function rules() {
         return [
@@ -54,7 +54,7 @@ class Profile extends Orm {
      }
     
     
-    // RELATIONSHIPS
+    // RELATIONSHIPS 
     
     public function user() {
         return $this->belongsTo(User::class, 'user_id');

@@ -19,7 +19,7 @@ class Role extends Orm {
     ];
     
     
-    // ATTRIBUTE LABELS
+    // ATTRIBUTE LABELS 
     
     public function attributeLabels() {
         return [
@@ -31,7 +31,7 @@ class Role extends Orm {
         ];
     }
     
-    // VALIDATION
+    // VALIDATION 
     
     public function rules() {
         return [

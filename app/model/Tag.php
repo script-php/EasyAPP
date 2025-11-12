@@ -19,7 +19,7 @@ class Tag extends Orm {
     ];
     
     
-    // ATTRIBUTE LABELS
+    // ATTRIBUTE LABELS 
     
     public function attributeLabels() {
         return [
@@ -31,7 +31,7 @@ class Tag extends Orm {
         ];
     }
     
-    // VALIDATION
+    // VALIDATION 
     
     public function rules() {
         return [

@@ -24,7 +24,7 @@ class RoleUser extends Orm {
         'role_id' => 'int',
     ];
     
-    // ATTRIBUTE LABELS
+    // ATTRIBUTE LABELS 
     
     public function attributeLabels() {
         return [
@@ -33,7 +33,7 @@ class RoleUser extends Orm {
         ];
     }
     
-    // VALIDATION
+    // VALIDATION 
     
     public function rules() {
         return [
@@ -43,7 +43,7 @@ class RoleUser extends Orm {
      }
     
     
-    // RELATIONSHIPS
+    // RELATIONSHIPS 
     
     public function user() {
         return $this->belongsTo(User::class, 'user_id');
