@@ -82,6 +82,7 @@ abstract class Orm {
     protected $queryWith = [];
     protected $withTrashed = false;
     protected $onlyTrashed = false;
+    protected $asArray = false;
 
     /**
      * Constructor
@@ -160,10 +161,35 @@ abstract class Orm {
     }
 
     /**
+     * Find records using raw SQL
+     * 
+     * @param string $sql SQL query with placeholders
+     * @param array $params Parameters to bind
+     * @return Collection
+     */
+    public static function findBySql($sql, $params = []) {
+        $db = static::getConnection();
+        $result = $db->query($sql, $params);
+
+        $instances = [];
+        if (!empty($result->rows)) {
+            foreach ($result->rows as $row) {
+                $instance = new static();
+                $instance->setRawAttributes($row);
+                $instance->exists = true;
+                $instance->original = $row;
+                $instances[] = $instance;
+            }
+        }
+
+        return new Collection($instances);
+    }
+
+    /**
      * Get first record
      */
     public static function first() {
-        return static::query()->limit(1)->get()[0] ?? null;
+        return static::query()->limit(1)->get()->first();
     }
 
     /**
@@ -281,6 +307,38 @@ abstract class Orm {
     }
 
     /**
+     * AND WHERE clause (alias for where)
+     */
+    public function andWhere($column, $operator = null, $value = null) {
+        return $this->where($column, $operator, $value);
+    }
+
+    /**
+     * Filter WHERE clause - ignores null and empty string values
+     */
+    public function filterWhere($column, $operator = null, $value = null) {
+        // Handle shorthand
+        if ($value === null && $operator !== null) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        // Skip if value is null or empty string
+        if ($value === null || $value === '') {
+            return $this;
+        }
+
+        return $this->where($column, $operator, $value);
+    }
+
+    /**
+     * AND Filter WHERE clause
+     */
+    public function andFilterWhere($column, $operator = null, $value = null) {
+        return $this->filterWhere($column, $operator, $value);
+    }
+
+    /**
      * OR WHERE clause
      */
     public function orWhere($column, $operator = null, $value = null) {
@@ -303,10 +361,75 @@ abstract class Orm {
      * WHERE IN clause
      */
     public function whereIn($column, array $values) {
+        if (empty($values)) {
+            // Handle empty array - always false condition
+            $this->queryWhere[] = [
+                'type' => 'AND',
+                'column' => $column,
+                'operator' => 'IN',
+                'value' => [null] // Will never match
+            ];
+        } else {
+            $this->queryWhere[] = [
+                'type' => 'AND',
+                'column' => $column,
+                'operator' => 'IN',
+                'value' => $values
+            ];
+        }
+
+        return $this;
+    }
+
+    /**
+     * WHERE NOT IN clause
+     */
+    public function whereNotIn($column, array $values) {
+        if (empty($values)) {
+            // Empty NOT IN means all records match
+            return $this;
+        }
+
         $this->queryWhere[] = [
             'type' => 'AND',
             'column' => $column,
-            'operator' => 'IN',
+            'operator' => 'NOT IN',
+            'value' => $values
+        ];
+
+        return $this;
+    }
+
+    /**
+     * WHERE BETWEEN clause
+     */
+    public function whereBetween($column, array $values) {
+        if (count($values) !== 2) {
+            throw new \Exception('whereBetween requires exactly 2 values [min, max]');
+        }
+
+        $this->queryWhere[] = [
+            'type' => 'AND',
+            'column' => $column,
+            'operator' => 'BETWEEN',
+            'value' => $values
+        ];
+
+        return $this;
+    }
+
+    /**
+     * WHERE NOT BETWEEN clause
+     */
+    public function whereNotBetween($column, array $values) {
+        if (count($values) !== 2) {
+            throw new \Exception('whereNotBetween requires exactly 2 values [min, max]');
+        }
+
+        $this->queryWhere[] = [
+            'type' => 'AND',
+            'column' => $column,
+            'operator' => 'NOT BETWEEN',
             'value' => $values
         ];
 
@@ -336,6 +459,82 @@ abstract class Orm {
             'column' => $column,
             'operator' => 'IS NOT NULL',
             'value' => null
+        ];
+
+        return $this;
+    }
+
+    /**
+     * WHERE DATE clause - match date part only
+     */
+    public function whereDate($column, $operator, $value = null) {
+        if ($value === null) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        $this->queryWhere[] = [
+            'type' => 'AND',
+            'column' => $column,
+            'operator' => 'DATE_' . $operator,
+            'value' => $value
+        ];
+
+        return $this;
+    }
+
+    /**
+     * WHERE MONTH clause - match month part
+     */
+    public function whereMonth($column, $operator, $value = null) {
+        if ($value === null) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        $this->queryWhere[] = [
+            'type' => 'AND',
+            'column' => $column,
+            'operator' => 'MONTH_' . $operator,
+            'value' => $value
+        ];
+
+        return $this;
+    }
+
+    /**
+     * WHERE YEAR clause - match year part
+     */
+    public function whereYear($column, $operator, $value = null) {
+        if ($value === null) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        $this->queryWhere[] = [
+            'type' => 'AND',
+            'column' => $column,
+            'operator' => 'YEAR_' . $operator,
+            'value' => $value
+        ];
+
+        return $this;
+    }
+
+    /**
+     * WHERE TIME clause - match time part
+     */
+    public function whereTime($column, $operator, $value = null) {
+        if ($value === null) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        $this->queryWhere[] = [
+            'type' => 'AND',
+            'column' => $column,
+            'operator' => 'TIME_' . $operator,
+            'value' => $value
         ];
 
         return $this;
@@ -413,7 +612,7 @@ abstract class Orm {
     public function count($column = '*') {
         $this->querySelect = ["COUNT({$column}) as count"];
         $result = $this->get();
-        return $result[0]->count ?? 0;
+        return $result->first()->count ?? 0;
     }
 
     /**
@@ -549,12 +748,53 @@ abstract class Orm {
     }
 
     /**
+     * Process records in chunks to avoid memory issues
+     * 
+     * @param int $count Number of records per chunk
+     * @param callable $callback Function to call for each chunk
+     * @return bool
+     */
+    public function chunk($count, callable $callback) {
+        $page = 1;
+        
+        do {
+            // Clone the query to avoid state pollution
+            $query = clone $this;
+            
+            // Get chunk of results
+            $results = $query->limit($count)->offset(($page - 1) * $count)->get();
+            
+            // If no results, we're done
+            if (empty($results)) {
+                break;
+            }
+            
+            // Call the callback with the chunk
+            // If callback returns false, stop processing
+            if ($callback($results, $page) === false) {
+                return false;
+            }
+            
+            $page++;
+            
+            // Continue while we have a full chunk (meaning there might be more)
+        } while (count($results) === $count);
+        
+        return true;
+    }
+
+    /**
      * Execute query and get results
      */
     public function get() {
         $sql = $this->buildSelectQuery();
         $db = static::getConnection();
         $result = $db->query($sql, $this->queryParams);
+
+        if ($this->asArray) {
+            // Return as plain arrays
+            return new Collection($result->rows ?? []);
+        }
 
         $instances = [];
         if (!empty($result->rows)) {
@@ -572,7 +812,56 @@ abstract class Orm {
             $this->eagerLoadRelations($instances);
         }
 
-        return $instances;
+        return new Collection($instances);
+    }
+
+    /**
+     * Return results as arrays instead of model instances
+     */
+    public function asArray() {
+        $this->asArray = true;
+        return $this;
+    }
+
+    /**
+     * Get a single column's value from the first result
+     */
+    public function scalar() {
+        $result = $this->limit(1)->get();
+        
+        if ($result->isEmpty()) {
+            return null;
+        }
+
+        $first = $result->first();
+        
+        if (is_array($first)) {
+            return reset($first);
+        }
+        
+        // Get first attribute from model
+        $attributes = $first->attributes;
+        return reset($attributes);
+    }
+
+    /**
+     * Get all values of a single column
+     */
+    public function column() {
+        $results = $this->asArray()->get();
+        
+        if ($results->isEmpty()) {
+            return [];
+        }
+
+        $first = $results->first();
+        $columnName = is_array($first) ? array_key_first($first) : null;
+        
+        if (!$columnName) {
+            return [];
+        }
+
+        return $results->pluck($columnName)->all();
     }
 
     /**
@@ -657,12 +946,32 @@ abstract class Orm {
             foreach ($this->queryWhere as $index => $where) {
                 $type = (empty($whereClauses) && $index === 0) ? '' : $where['type'] . ' ';
                 
-                if ($where['operator'] === 'IN') {
+                if ($where['operator'] === 'IN' || $where['operator'] === 'NOT IN') {
                     $placeholders = implode(', ', array_fill(0, count($where['value']), '?'));
-                    $whereClauses[] = "{$type}`{$where['column']}` IN ({$placeholders})";
+                    $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ({$placeholders})";
                     $this->queryParams = array_merge($this->queryParams, $where['value']);
+                } elseif ($where['operator'] === 'BETWEEN' || $where['operator'] === 'NOT BETWEEN') {
+                    $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ? AND ?";
+                    $this->queryParams[] = $where['value'][0];
+                    $this->queryParams[] = $where['value'][1];
                 } elseif ($where['operator'] === 'IS NULL' || $where['operator'] === 'IS NOT NULL') {
                     $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']}";
+                } elseif (strpos($where['operator'], 'DATE_') === 0) {
+                    $op = str_replace('DATE_', '', $where['operator']);
+                    $whereClauses[] = "{$type}DATE(`{$where['column']}`) {$op} ?";
+                    $this->queryParams[] = $where['value'];
+                } elseif (strpos($where['operator'], 'MONTH_') === 0) {
+                    $op = str_replace('MONTH_', '', $where['operator']);
+                    $whereClauses[] = "{$type}MONTH(`{$where['column']}`) {$op} ?";
+                    $this->queryParams[] = $where['value'];
+                } elseif (strpos($where['operator'], 'YEAR_') === 0) {
+                    $op = str_replace('YEAR_', '', $where['operator']);
+                    $whereClauses[] = "{$type}YEAR(`{$where['column']}`) {$op} ?";
+                    $this->queryParams[] = $where['value'];
+                } elseif (strpos($where['operator'], 'TIME_') === 0) {
+                    $op = str_replace('TIME_', '', $where['operator']);
+                    $whereClauses[] = "{$type}TIME(`{$where['column']}`) {$op} ?";
+                    $this->queryParams[] = $where['value'];
                 } else {
                     $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ?";
                     $this->queryParams[] = $where['value'];
@@ -744,10 +1053,14 @@ abstract class Orm {
             foreach ($this->queryWhere as $index => $where) {
                 $type = $index === 0 ? '' : $where['type'] . ' ';
                 
-                if ($where['operator'] === 'IN') {
+                if ($where['operator'] === 'IN' || $where['operator'] === 'NOT IN') {
                     $placeholders = implode(', ', array_fill(0, count($where['value']), '?'));
-                    $whereClauses[] = "{$type}`{$where['column']}` IN ({$placeholders})";
+                    $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ({$placeholders})";
                     $params = array_merge($params, $where['value']);
+                } elseif ($where['operator'] === 'BETWEEN' || $where['operator'] === 'NOT BETWEEN') {
+                    $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ? AND ?";
+                    $params[] = $where['value'][0];
+                    $params[] = $where['value'][1];
                 } else {
                     $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ?";
                     $params[] = $where['value'];
@@ -772,18 +1085,22 @@ abstract class Orm {
 
         // Soft delete if enabled
         if (static::$softDelete && $this->exists) {
-            $this->fireEvent('deleting');
+            if ($this->fireEvent('beforeDelete', true) === false) {
+                return false;
+            }
             $this->attributes[static::$deletedAtColumn] = date('Y-m-d H:i:s');
-            $this->save();
-            $this->fireEvent('deleted');
-            return 1;
+            $result = $this->save();
+            $this->fireEvent('afterDelete');
+            return $result;
         } elseif (static::$softDelete && !$this->exists) {
             // Soft delete via query
             return $this->update([static::$deletedAtColumn => date('Y-m-d H:i:s')]);
         }
 
         // Hard delete
-        $this->fireEvent('deleting');
+        if ($this->exists && $this->fireEvent('beforeDelete', true) === false) {
+            return false;
+        }
 
         $table = static::getTable();
         $sql = "DELETE FROM `{$table}`";
@@ -800,10 +1117,14 @@ abstract class Orm {
                 foreach ($this->queryWhere as $index => $where) {
                     $type = $index === 0 ? '' : $where['type'] . ' ';
                     
-                    if ($where['operator'] === 'IN') {
+                    if ($where['operator'] === 'IN' || $where['operator'] === 'NOT IN') {
                         $placeholders = implode(', ', array_fill(0, count($where['value']), '?'));
-                        $whereClauses[] = "{$type}`{$where['column']}` IN ({$placeholders})";
+                        $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ({$placeholders})";
                         $params = array_merge($params, $where['value']);
+                    } elseif ($where['operator'] === 'BETWEEN' || $where['operator'] === 'NOT BETWEEN') {
+                        $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ? AND ?";
+                        $params[] = $where['value'][0];
+                        $params[] = $where['value'][1];
                     } else {
                         $whereClauses[] = "{$type}`{$where['column']}` {$where['operator']} ?";
                         $params[] = $where['value'];
@@ -821,7 +1142,7 @@ abstract class Orm {
         if ($this->exists) {
             $this->exists = false;
             $this->attributes = [];
-            $this->fireEvent('deleted');
+            $this->fireEvent('afterDelete');
         }
         
         return $affected;
@@ -885,11 +1206,47 @@ abstract class Orm {
     }
 
     /**
+     * Refresh the model from the database
+     * Discards any unsaved changes
+     * 
+     * @return bool
+     */
+    public function refresh() {
+        if (!$this->exists) {
+            return false;
+        }
+
+        $primaryKey = static::$primaryKey;
+        $id = $this->attributes[$primaryKey] ?? null;
+
+        if (!$id) {
+            return false;
+        }
+
+        $fresh = static::find($id);
+
+        if (!$fresh) {
+            return false;
+        }
+
+        $this->attributes = $fresh->attributes;
+        $this->original = $fresh->original;
+        $this->relations = [];
+
+        return true;
+    }
+
+    /**
      * Perform INSERT
      */
     protected function performInsert() {
-        $this->fireEvent('creating');
-        $this->fireEvent('saving');
+        // Fire before events
+        if ($this->fireEvent('beforeSave', true) === false) {
+            return false;
+        }
+        if ($this->fireEvent('beforeInsert', true) === false) {
+            return false;
+        }
 
         $attributes = $this->attributes;
 
@@ -919,8 +1276,9 @@ abstract class Orm {
         $this->original = $this->attributes;
         $this->exists = true;
 
-        $this->fireEvent('created');
-        $this->fireEvent('saved');
+        // Fire after events
+        $this->fireEvent('afterInsert');
+        $this->fireEvent('afterSave');
 
         return true;
     }
@@ -929,14 +1287,22 @@ abstract class Orm {
      * Perform UPDATE
      */
     protected function performUpdate() {
-        $this->fireEvent('updating');
-        $this->fireEvent('saving');
-
         $dirty = $this->getDirty();
         
         if (empty($dirty)) {
             return true; // Nothing to update
         }
+
+        // Fire before events
+        if ($this->fireEvent('beforeSave', true) === false) {
+            return false;
+        }
+        if ($this->fireEvent('beforeUpdate', true) === false) {
+            return false;
+        }
+
+        // Store changed attributes for afterUpdate event
+        $changedAttributes = $dirty;
 
         // Add timestamps
         if (static::$timestamps) {
@@ -962,20 +1328,35 @@ abstract class Orm {
         $this->original = array_merge($this->original, $dirty);
         $this->attributes = array_merge($this->attributes, $dirty);
 
-        $this->fireEvent('updated');
-        $this->fireEvent('saved');
+        // Fire after events with changed attributes
+        $this->fireEvent('afterUpdate', false, $changedAttributes);
+        $this->fireEvent('afterSave');
 
         return true;
     }
 
     /**
      * Fire model event
+     * 
+     * @param string $event Event name
+     * @param bool $checkReturn Whether to check return value (false = cancel operation)
+     * @param mixed $data Additional data to pass to event
+     * @return mixed
      */
-    protected function fireEvent($event) {
+    protected function fireEvent($event, $checkReturn = false, $data = null) {
         $method = $event;
+        
         if (method_exists($this, $method)) {
-            $this->$method();
+            $result = $data !== null ? $this->$method($data) : $this->$method();
+            
+            if ($checkReturn && $result === false) {
+                return false;
+            }
+            
+            return $result;
         }
+        
+        return null;
     }
 
     /**
@@ -1251,6 +1632,59 @@ abstract class Orm {
      */
     public function __toString() {
         return $this->toJson(JSON_PRETTY_PRINT);
+    }
+
+    /**
+     * Handle dynamic static method calls
+     * This allows calling query builder methods statically: User::where()->get()
+     */
+    public static function __callStatic($method, $parameters) {
+        return (new static())->$method(...$parameters);
+    }
+
+    // ==================== TRANSACTION HELPERS ====================
+
+    /**
+     * Execute a callback within a database transaction
+     * 
+     * @param callable $callback Function to execute within transaction
+     * @return mixed Result of the callback
+     * @throws \Exception
+     */
+    public static function transaction(callable $callback) {
+        $db = static::getConnection();
+        
+        $db->beginTransaction();
+        
+        try {
+            $result = $callback();
+            $db->commit();
+            return $result;
+        } catch (\Exception $e) {
+            $db->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Begin a database transaction
+     */
+    public static function beginTransaction() {
+        return static::getConnection()->beginTransaction();
+    }
+
+    /**
+     * Commit the active database transaction
+     */
+    public static function commit() {
+        return static::getConnection()->commit();
+    }
+
+    /**
+     * Rollback the active database transaction
+     */
+    public static function rollBack() {
+        return static::getConnection()->rollBack();
     }
 
 }

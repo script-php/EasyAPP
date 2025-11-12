@@ -7,6 +7,8 @@
 * @link         https://script-php.ro
 */
 
+use App\Model\User;
+
 class ControllerHome extends Controller {
 
 	function __construct($registry) {
@@ -14,6 +16,7 @@ class ControllerHome extends Controller {
 	}
 	
 	function index() {
+
 		$data = [];
 		$data['title'] = 'Welcome to EasyAPP Framework'; // Page title
 		$data['subtitle'] = 'A Modern PHP Framework for Rapid Development'; // Page subtitle
@@ -257,6 +260,47 @@ class ControllerHome extends Controller {
 		
 		echo "<h4>Current CSRF Token for AJAX:</h4>";
 		echo "<code>X-CSRF-Token: " . htmlspecialchars($data['csrf_token']) . "</code>";
+	}
+
+
+	function ormTest() {
+		$data = [];
+		$data['title'] = 'ORM Test';
+
+		$users = User::query()
+			->where('status', '=', 1)
+			->orderBy('name', 'ASC')
+			->get();
+
+		foreach ($users as $user) {
+			echo $user->name . "\n";
+		}
+
+
+		$user = User::find(1);
+		if ($user) {
+			$user->changeStatus(0); // Change status to 0
+			echo "User status changed successfully.";
+		} else {
+			echo "User not found.";
+		}
+
+
+
+		// User::transaction(function() {
+		// 	$user = User::create(['name' => 'YoYo', 'email' => 'n-am@nuDau.com']);
+		// 	App\Model\Post::create(['user_id' => $user->id, 'title' => 'First Post']);
+		// });
+
+
+		$posts = App\Model\Post::query()->whereDate('created_at', '2025-11-11')->get();
+		foreach ($posts as $post) {
+			echo $post->title . "\n";
+		}
+
+		
+
+
 	}
 
 }

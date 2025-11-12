@@ -322,7 +322,7 @@ class Cli {
         
         // Check if table exists
         try {
-            $result = $db->query("SHOW TABLES LIKE ?", [$tableName]);
+            $result = $db->query("SHOW TABLES LIKE '{$tableName}'");
             if (empty($result->rows)) {
                 $this->error("Table '{$tableName}' does not exist in the database.");
                 return;

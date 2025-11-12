@@ -210,7 +210,14 @@ if(defined('CLI_MODE') !== true) {
          * The database connection is established using the configuration parameters defined in config.php or environment variables.
          */
         if (!empty($config['db_hostname']) && !empty($config['db_database']) && !empty($config['db_username'])) {
-            $registry->set('db', new System\Framework\Db($config['db_driver'], $config['db_hostname'], $config['db_database'], $config['db_username'], $config['db_password'], $config['db_port'], '', ''));
+            $db = new System\Framework\Db($config['db_driver'], $config['db_hostname'], $config['db_database'], $config['db_username'], $config['db_password'], $config['db_port'], '', '');
+            $registry->set('db', $db);
+            
+            /**
+             * Initialize ORM with database connection
+             * This sets the database connection for all ORM models automatically.
+             */
+            System\Framework\Orm::setConnection($db);
         }
 
         /**
