@@ -304,13 +304,20 @@ class Load {
         ];
         $this->registry->get('events')->trigger("model.loaded", $dataEvent);
 
+        // Generate registry key for magic access: 'user' becomes 'model_user', 'common/helper' becomes 'model_common_helper'
+        $registryKey = 'model_' . str_replace('/', '_', $sanitizedRoute);
+
         // Create proxy or return direct instance
         if ($useProxy) {
             $proxy = $this->registry->proxy->createModelProxy($model);
             $this->classCache[$cacheKey] = $proxy;
+            // Register in registry for magic access via $this->model_user or $this->model_common_helper
+            $this->registry->set($registryKey, $proxy);
             return $proxy;
         } else {
             $this->classCache[$cacheKey] = $model;
+            // Register in registry for magic access via $this->model_user or $this->model_common_helper
+            $this->registry->set($registryKey, $model);
             return $model;
         }
     }
