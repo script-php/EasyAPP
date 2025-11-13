@@ -37,7 +37,6 @@ class Config {
             // App config
             'url' => env('APP_URL', null),
             'base_url' => env('BASE_URL', null),
-            'session' => env('SESSION_NAME', null),
             'services' => env('SERVICES', []), // Array of services to load
             
             'app_home' => env('APP_HOME', 'home'),
@@ -56,8 +55,13 @@ class Config {
             
             // App settings
             'domain' => env('DOMAIN', 'localhost'),
-            'session_name' => env('SESSION_NAME', 'session'),
-            'session_time' => env('SESSION_TIME', 31556926),
+
+            // Session
+            'session_name' => env('SESSION_NAME', 'session'), // session cookie name
+            'session_driver' => env('SESSION_DRIVER', 'file'), // file, database, redis, etc.
+            'session_lifetime' => env('SESSION_LIFETIME', 7200), // in seconds
+            'session_secure' => env('SESSION_SECURE', false), // true if using HTTPS
+            'session_httponly' => env('SESSION_HTTPONLY', true), // prevent JavaScript access
             
             // Framework directories
             'query' => 'route',
@@ -95,12 +99,7 @@ class Config {
             // Logging
             'log_level' => env('LOG_LEVEL', 'error'),
             'log_file' => env('LOG_FILE', 'storage/logs/error.log'),
-            
-            // Session
-            'session_driver' => env('SESSION_DRIVER', 'file'),
-            'session_lifetime' => env('SESSION_LIFETIME', 7200),
-            'session_secure' => env('SESSION_SECURE', false),
-            'session_httponly' => env('SESSION_HTTPONLY', true),
+
         ];
         
     }

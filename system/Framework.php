@@ -15,8 +15,6 @@
  * Do not modify this file directly. Instead, customize your application via the config files and environment variables.
  */
 
-session_start();
-
 /**
  * Enable Composer autoloader for framework classes and third-party packages
  * Make sure to run `composer install` to generate the autoload files.
@@ -125,6 +123,29 @@ date_default_timezone_set($config['timezone']);
 $configManager->createConstants($config);
 
 /**
+ * Configure and start session with settings from config
+ */
+if (defined('CONFIG_SESSION_NAME') && !empty(CONFIG_SESSION_NAME)) {
+    session_name(CONFIG_SESSION_NAME);
+}
+if (defined('CONFIG_SESSION_LIFETIME') && CONFIG_SESSION_LIFETIME > 0) {
+    ini_set('session.gc_maxlifetime', CONFIG_SESSION_LIFETIME);
+    session_set_cookie_params([
+        'lifetime' => CONFIG_SESSION_LIFETIME,
+        'path' => '/',
+        'domain' => '',
+        'secure' => defined('CONFIG_SESSION_SECURE') ? CONFIG_SESSION_SECURE : false,
+        'httponly' => defined('CONFIG_SESSION_HTTPONLY') ? CONFIG_SESSION_HTTPONLY : true,
+        'samesite' => 'Lax'
+    ]);
+}
+if (defined('CONFIG_SESSION_DRIVER') && CONFIG_SESSION_DRIVER !== 'file') {
+    // Future: Redis/Database session handlers can be implemented here
+}
+
+session_start();
+
+/**
  * Initialize the framework registry (used by both CLI and web)
  * The registry stores global objects and configuration accessible throughout the application.
  */
@@ -139,17 +160,9 @@ $registry->set('appPath', __DIR__);
 $registry->set('config', $config);
 $registry->set('proxy', new System\Framework\Proxy($registry));
 $registry->set('load', new System\Framework\Load($registry));
+$registry->set('csrf', new System\Framework\Csrf($registry));
 
-/**
- * Initialize CSRF protection if enabled
- * Make sure to include CSRF tokens in your forms and validate them on submission.
- * Example form input:
- * <input type="hidden" name="csrf_token" value="<?php echo $csrf->getToken(); ?>">
- */
-if ($config['csrf_protection']) {
-    $csrf = new System\Framework\Csrf($registry);
-    $registry->set('csrf', $csrf);
-}
+
 
 /**
  * Initialize the framework for web requests
@@ -424,6 +437,4 @@ if(defined('CLI_MODE') !== true) {
  */
 if(defined('CLI_MODE')) {
     include PATH . 'system/Cli.php';
-
-   
 }
