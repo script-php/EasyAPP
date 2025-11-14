@@ -17,6 +17,7 @@ class Router {
     protected $currentRoute;
     protected $params = [];
     protected $fallbackHandler = null;
+    protected $currentPrefix = '';
 
     public function __construct(Registry $registry) {
         $this->registry = $registry;
@@ -47,8 +48,29 @@ class Router {
         return $this->addRoute('PATCH', $uri, $handler);
     }
 
+    // Add this method for route grouping with prefix
+    public function prefix($prefix, $callback) {
+        // Store the current prefix
+        $previousPrefix = $this->currentPrefix;
+        
+        // Add the new prefix to the current one
+        $this->currentPrefix = rtrim($previousPrefix . $prefix, '/');
+        
+        // Execute the callback with the router instance
+        call_user_func($callback, $this);
+        
+        // Restore the previous prefix
+        $this->currentPrefix = $previousPrefix;
+        
+        return $this;
+    }
+
     protected function addRoute($method, $uri, $handler) {
-        $this->routes[$method][$uri] = $handler;
+        // Prepend current prefix to the URI
+        $fullUri = $this->currentPrefix . '/' . ltrim($uri, '/');
+        $fullUri = rtrim($fullUri, '/') ?: '/'; // Ensure root route works
+        
+        $this->routes[$method][$fullUri] = $handler;
         return $this;
     }
 
@@ -176,5 +198,4 @@ class Router {
     public function getRoutes() {
         return $this->routes;
     }
-
 }
