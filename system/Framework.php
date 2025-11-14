@@ -2,7 +2,7 @@
 
 /**
 * @package      EasyAPP Framework
-* @version      v1.7.0
+* @version      v2.0.0
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
@@ -231,6 +231,18 @@ if(defined('CLI_MODE') !== true) {
              * This sets the database connection for all ORM models automatically.
              */
             System\Framework\Orm::setConnection($db);
+
+            /**
+             * Initialize migration manager
+             * This handles database migrations for schema versioning and updates.
+             */
+            // check if database connection exist first
+            if($db->isConnected() && class_exists(System\Framework\MigrationManager::class)) {
+                $migrationManager = new System\Framework\MigrationManager($registry);
+                $registry->set('migration', $migrationManager);
+                $registry->set('migration_version', $migrationManager->getCurrentVersion());
+                $registry->set('migration_latest', $migrationManager->getLatestVersion());
+            }
         }
 
         /**

@@ -11,11 +11,20 @@ use App\Model\User;
 
 class ControllerHome extends Controller {
 
+	/**
+	 * Constructor
+	 * @param Registry $registry
+	 */
 	function __construct($registry) {
 		parent::__construct($registry);
 	}
 	
 	function index() {
+
+		/**
+		 * Home Page Example
+		 * This is the default home page controller method.
+		 */
 
 		$data = [];
 		$data['title'] = 'Welcome to EasyAPP Framework'; // Page title
@@ -45,6 +54,11 @@ class ControllerHome extends Controller {
 	 * Test improved view method
 	 */
 	function testview() {
+
+		/**
+		 * Improved View Method Example
+		 * This example demonstrates the improved view method with enhanced security features.
+		 */
 		$data = [];
 		$data['title'] = 'View Method Test';
 		$data['message'] = 'Testing improved view method with security enhancements';
@@ -59,8 +73,15 @@ class ControllerHome extends Controller {
 
 
 	function testLibrary() {
+		/**
+		 * Library Loading Example
+		 * This example demonstrates how to load and use a custom library
+		 * using the EasyAPP Framework's loader.
+		 */
 		$data = [];
 		$data['title'] = 'Library Test';
+		$this->load->library('testlibrary'); // Load custom library
+		$testLib = $this->library_testlibrary; // Access the loaded library
 
 		$this->response->setOutput($this->load->view('test/view_test.html', $data));
 	}
@@ -70,6 +91,12 @@ class ControllerHome extends Controller {
 
 
 	function testLanguage() {
+
+		/**
+		 * Language Support Example
+		 * This example demonstrates how to load language files and retrieve translations
+		 * using the EasyAPP Framework's language library.
+		 */
 		$data = [];
 		$data['title'] = 'Language Test';
 		
@@ -88,6 +115,11 @@ class ControllerHome extends Controller {
 
 
 	function ormTest() {
+
+		/**
+		 * ORM Example
+		 * This example demonstrates basic usage of the EasyAPP Framework's ORM capabilities.
+		 */
 		$data = [];
 		$data['title'] = 'ORM Test';
 
