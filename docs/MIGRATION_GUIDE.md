@@ -62,12 +62,12 @@ The migration system is included with EasyAPP Framework. No additional installat
 
 ### **1. Check Migration Status**
 ```bash
-php easyphp migrate:status
+php easy migrate:status
 ```
 
 ### **2. Create Your First Migration**
 ```bash
-php easyphp migrate:create CreateUsersTable
+php easy migrate:create CreateUsersTable
 ```
 
 ### **3. Edit the Generated Migration**
@@ -90,12 +90,12 @@ class Migration_001_CreateUsersTable extends Migration {
 
 ### **4. Run the Migration**
 ```bash
-php easyphp migrate
+php easy migrate
 ```
 
 ### **5. Verify Changes**
 ```bash
-php easyphp migrate:status
+php easy migrate:status
 ```
 
 ---
@@ -104,15 +104,15 @@ php easyphp migrate:status
 
 ### **Generate Migration File**
 ```bash
-php easyphp migrate:create DescriptiveName
+php easy migrate:create DescriptiveName
 ```
 
 **Examples:**
 ```bash
-php easyphp migrate:create CreateUsersTable
-php easyphp migrate:create AddEmailToUsers
-php easyphp migrate:create UpdateProductPricing
-php easyphp migrate:create AddIndexesToOrders
+php easy migrate:create CreateUsersTable
+php easy migrate:create AddEmailToUsers
+php easy migrate:create UpdateProductPricing
+php easy migrate:create AddIndexesToOrders
 ```
 
 ### **Migration File Structure**
@@ -160,17 +160,17 @@ class Migration_001_CreateUsersTable extends Migration {
 
 ### **Run All Pending Migrations**
 ```bash
-php easyphp migrate
+php easy migrate
 ```
 
 ### **Run to Specific Version**
 ```bash
-php easyphp migrate --to=5
+php easy migrate --to=5
 ```
 
 ### **Dry Run (Preview Changes)**
 ```bash
-php easyphp migrate --dry-run
+php easy migrate --dry-run
 ```
 
 ### **Programmatic Usage**
@@ -195,12 +195,12 @@ $results = $migrationManager->migrate(null, true);
 
 ### **Rollback to Specific Version**
 ```bash
-php easyphp migrate:rollback 3
+php easy migrate:rollback 3
 ```
 
 ### **Dry Run Rollback**
 ```bash
-php easyphp migrate:rollback 3 --dry-run
+php easy migrate:rollback 3 --dry-run
 ```
 
 ### **Programmatic Rollback**
@@ -436,38 +436,38 @@ private function shouldApplyChanges(): bool {
 ### **Basic Commands**
 ```bash
 # Show help
-php easyphp help
-php easyphp migrate --help
+php easy help
+php easy migrate --help
 
 # Show current status  
-php easyphp migrate:status
+php easy migrate:status
 
 # Run all pending migrations
-php easyphp migrate
+php easy migrate
 
 # Run to specific version
-php easyphp migrate --to=5
+php easy migrate --to=5
 
 # Create new migration
-php easyphp migrate:create MigrationName
+php easy migrate:create MigrationName
 ```
 
 ### **Rollback Commands**
 ```bash
 # Rollback to version 3
-php easyphp migrate:rollback 3
+php easy migrate:rollback 3
 
 # Dry run rollback
-php easyphp migrate:rollback 3 --dry-run
+php easy migrate:rollback 3 --dry-run
 ```
 
 ### **Development Commands**
 ```bash
 # Preview what would be executed
-php easyphp migrate --dry-run
+php easy migrate --dry-run
 
 # See detailed status
-php easyphp migrate:status
+php easy migrate:status
 ```
 
 ### **Example CLI Output**
@@ -502,7 +502,7 @@ Version  Status      Description                           Applied At
 tail -f storage/logs/error.log
 
 # Try dry run to see what would be executed
-php easyphp migrate --dry-run
+php easy migrate --dry-run
 ```
 
 #### **Foreign Key Constraint Errors**
@@ -552,7 +552,7 @@ DELETE FROM framework_migrations WHERE version = 'problematic_version';
 #### **Rollback Failed**
 ```bash
 # Manual rollback approach
-php easyphp migrate:rollback previous_working_version --dry-run
+php easy migrate:rollback previous_working_version --dry-run
 # Review what would be executed, then run manually if needed
 ```
 

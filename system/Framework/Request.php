@@ -27,7 +27,7 @@ class Request {
 		$this->request = $this->clean($_REQUEST);
 		$this->cookie = $this->clean($_COOKIE);
 		$this->files = $this->clean($_FILES);
-		$this->server = $this->clean($_SERVER);
+		$this->server = $_SERVER; // Don't sanitize server vars
         $this->ip = $this->ip();
 
 		register_shutdown_function(function() use (&$registry) {
@@ -39,28 +39,38 @@ class Request {
 	}
 
 	public function get($key, $default = '') {
-        return isset($_GET[$key]) ? $_GET[$key] : $default;
+        $value = isset($_GET[$key]) ? $_GET[$key] : $default;
+        return $this->clean($value);
     }
     
     public function post($key, $default = '') {
-        return isset($_POST[$key]) ? $_POST[$key] : $default;
+        $value = isset($_POST[$key]) ? $_POST[$key] : $default;
+        return $this->clean($value);
     }
     
     public function cookie($key, $default = '') {
-        return isset($_COOKIE[$key]) ? $_COOKIE[$key] : $default;
+        $value = isset($_COOKIE[$key]) ? $_COOKIE[$key] : $default;
+        return $this->clean($value);
     }
     
     public function server($key, $default = '') {
+        // Don't sanitize server variables
         return isset($_SERVER[$key]) ? $_SERVER[$key] : $default;
     }
 
 	public function clean($data) {
+		// Check if input sanitization is enabled
+		if (!defined('CONFIG_INPUT_SANITIZATION') || !CONFIG_INPUT_SANITIZATION) {
+			return $data; // Return raw data if sanitization is disabled
+		}
+		
 		if (is_array($data)) {
 			foreach ($data as $key => $value) {
 				unset($data[$key]);
 				$data[$this->clean($key)] = $this->clean($value);
 			}
 		} else {
+			// Sanitize string data to prevent XSS attacks
 			$data = htmlspecialchars($data, ENT_COMPAT, 'UTF-8');
 		}
 		return $data;

@@ -2,7 +2,7 @@
 
 /**
 * @package      EasyAPP Framework
-* @version      v1.7.0
+* @version      v2.0.0
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
@@ -14,8 +14,6 @@
  * It is included at the start of both web and CLI entry points.
  * Do not modify this file directly. Instead, customize your application via the config files and environment variables.
  */
-
-session_start();
 
 /**
  * Enable Composer autoloader for framework classes and third-party packages
@@ -125,6 +123,29 @@ date_default_timezone_set($config['timezone']);
 $configManager->createConstants($config);
 
 /**
+ * Configure and start session with settings from config
+ */
+if (defined('CONFIG_SESSION_NAME') && !empty(CONFIG_SESSION_NAME)) {
+    session_name(CONFIG_SESSION_NAME);
+}
+if (defined('CONFIG_SESSION_LIFETIME') && CONFIG_SESSION_LIFETIME > 0) {
+    ini_set('session.gc_maxlifetime', CONFIG_SESSION_LIFETIME);
+    session_set_cookie_params([
+        'lifetime' => CONFIG_SESSION_LIFETIME,
+        'path' => '/',
+        'domain' => '',
+        'secure' => defined('CONFIG_SESSION_SECURE') ? CONFIG_SESSION_SECURE : false,
+        'httponly' => defined('CONFIG_SESSION_HTTPONLY') ? CONFIG_SESSION_HTTPONLY : true,
+        'samesite' => 'Lax'
+    ]);
+}
+if (defined('CONFIG_SESSION_DRIVER') && CONFIG_SESSION_DRIVER !== 'file') {
+    // Future: Redis/Database session handlers can be implemented here
+}
+
+session_start();
+
+/**
  * Initialize the framework registry (used by both CLI and web)
  * The registry stores global objects and configuration accessible throughout the application.
  */
@@ -139,21 +160,13 @@ $registry->set('appPath', __DIR__);
 $registry->set('config', $config);
 $registry->set('proxy', new System\Framework\Proxy($registry));
 $registry->set('load', new System\Framework\Load($registry));
+$registry->set('csrf', new System\Framework\Csrf($registry));
 
-/**
- * Initialize CSRF protection if enabled
- * Make sure to include CSRF tokens in your forms and validate them on submission.
- * Example form input:
- * <input type="hidden" name="csrf_token" value="<?php echo $csrf->getToken(); ?>">
- */
-if ($config['csrf_protection']) {
-    $csrf = new System\Framework\Csrf($registry);
-    $registry->set('csrf', $csrf);
-}
+
 
 /**
  * Initialize the framework for web requests
- * If CLI_MODE is defined, we are in CLI context (easyphp).
+ * If CLI_MODE is defined, we are in CLI context (easy).
  * This prevents conflicts between web and CLI initializations.
  */
 if(defined('CLI_MODE') !== true) {
@@ -210,7 +223,26 @@ if(defined('CLI_MODE') !== true) {
          * The database connection is established using the configuration parameters defined in config.php or environment variables.
          */
         if (!empty($config['db_hostname']) && !empty($config['db_database']) && !empty($config['db_username'])) {
-            $registry->set('db', new System\Framework\Db($config['db_driver'], $config['db_hostname'], $config['db_database'], $config['db_username'], $config['db_password'], $config['db_port'], '', ''));
+            $db = new System\Framework\Db($config['db_driver'], $config['db_hostname'], $config['db_database'], $config['db_username'], $config['db_password'], $config['db_port'], '', '');
+            $registry->set('db', $db);
+            
+            /**
+             * Initialize ORM with database connection
+             * This sets the database connection for all ORM models automatically.
+             */
+            System\Framework\Orm::setConnection($db);
+
+            /**
+             * Initialize migration manager
+             * This handles database migrations for schema versioning and updates.
+             */
+            // check if database connection exist first
+            if($db->isConnected() && class_exists(System\Framework\MigrationManager::class)) {
+                $migrationManager = new System\Framework\MigrationManager($registry);
+                $registry->set('migration', $migrationManager);
+                $registry->set('migration_version', $migrationManager->getCurrentVersion());
+                $registry->set('migration_latest', $migrationManager->getLatestVersion());
+            }
         }
 
         /**
@@ -412,11 +444,9 @@ if(defined('CLI_MODE') !== true) {
 
 /**
  * Initialize the framework for CLI requests
- * If CLI_MODE is defined, we are in CLI context (easyphp).
+ * If CLI_MODE is defined, we are in CLI context (easy).
  * This prevents conflicts between web and CLI initializations.
  */
 if(defined('CLI_MODE')) {
     include PATH . 'system/Cli.php';
-
-   
 }

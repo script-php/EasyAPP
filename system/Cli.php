@@ -38,6 +38,8 @@ class Cli {
             // Framework Generation Commands
             'make:controller' => [$this, 'makeController'],
             'make:model' => [$this, 'makeModel'],
+            'make:model:table' => [$this, 'makeModelFromTable'],
+            'make:models' => [$this, 'makeModelsFromAllTables'],
             'make:service' => [$this, 'makeService'],
             'make:migration' => [$this, 'makeMigration'],
             
@@ -165,7 +167,7 @@ class Cli {
     
     public function migrateRollback($args) {
         if (empty($args[0])) {
-            $this->error("Target version is required. Usage: easyphp migrate:rollback 3");
+            $this->error("Target version is required. Usage: easy migrate:rollback 3");
             return;
         }
         
@@ -186,7 +188,7 @@ class Cli {
     
     public function makeMigration($args) {
         if (empty($args[0])) {
-            $this->error("Migration name is required. Usage: easyphp make:migration CreateUsersTable");
+            $this->error("Migration name is required. Usage: easy make:migration CreateUsersTable");
             return;
         }
         
@@ -202,7 +204,7 @@ class Cli {
         $this->info("");
         $this->info("Next steps:");
         $this->info("1. Edit the migration file to implement up() and down() methods");
-        $this->info("2. Run 'easyphp migrate' to apply the migration");
+        $this->info("2. Run 'easy migrate' to apply the migration");
     }
     
     private function displayMigrationResults($results, $type) {
@@ -249,7 +251,7 @@ class Cli {
     
     public function makeController($args) {
         if (empty($args[0])) {
-            $this->error("Controller name is required. Usage: easyphp make:controller UserController");
+            $this->error("Controller name is required. Usage: easy make:controller UserController");
             return;
         }
         
@@ -273,31 +275,176 @@ class Cli {
     
     public function makeModel($args) {
         if (empty($args[0])) {
-            $this->error("Model name is required. Usage: easyphp make:model User");
+            $this->error("Model name is required. Usage: easy make:model User");
             return;
         }
         
         $name = $args[0];
-        $className = 'Model' . ucfirst($name);
-        $filename = PATH . 'app/model/' . strtolower($name) . '.php';
+        $className = ucfirst($name);
+        $filename = PATH . 'app/model/' . ucfirst($name) . '.php';
         
         if (file_exists($filename)) {
             $this->error("Model already exists: {$filename}");
             return;
         }
         
-        $template = $this->getModelTemplate($className, strtolower($name));
+        $template = $this->getOrmModelTemplate($className);
         
         if (file_put_contents($filename, $template)) {
             $this->success("Model created: {$filename}");
+            $this->info("Using ORM base class. Edit the model to add:");
+            $this->info("  - Fillable columns");
+            $this->info("  - Relationships");
+            $this->info("  - Custom methods");
         } else {
             $this->error("Failed to create model");
         }
     }
     
+    public function makeModelFromTable($args) {
+        if (empty($args[0])) {
+            $this->error("Table name is required. Usage: easy make:model:table users");
+            return;
+        }
+        
+        $tableName = $args[0];
+        $force = in_array('--force', $args);
+        
+        $this->info("Generating Model from Table: {$tableName}");
+        $this->info("=" . str_repeat("=", 50));
+        
+        if (!$this->registry->has('db')) {
+            $this->error("Database connection not available. Check your .env configuration.");
+            return;
+        }
+        
+        $db = $this->registry->get('db');
+        
+        // Check if table exists
+        try {
+            $result = $db->query("SHOW TABLES LIKE '{$tableName}'");
+            if (empty($result->rows)) {
+                $this->error("Table '{$tableName}' does not exist in the database.");
+                return;
+            }
+        } catch (\Exception $e) {
+            $this->error("Database error: " . $e->getMessage());
+            return;
+        }
+        
+        // Get table columns
+        $columns = $this->getTableColumns($tableName);
+        if (empty($columns)) {
+            $this->error("Could not retrieve columns for table '{$tableName}'");
+            return;
+        }
+        
+        // Generate model class name
+        $className = $this->tableNameToClassName($tableName);
+        $filename = PATH . 'app/model/' . $className . '.php';
+        
+        if (file_exists($filename) && !$force) {
+            $this->error("Model already exists: {$filename}");
+            $this->info("Use --force to overwrite");
+            return;
+        }
+        
+        // Detect relationships
+        $foreignKeys = $this->detectForeignKeys($tableName);
+        
+        // Generate model
+        $template = $this->generateOrmModelFromTable($className, $tableName, $columns, $foreignKeys);
+        
+        if (file_put_contents($filename, $template)) {
+            $this->success("Model created: {$filename}");
+            $this->info("");
+            $this->info("Model Details:");
+            $this->info("  Class: {$className}");
+            $this->info("  Table: {$tableName}");
+            $this->info("  Columns: " . count($columns));
+            if (!empty($foreignKeys)) {
+                $this->info("  Relationships: " . count($foreignKeys));
+            }
+        } else {
+            $this->error("Failed to create model");
+        }
+    }
+    
+    public function makeModelsFromAllTables($args) {
+        $this->info("Generating Models from All Tables");
+        $this->info("=" . str_repeat("=", 50));
+        
+        if (!$this->registry->has('db')) {
+            $this->error("Database connection not available. Check your .env configuration.");
+            return;
+        }
+        
+        $force = in_array('--force', $args);
+        $db = $this->registry->get('db');
+        
+        // Get all tables
+        try {
+            $result = $db->query("SHOW TABLES");
+            $tables = [];
+            foreach ($result->rows as $row) {
+                $tables[] = array_values($row)[0];
+            }
+        } catch (\Exception $e) {
+            $this->error("Database error: " . $e->getMessage());
+            return;
+        }
+        
+        if (empty($tables)) {
+            $this->warning("No tables found in the database.");
+            return;
+        }
+        
+        $this->info("Found " . count($tables) . " tables");
+        $this->info("");
+        
+        $created = 0;
+        $skipped = 0;
+        
+        foreach ($tables as $tableName) {
+            // Skip migrations table
+            if ($tableName === 'migrations') {
+                continue;
+            }
+            
+            $className = $this->tableNameToClassName($tableName);
+            $filename = PATH . 'app/model/' . $className . '.php';
+            
+            if (file_exists($filename) && !$force) {
+                $this->warning("Skipped (exists): {$className} ({$tableName})");
+                $skipped++;
+                continue;
+            }
+            
+            $columns = $this->getTableColumns($tableName);
+            $foreignKeys = $this->detectForeignKeys($tableName);
+            $template = $this->generateOrmModelFromTable($className, $tableName, $columns, $foreignKeys);
+            
+            if (file_put_contents($filename, $template)) {
+                $this->success("Created: {$className} ({$tableName})");
+                $created++;
+            } else {
+                $this->error("Failed: {$className} ({$tableName})");
+            }
+        }
+        
+        $this->info("");
+        $this->info("Summary:");
+        $this->info("  Created: {$created}");
+        $this->info("  Skipped: {$skipped}");
+        
+        if ($created > 0) {
+            $this->success("Models generated successfully!");
+        }
+    }
+    
     public function makeService($args) {
         if (empty($args[0])) {
-            $this->error("Service name is required. Usage: easyphp make:service UserService");
+            $this->error("Service name is required. Usage: easy make:service UserService");
             return;
         }
         
@@ -612,12 +759,12 @@ class Cli {
     // ============================================================================
     
     public function showHelp($args = []) {
-        $this->info("EasyPHP CLI Tool");
+        $this->info("EasyAPP CLI Tool");
         $this->info("=" . str_repeat("=", 50));
         $this->info("");
         
         $this->info("USAGE:");
-        $this->info("  easyphp <command> [options] [arguments]");
+        $this->info("  easy <command> [options] [arguments]");
         $this->info("");
         
         $this->info("AVAILABLE COMMANDS:");
@@ -634,7 +781,9 @@ class Cli {
         
         $this->info("Generator Commands:");
         $this->info("  make:controller <name>     Create new controller");
-        $this->info("  make:model <name>          Create new model");
+        $this->info("  make:model <name>          Create empty ORM model");
+        $this->info("  make:model:table <table>   Generate model from database table");
+        $this->info("  make:models                Generate models for all tables");
         $this->info("  make:service <name>        Create new service");
         $this->info("  make:migration <name>      Create new migration");
         $this->info("");
@@ -662,7 +811,7 @@ class Cli {
         switch ($command) {
             case 'migrate':
                 $this->info("Migration Command Help");
-                $this->info("Usage: easyphp migrate [options]");
+                $this->info("Usage: easy migrate [options]");
                 $this->info("");
                 $this->info("Options:");
                 $this->info("  --to=<version>    Migrate to specific version");
@@ -671,7 +820,7 @@ class Cli {
                 
             case 'migrate:rollback':
                 $this->info("Rollback Command Help");
-                $this->info("Usage: easyphp migrate:rollback <version> [options]");
+                $this->info("Usage: easy migrate:rollback <version> [options]");
                 $this->info("");
                 $this->info("Arguments:");
                 $this->info("  version           Target version to rollback to");
@@ -685,7 +834,7 @@ class Cli {
     }
     
     public function showVersion($args) {
-        $this->info("EasyPHP CLI Tool v" . $this->version);
+        $this->info("EasyAPP CLI Tool v" . $this->version);
         $this->info("EasyAPP Framework v" . $this->registry->version);
         $this->info("Copyright (c) 2022, script-php.ro");
     }
@@ -695,15 +844,385 @@ class Cli {
     // ============================================================================
     
     private function getControllerTemplate($className, $name) {
-        return "<?php\n\n/**\n * {$className}\n * Generated by EasyPHP CLI\n */\n\nclass {$className} extends Controller {\n    \n    public function index() {\n        // Controller logic here\n        \$this->load->view('{$name}/index');\n    }\n    \n}\n";
+        return "<?php\n\n/**\n * {$className}\n * Generated by EasyAPP CLI\n */\n\nclass {$className} extends Controller {\n    \n    public function index() {\n        // Controller logic here\n        \$this->load->view('{$name}/index');\n    }\n    \n}\n";
+    }
+    
+    private function getOrmModelTemplate($className) {
+        $tableName = strtolower($className) . 's';
+        return "<?php\n\nnamespace App\\Model;\n\nuse System\\Framework\\Orm;\n\n/**\n * {$className} Model\n * Generated by EasyAPP CLI\n */\nclass {$className} extends Orm {\n    \n    protected static \$table = '{$tableName}';\n    \n    protected static \$fillable = [\n        // Add fillable columns here\n    ];\n    \n    protected static \$casts = [\n        'id' => 'int',\n    ];\n    \n    // Add relationships here\n    \n}\n";
+    }
+    
+    private function generateOrmModelFromTable($className, $tableName, $columns, $foreignKeys = []) {
+        $fillable = [];
+        $casts = [];
+        $hidden = [];
+        $hasSoftDelete = false;
+        $hasTimestamps = false;
+        
+        foreach ($columns as $column) {
+            $name = $column['Field'];
+            $type = strtolower($column['Type']);
+            
+            // Skip auto-increment primary key
+            if ($column['Key'] === 'PRI' && $column['Extra'] === 'auto_increment') {
+                continue;
+            }
+            
+            // Check for soft deletes
+            if ($name === 'deleted_at') {
+                $hasSoftDelete = true;
+                continue;
+            }
+            
+            // Check for timestamps
+            if (in_array($name, ['created_at', 'updated_at'])) {
+                $hasTimestamps = true;
+                continue;
+            }
+            
+            // Add to fillable
+            $fillable[] = $name;
+            
+            // Detect type casting
+            if (strpos($type, 'int') !== false) {
+                $casts[$name] = 'int';
+            } elseif (strpos($type, 'decimal') !== false || strpos($type, 'float') !== false || strpos($type, 'double') !== false) {
+                $casts[$name] = 'float';
+            } elseif (strpos($type, 'tinyint(1)') !== false || strpos($type, 'boolean') !== false) {
+                $casts[$name] = 'bool';
+            } elseif (strpos($type, 'json') !== false) {
+                $casts[$name] = 'json';
+            } elseif (strpos($type, 'date') !== false || strpos($type, 'time') !== false) {
+                $casts[$name] = 'datetime';
+            }
+            
+            // Detect hidden fields
+            if (strpos($name, 'password') !== false || strpos($name, 'token') !== false || strpos($name, 'secret') !== false) {
+                $hidden[] = $name;
+            }
+        }
+        
+        // Build template
+        $template = "<?php\n\n";
+        $template .= "namespace App\\Model;\n\n";
+        $template .= "use System\\Framework\\Orm;\n\n";
+        $template .= "/**\n";
+        $template .= " * {$className} Model\n";
+        $template .= " * Generated by EasyAPP CLI from table: {$tableName}\n";
+        $template .= " */\n";
+        $template .= "class {$className} extends Orm {\n\n";
+        
+        // Table name
+        $template .= "    protected static \$table = '{$tableName}';\n";
+        
+        // Soft delete
+        if ($hasSoftDelete) {
+            $template .= "    protected static \$softDelete = true;\n";
+        }
+        
+        // Timestamps
+        $template .= "    protected static \$timestamps = " . ($hasTimestamps ? 'true' : 'false') . ";\n";
+        $template .= "    \n";
+        
+        // Fillable
+        if (!empty($fillable)) {
+            $template .= "    protected static \$fillable = [\n";
+            foreach ($fillable as $field) {
+                $template .= "        '{$field}',\n";
+            }
+            $template .= "    ];\n    \n";
+        }
+        
+        // Hidden
+        if (!empty($hidden)) {
+            $template .= "    protected static \$hidden = [\n";
+            foreach ($hidden as $field) {
+                $template .= "        '{$field}',\n";
+            }
+            $template .= "    ];\n    \n";
+        }
+        
+        // Casts
+        if (!empty($casts)) {
+            $template .= "    protected static \$casts = [\n";
+            $template .= "        'id' => 'int',\n";
+            foreach ($casts as $field => $cast) {
+                if ($field !== 'id') {
+                    $template .= "        '{$field}' => '{$cast}',\n";
+                }
+            }
+            $template .= "    ];\n";
+        }
+        
+        // Generate attribute labels
+        $labels = $this->generateAttributeLabels($columns);
+        if (!empty($labels)) {
+            $template .= "    \n";
+            $template .= "    // ATTRIBUTE LABELS \n";
+            $template .= "    \n";
+            $template .= "    public function attributeLabels() {\n";
+            $template .= "        return [\n";
+            foreach ($labels as $field => $label) {
+                $template .= "            '{$field}' => '{$label}',\n";
+            }
+            $template .= "        ];\n";
+            $template .= "    }\n";
+            $template .= "    \n";
+        }
+        
+        // Generate validation rules
+        $rules = $this->generateValidationRulesFromColumns($columns);
+        if (!empty($rules)) {
+            $template .= "    // VALIDATION \n";
+            $template .= "    \n";
+            $template .= "    public function rules() {\n";
+            $template .= "        return [\n";
+            foreach ($rules as $rule) {
+                $template .= "             {$rule}\n";
+            }
+            $template .= "         ];\n";
+            $template .= "     }\n";
+            $template .= "    \n";
+        }
+        
+        // Relationships
+        if (!empty($foreignKeys)) {
+            $template .= "    \n";
+            $template .= "    // RELATIONSHIPS \n";
+            $template .= "    \n";
+            
+            foreach ($foreignKeys as $fk) {
+                $relatedClass = $this->tableNameToClassName($fk['referenced_table']);
+                $methodName = lcfirst($relatedClass);
+                $template .= "    public function {$methodName}() {\n";
+                $template .= "        return \$this->belongsTo({$relatedClass}::class, '{$fk['column']}');\n";
+                $template .= "    }\n";
+                $template .= "    \n";
+            }
+        }
+        
+        $template .= "}\n";
+        
+        return $template;
+    }
+    
+    /**
+     * Get table columns information
+     */
+    private function getTableColumns($tableName) {
+        $db = $this->registry->get('db');
+        try {
+            $result = $db->query("DESCRIBE `{$tableName}`");
+            return $result->rows;
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+    
+    /**
+     * Generate validation rules from table columns
+     */
+    private function generateValidationRulesFromColumns($columns) {
+        $rules = [];
+        
+        foreach ($columns as $column) {
+            $name = $column['Field'];
+            $type = strtolower($column['Type']);
+            $nullable = $column['Null'] === 'YES';
+            $isAutoIncrement = $column['Extra'] === 'auto_increment';
+            
+            // Skip auto-increment and timestamp columns
+            if ($isAutoIncrement || in_array($name, ['created_at', 'updated_at', 'deleted_at'])) {
+                continue;
+            }
+            
+            $ruleString = '';
+            
+            // Required if not nullable
+            if (!$nullable) {
+                $ruleString .= 'required';
+            } else {
+                $ruleString .= 'optional';
+            }
+            
+            // Type-specific rules
+            if (strpos($type, 'varchar') !== false || strpos($type, 'char') !== false) {
+                // Extract max length from type like varchar(255)
+                if (preg_match('/\((\d+)\)/', $type, $matches)) {
+                    $maxLength = $matches[1];
+                    $ruleString .= '|string|maxLength:' . $maxLength;
+                } else {
+                    $ruleString .= '|string';
+                }
+                
+                // Special field names
+                if ($name === 'email') {
+                    $ruleString .= '|email';
+                } elseif (strpos($name, 'phone') !== false) {
+                    $ruleString .= '|phone';
+                } elseif (strpos($name, 'url') !== false || strpos($name, 'website') !== false) {
+                    $ruleString .= '|url';
+                } elseif (strpos($name, 'name') !== false) {
+                    $ruleString .= '|minLength:2';
+                }
+            } elseif (strpos($type, 'text') !== false) {
+                $ruleString .= '|string';
+            } elseif (strpos($type, 'int') !== false || strpos($type, 'bigint') !== false || strpos($type, 'smallint') !== false) {
+                $ruleString .= '|integer';
+                
+                // Special field names
+                if ($name === 'age') {
+                    $ruleString .= '|min:0|max:150';
+                } elseif (strpos($name, 'year') !== false) {
+                    $ruleString .= '|min:1900|max:2100';
+                } elseif (strpos($name, 'quantity') !== false || strpos($name, 'count') !== false) {
+                    $ruleString .= '|min:0';
+                }
+            } elseif (strpos($type, 'decimal') !== false || strpos($type, 'float') !== false || strpos($type, 'double') !== false) {
+                $ruleString .= '|numeric';
+                
+                if (strpos($name, 'price') !== false || strpos($name, 'amount') !== false) {
+                    $ruleString .= '|min:0';
+                }
+            } elseif (strpos($type, 'tinyint(1)') !== false || strpos($type, 'boolean') !== false) {
+                $ruleString .= '|boolean';
+            } elseif (strpos($type, 'date') !== false && strpos($type, 'datetime') === false) {
+                $ruleString .= '|date';
+            } elseif (strpos($type, 'datetime') !== false || strpos($type, 'timestamp') !== false) {
+                $ruleString .= '|datetime';
+            } elseif (strpos($type, 'enum') !== false) {
+                // Extract enum values
+                if (preg_match('/enum\((.*?)\)/', $type, $matches)) {
+                    $enumValues = str_replace("'", "", $matches[1]);
+                    $ruleString .= '|in:' . $enumValues;
+                }
+            }
+            
+            if ($ruleString) {
+                $rules[] = "['{$name}', '{$ruleString}'],";
+            }
+        }
+        
+        return $rules;
+    }
+    
+    /**
+     * Generate attribute labels from columns
+     */
+    private function generateAttributeLabels($columns) {
+        $labels = [];
+        
+        foreach ($columns as $column) {
+            $name = $column['Field'];
+            $label = $this->columnNameToLabel($name);
+            $labels[$name] = $label;
+        }
+        
+        return $labels;
+    }
+    
+    /**
+     * Convert column name to human-readable label
+     * Examples: user_id -> User ID, created_at -> Created At, name -> Name
+     */
+    private function columnNameToLabel($columnName) {
+        // Handle special cases
+        $specialCases = [
+            'id' => 'ID',
+            'url' => 'URL',
+            'api' => 'API',
+            'ip' => 'IP',
+            'ssl' => 'SSL',
+            'html' => 'HTML',
+            'xml' => 'XML',
+            'json' => 'JSON',
+            'pdf' => 'PDF',
+            'csv' => 'CSV',
+        ];
+        
+        // Check if entire column name is a special case
+        if (isset($specialCases[strtolower($columnName)])) {
+            return $specialCases[strtolower($columnName)];
+        }
+        
+        // Split by underscore
+        $parts = explode('_', $columnName);
+        $labelParts = [];
+        
+        foreach ($parts as $part) {
+            // Check if part is a special case
+            if (isset($specialCases[strtolower($part)])) {
+                $labelParts[] = $specialCases[strtolower($part)];
+            } else {
+                // Capitalize first letter
+                $labelParts[] = ucfirst(strtolower($part));
+            }
+        }
+        
+        return implode(' ', $labelParts);
+    }
+    
+    /**
+     * Detect foreign keys in table
+     */
+    private function detectForeignKeys($tableName) {
+        $db = $this->registry->get('db');
+        $foreignKeys = [];
+        
+        try {
+            $sql = "SELECT 
+                        COLUMN_NAME as 'column',
+                        REFERENCED_TABLE_NAME as 'referenced_table',
+                        REFERENCED_COLUMN_NAME as 'referenced_column'
+                    FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                    WHERE TABLE_SCHEMA = ? 
+                    AND TABLE_NAME = ?
+                    AND REFERENCED_TABLE_NAME IS NOT NULL";
+            
+            $result = $db->query($sql, [CONFIG_DB_DATABASE, $tableName]);
+            
+            if (!empty($result->rows)) {
+                foreach ($result->rows as $row) {
+                    $foreignKeys[] = [
+                        'column' => $row['column'],
+                        'referenced_table' => $row['referenced_table'],
+                        'referenced_column' => $row['referenced_column']
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            // Foreign key detection failed, continue without them
+        }
+        
+        return $foreignKeys;
+    }
+    
+    /**
+     * Convert table name to class name
+     */
+    private function tableNameToClassName($tableName) {
+        // Remove plural 's' if exists
+        $singular = $tableName;
+        if (substr($tableName, -1) === 's') {
+            $singular = substr($tableName, 0, -1);
+        }
+        
+        // Convert snake_case to PascalCase
+        $parts = explode('_', $singular);
+        $className = '';
+        foreach ($parts as $part) {
+            $className .= ucfirst($part);
+        }
+        
+        return $className;
     }
     
     private function getModelTemplate($className, $name) {
-        return "<?php\n\n/**\n * {$className}\n * Generated by EasyPHP CLI\n */\n\nclass {$className} extends Model {\n    \n    protected \$table = '{$name}';\n    \n    public function __construct() {\n        parent::__construct();\n    }\n    \n}\n";
+        return "<?php\n\n/**\n * {$className}\n * Generated by EasyAPP CLI\n */\n\nclass {$className} extends Model {\n    \n    protected \$table = '{$name}';\n    \n    public function __construct() {\n        parent::__construct();\n    }\n    \n}\n";
     }
     
     private function getServiceTemplate($className) {
-        return "<?php\n\n/**\n * {$className}\n * Generated by EasyPHP CLI\n */\n\nclass {$className} extends Service {\n    \n    public function __construct() {\n        parent::__construct();\n    }\n    \n}\n";
+        return "<?php\n\n/**\n * {$className}\n * Generated by EasyAPP CLI\n */\n\nclass {$className} extends Service {\n    \n    public function __construct() {\n        parent::__construct();\n    }\n    \n}\n";
     }
     
     // ============================================================================

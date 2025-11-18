@@ -16,7 +16,8 @@
         "psr-4": {
             "System\\": "system/",
             "System\\Framework\\": "system/Framework/",
-            "System\\Library\\": "system/Library/"
+            "System\\Library\\": "system/Library/",
+            "App\\Model\\": "app/model/"
         }
     },
     "minimum-stability": "dev",

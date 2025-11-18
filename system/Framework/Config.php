@@ -31,13 +31,12 @@ class Config {
         $this->config = [
             // Platform
             'platform' => 'EasyAPP',
-            'version' => '1.7.0',
+            'version' => '2.0.0',
             'app_env' => env('APP_ENV', 'dev'), // 
             
             // App config
             'url' => env('APP_URL', null),
             'base_url' => env('BASE_URL', null),
-            'session' => env('SESSION_NAME', null),
             'services' => env('SERVICES', []), // Array of services to load
             
             'app_home' => env('APP_HOME', 'home'),
@@ -56,8 +55,13 @@ class Config {
             
             // App settings
             'domain' => env('DOMAIN', 'localhost'),
-            'session_name' => env('SESSION_NAME', 'session'),
-            'session_time' => env('SESSION_TIME', 31556926),
+
+            // Session
+            'session_name' => env('SESSION_NAME', 'session'), // session cookie name
+            'session_driver' => env('SESSION_DRIVER', 'file'), // file, database, redis, etc.
+            'session_lifetime' => env('SESSION_LIFETIME', 7200), // in seconds
+            'session_secure' => env('SESSION_SECURE', false), // true if using HTTPS
+            'session_httponly' => env('SESSION_HTTPONLY', true), // prevent JavaScript access
             
             // Framework directories
             'query' => 'route',
@@ -95,16 +99,15 @@ class Config {
             // Logging
             'log_level' => env('LOG_LEVEL', 'error'),
             'log_file' => env('LOG_FILE', 'storage/logs/error.log'),
-            
-            // Session
-            'session_driver' => env('SESSION_DRIVER', 'file'),
-            'session_lifetime' => env('SESSION_LIFETIME', 7200),
-            'session_secure' => env('SESSION_SECURE', false),
-            'session_httponly' => env('SESSION_HTTPONLY', true),
+
         ];
         
     }
     
+    /**
+     * Load configuration from a PHP file
+     * @param string $file Path to the config file
+     */
     public function load($file) {
         if (in_array($file, $this->loaded)) {
             return $this;
@@ -120,6 +123,12 @@ class Config {
         return $this;
     }
     
+    /**
+     * Get configuration value by key
+     * @param string|null $key Configuration key (dot notation supported)
+     * @param mixed $default Default value if key not found
+     * @return mixed Configuration value or default
+     */
     public function get($key = null, $default = null) {
         if ($key === null) {
             return $this->config;
@@ -132,6 +141,12 @@ class Config {
         return isset($this->config[$key]) ? $this->config[$key] : $default;
     }
     
+    /**
+     * Set configuration value by key
+     * @param string $key Configuration key (dot notation supported)
+     * @param mixed $value Value to set
+     * @return $this
+     */
     public function set($key, $value) {
         if (strpos($key, '.') !== false) {
             $this->setDotNotation($key, $value);
@@ -142,6 +157,11 @@ class Config {
         return $this;
     }
     
+    /**
+     * Check if configuration key exists
+     * @param string $key Configuration key (dot notation supported)
+     * @return bool
+     */
     public function has($key) {
         if (strpos($key, '.') !== false) {
             return $this->getDotNotation($key) !== null;
@@ -150,6 +170,12 @@ class Config {
         return isset($this->config[$key]);
     }
     
+    /**
+     * Get value using dot notation
+     * @param string $key Dot notation key
+     * @param mixed $default Default value if key not found
+     * @return mixed
+     */
     private function getDotNotation($key, $default = null) {
         $keys = explode('.', $key);
         $value = $this->config;
@@ -164,6 +190,11 @@ class Config {
         return $value;
     }
     
+    /**
+     * Set value using dot notation
+     * @param string $key Dot notation key
+     * @param mixed $value Value to set
+     */
     private function setDotNotation($key, $value) {
         $keys = explode('.', $key);
         $config = &$this->config;
@@ -178,6 +209,10 @@ class Config {
         $config = $value;
     }
     
+    /**
+     * Validate configuration settings
+     * @return array List of validation errors
+     */
     public function validate() {
         $errors = [];
         
@@ -205,6 +240,9 @@ class Config {
         return $errors;
     }
     
+    /**
+     * Create PHP constants from configuration
+     */
     public function createConstants($config) {
         foreach ($config as $key => $value) {
             if (is_scalar($value)) {
@@ -213,6 +251,10 @@ class Config {
         }
     }
     
+    /**
+     * Get all configuration settings
+     * @return array
+     */
     public function all() {
         return $this->config;
     }

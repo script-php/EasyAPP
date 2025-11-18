@@ -1,8 +1,8 @@
-# EasyPHP CLI Guide
+# EasyAPP CLI Guide
 
 ## Unified Command Line Interface
 
-The EasyPHP CLI tool provides a unified interface for all framework operations including migrations, code generation, testing, and development utilities.
+The EasyAPP CLI tool provides a unified interface for all framework operations including migrations, code generation, testing, and development utilities.
 
 ---
 
@@ -26,38 +26,38 @@ The EasyPHP CLI tool provides a unified interface for all framework operations i
 
 ### Quick Start
 
-The EasyPHP CLI follows modern framework conventions with grouped commands and intuitive syntax:
+The EasyAPP CLI follows modern framework conventions with grouped commands and intuitive syntax:
 
 ```bash
 # Show all available commands
-php easyphp help
+php easy help
 
 # Check migration status
-php easyphp migrate:status
+php easy migrate:status
 
 # Create a new controller
-php easyphp make:controller UserController
+php easy make:controller UserController
 
 # Run tests
-php easyphp test
+php easy test
 
 # Start development server
-php easyphp serve
+php easy serve
 ```
 
 ### Basic Syntax
 
 ```bash
-php easyphp <command> [arguments] [options]
+php easy <command> [arguments] [options]
 ```
 
 **Examples:**
 ```bash
-php easyphp migrate                    # Run migrations
-php easyphp migrate:create AddUsers    # Create migration
-php easyphp make:controller User       # Generate controller
-php easyphp test --unit               # Run unit tests
-php easyphp serve --port=9000         # Start server on port 9000
+php easy migrate                    # Run migrations
+php easy migrate:create AddUsers    # Create migration
+php easy make:controller User       # Generate controller
+php easy test --unit               # Run unit tests
+php easy serve --port=9000         # Start server on port 9000
 ```
 
 ---
@@ -80,10 +80,10 @@ Check that the CLI tool is working:
 cd /path/to/your/project
 
 # Test CLI access
-php easyphp --version
+php easy --version
 
 # Expected output:
-# EasyPHP CLI Tool
+# EasyAPP CLI Tool
 # EasyAPP Framework v2.0
 # Copyright (c) 2022, script-php.ro
 ```
@@ -108,14 +108,14 @@ Commands are organized into logical groups:
 
 ```bash
 # General help
-php easyphp help
+php easy help
 
 # Command-specific help
-php easyphp migrate --help
-php easyphp make:controller --help
+php easy migrate --help
+php easy make:controller --help
 
 # List all commands
-php easyphp help
+php easy help
 ```
 
 ---
@@ -127,10 +127,10 @@ php easyphp help
 Database migration commands provide complete schema management:
 
 ```bash
-php easyphp migrate:status      # Check migration status
-php easyphp migrate             # Run pending migrations  
-php easyphp migrate:create      # Create new migration
-php easyphp migrate:rollback    # Rollback migrations
+php easy migrate:status      # Check migration status
+php easy migrate             # Run pending migrations  
+php easy migrate:create      # Create new migration
+php easy migrate:rollback    # Rollback migrations
 ```
 
 ### migrate:status
@@ -138,7 +138,7 @@ php easyphp migrate:rollback    # Rollback migrations
 Show current migration state and history:
 
 ```bash
-php easyphp migrate:status
+php easy migrate:status
 ```
 
 **Output:**
@@ -167,16 +167,16 @@ Execute pending migrations:
 
 ```bash
 # Run all pending migrations
-php easyphp migrate
+php easy migrate
 
 # Run to specific version
-php easyphp migrate --to=5
+php easy migrate --to=5
 
 # Preview changes without applying
-php easyphp migrate --dry-run
+php easy migrate --dry-run
 
 # Run to specific version in dry-run mode
-php easyphp migrate --to=3 --dry-run
+php easy migrate --to=3 --dry-run
 ```
 
 **Example Output:**
@@ -202,9 +202,9 @@ Generate new migration files:
 
 ```bash
 # Create migration with descriptive name
-php easyphp migrate:create CreateUsersTable
-php easyphp migrate:create AddEmailToUsers
-php easyphp migrate:create UpdateProductPricing
+php easy migrate:create CreateUsersTable
+php easy migrate:create AddEmailToUsers
+php easy migrate:create UpdateProductPricing
 ```
 
 **Output:**
@@ -216,7 +216,7 @@ Path: /project/migrations/006_add_email_verification.php
 
 Next steps:
 1. Edit the migration file to implement up() and down() methods
-2. Run 'php easyphp migrate' to apply the migration
+2. Run 'php easy migrate' to apply the migration
 ```
 
 ### migrate:rollback
@@ -225,10 +225,10 @@ Revert migrations to previous state:
 
 ```bash
 # Rollback to specific version
-php easyphp migrate:rollback 3
+php easy migrate:rollback 3
 
 # Preview rollback changes
-php easyphp migrate:rollback 3 --dry-run
+php easy migrate:rollback 3 --dry-run
 ```
 
 **Example Output:**
@@ -258,10 +258,10 @@ Rollback completed successfully!
 Code generation commands create boilerplate files following framework conventions:
 
 ```bash
-php easyphp make:controller     # Generate controller class
-php easyphp make:model         # Generate model class
-php easyphp make:service       # Generate service class
-php easyphp make:migration     # Alias for migrate:create
+php easy make:controller     # Generate controller class
+php easy make:model         # Generate model class
+php easy make:service       # Generate service class
+php easy make:migration     # Alias for migrate:create
 ```
 
 ### make:controller
@@ -270,9 +270,9 @@ Generate controller files:
 
 ```bash
 # Create basic controller
-php easyphp make:controller UserController
-php easyphp make:controller ProductController
-php easyphp make:controller Auth
+php easy make:controller UserController
+php easy make:controller ProductController
+php easy make:controller Auth
 
 # Creates: app/controller/user.php
 # Class: ControllerUser extends Controller
@@ -284,7 +284,7 @@ php easyphp make:controller Auth
 
 /**
  * ControllerUser
- * Generated by EasyPHP CLI
+ * Generated by EasyAPP CLI
  */
 
 class ControllerUser extends Controller {
@@ -303,9 +303,9 @@ Generate model files:
 
 ```bash
 # Create model classes
-php easyphp make:model User
-php easyphp make:model Product
-php easyphp make:model Order
+php easy make:model User
+php easy make:model Product
+php easy make:model Order
 
 # Creates: app/model/user.php
 # Class: ModelUser extends Model
@@ -317,7 +317,7 @@ php easyphp make:model Order
 
 /**
  * ModelUser
- * Generated by EasyPHP CLI
+ * Generated by EasyAPP CLI
  */
 
 class ModelUser extends Model {
@@ -337,9 +337,9 @@ Generate service files:
 
 ```bash
 # Create service classes
-php easyphp make:service UserService
-php easyphp make:service EmailService
-php easyphp make:service PaymentService
+php easy make:service UserService
+php easy make:service EmailService
+php easy make:service PaymentService
 
 # Creates: app/service/userservice.php
 # Class: UserService extends Service
@@ -351,7 +351,7 @@ php easyphp make:service PaymentService
 
 /**
  * UserService
- * Generated by EasyPHP CLI
+ * Generated by EasyAPP CLI
  */
 
 class UserService extends Service {
@@ -372,9 +372,9 @@ class UserService extends Service {
 Testing commands provide simple test execution using the streamlined TestCase framework:
 
 ```bash
-php easyphp test              # Run all tests
-php easyphp test:unit         # Run unit tests only
-php easyphp test:integration  # Run integration tests only
+php easy test              # Run all tests
+php easy test:unit         # Run unit tests only
+php easy test:integration  # Run integration tests only
 ```
 
 ### test
@@ -383,7 +383,7 @@ Execute complete test suite (all unit and integration tests):
 
 ```bash
 # Run all available tests
-php easyphp test
+php easy test
 ```
 
 **Example Output:**
@@ -412,7 +412,7 @@ Execute only unit tests (fast, isolated component testing):
 
 ```bash
 # Run only unit tests
-php easyphp test:unit
+php easy test:unit
 ```
 
 **What Unit Tests Do:**
@@ -461,7 +461,7 @@ Execute only integration tests (slower, full system testing):
 
 ```bash
 # Run only integration tests
-php easyphp test:integration
+php easy test:integration
 ```
 
 **What Integration Tests Do:**
@@ -551,7 +551,7 @@ class MyTest extends TestCase {
 Clear application cache:
 
 ```bash
-php easyphp cache:clear
+php easy cache:clear
 ```
 
 **Output:**
@@ -577,13 +577,13 @@ Start the built-in development server:
 
 ```bash
 # Start server on default port (8000)
-php easyphp serve
+php easy serve
 
 # Start on specific port
-php easyphp serve --port=9000
+php easy serve --port=9000
 
 # Start on specific host and port
-php easyphp serve --host=0.0.0.0 --port=8080
+php easy serve --host=0.0.0.0 --port=8080
 ```
 
 **Default Configuration:**
@@ -602,16 +602,16 @@ Press Ctrl+C to stop
 **Server Options:**
 ```bash
 # Local development (default)
-php easyphp serve
+php easy serve
 
 # Accept external connections
-php easyphp serve --host=0.0.0.0
+php easy serve --host=0.0.0.0
 
 # Custom port
-php easyphp serve --port=3000
+php easy serve --port=3000
 
 # Specific configuration
-php easyphp serve --host=192.168.1.100 --port=9000
+php easy serve --host=192.168.1.100 --port=9000
 ```
 
 ---
@@ -622,31 +622,31 @@ php easyphp serve --host=192.168.1.100 --port=9000
 
 ```bash
 # Framework Generation Commands
-php easyphp make:controller <name>     # Create controller
-php easyphp make:model <name>          # Create model  
-php easyphp make:service <name>        # Create service
-php easyphp make:migration <name>      # Create migration
+php easy make:controller <name>     # Create controller
+php easy make:model <name>          # Create model  
+php easy make:service <name>        # Create service
+php easy make:migration <name>      # Create migration
 
 # Database Migration Commands  
-php easyphp migrate                    # Run pending migrations
-php easyphp migrate:status             # Show migration status
-php easyphp migrate:rollback <version> # Rollback to version
-php easyphp migrate:create <name>      # Create migration file
+php easy migrate                    # Run pending migrations
+php easy migrate:status             # Show migration status
+php easy migrate:rollback <version> # Rollback to version
+php easy migrate:create <name>      # Create migration file
 
 # Test Commands
-php easyphp test                       # Run all tests
-php easyphp test:unit                  # Run unit tests
-php easyphp test:integration           # Run integration tests
+php easy test                       # Run all tests
+php easy test:unit                  # Run unit tests
+php easy test:integration           # Run integration tests
 
 # Cache Commands
-php easyphp cache:clear                # Clear application cache
+php easy cache:clear                # Clear application cache
 
 # Development Server
-php easyphp serve                      # Start development server
+php easy serve                      # Start development server
 
 # Utility Commands  
-php easyphp help                       # Show help information
-php easyphp --version                  # Show version information
+php easy help                       # Show help information
+php easy --version                  # Show version information
 ```
 
 ### Global Options
@@ -692,13 +692,13 @@ Available for most commands:
 echo "Deploying application..."
 
 # Clear cache
-php easyphp cache:clear
+php easy cache:clear
 
 # Run migrations
-php easyphp migrate
+php easy migrate
 
 # Run tests
-php easyphp test
+php easy test
 
 echo "Deployment complete!"
 ```
@@ -710,15 +710,15 @@ echo "Deployment complete!"
 # dev-setup.sh - Development environment setup
 
 # Create basic application structure
-php easyphp make:controller HomeController
-php easyphp make:model User
-php easyphp make:service AuthService
+php easy make:controller HomeController
+php easy make:model User
+php easy make:service AuthService
 
 # Create initial migration
-php easyphp migrate:create SetupInitialDatabase
+php easy migrate:create SetupInitialDatabase
 
 # Start development server
-php easyphp serve --port=8080
+php easy serve --port=8080
 ```
 
 ### CI/CD Integration
@@ -740,8 +740,8 @@ jobs:
           php-version: '8.0'
       - name: Run Tests
         run: |
-          php easyphp migrate
-          php easyphp test
+          php easy migrate
+          php easy test
 ```
 
 ### Multiple Environments
@@ -750,16 +750,16 @@ jobs:
 
 ```bash
 # Development
-php easyphp migrate:status
-php easyphp serve
+php easy migrate:status
+php easy serve
 
 # Testing  
-php easyphp migrate --dry-run
-php easyphp test
+php easy migrate --dry-run
+php easy test
 
 # Production
-php easyphp migrate --to=latest
-php easyphp cache:clear
+php easy migrate --to=latest
+php easy cache:clear
 ```
 
 ---
@@ -770,19 +770,19 @@ php easyphp cache:clear
 
 #### Command Not Found
 
-**Problem:** `php easyphp` command not recognized
+**Problem:** `php easy` command not recognized
 
 **Solution:**
 ```bash
 # Ensure you're in the project root directory
 pwd
-ls -la easyphp
+ls -la easy
 
 # Check PHP CLI is available
 php --version
 
 # Verify file permissions (Unix/Linux)
-chmod +x easyphp
+chmod +x easy
 ```
 
 #### Database Connection Errors
@@ -798,7 +798,7 @@ cat config.php | grep -i db
 php -r "new PDO('mysql:host=localhost;dbname=test', 'user', 'pass');"
 
 # Verify database credentials
-php easyphp migrate:status
+php easy migrate:status
 ```
 
 #### Permission Errors
@@ -825,23 +825,23 @@ chown -R www-data:www-data storage/
 
 ```bash
 # Use dry-run to preview large migrations
-php easyphp migrate --dry-run
+php easy migrate --dry-run
 
 # Run specific migration only
-php easyphp migrate --to=5
+php easy migrate --to=5
 
 # Monitor migration progress
-php easyphp migrate:status
+php easy migrate:status
 ```
 
 #### Slow Test Execution
 
 ```bash
 # Run specific test types
-php easyphp test:unit
+php easy test:unit
 
 # Clear cache before testing
-php easyphp cache:clear && php easyphp test
+php easy cache:clear && php easy test
 ```
 
 ### Debug Mode
@@ -853,8 +853,8 @@ Enable debug output for troubleshooting:
 define('CONFIG_DEBUG', true);
 
 # Run commands to see detailed output
-php easyphp migrate --dry-run
-php easyphp test --verbose
+php easy migrate --dry-run
+php easy test --verbose
 ```
 
 ---
@@ -865,21 +865,21 @@ php easyphp test --verbose
 
 1. **Start New Features:**
    ```bash
-   php easyphp make:controller FeatureController
-   php easyphp make:model FeatureModel
-   php easyphp migrate:create AddFeatureTables
+   php easy make:controller FeatureController
+   php easy make:model FeatureModel
+   php easy migrate:create AddFeatureTables
    ```
 
 2. **Test Changes:**
    ```bash
-   php easyphp migrate --dry-run
-   php easyphp test
+   php easy migrate --dry-run
+   php easy test
    ```
 
 3. **Deploy Updates:**
    ```bash
-   php easyphp cache:clear
-   php easyphp migrate
+   php easy cache:clear
+   php easy migrate
    ```
 
 ### Code Organization
@@ -911,17 +911,17 @@ Create `.vscode/tasks.json`:
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "EasyPHP: Run Migrations",
+            "label": "EasyAPP: Run Migrations",
             "type": "shell",
             "command": "php",
-            "args": ["easyphp", "migrate"],
+            "args": ["easy", "migrate"],
             "group": "build"
         },
         {
-            "label": "EasyPHP: Start Server",
+            "label": "EasyAPP: Start Server",
             "type": "shell",
             "command": "php",
-            "args": ["easyphp", "serve"],
+            "args": ["easy", "serve"],
             "group": "build",
             "isBackground": true
         }
@@ -937,19 +937,19 @@ Create `Makefile`:
 .PHONY: migrate test serve clean
 
 migrate:
-	php easyphp migrate
+	php easy migrate
 
 migrate-status:
-	php easyphp migrate:status
+	php easy migrate:status
 
 test:
-	php easyphp test
+	php easy test
 
 serve:
-	php easyphp serve
+	php easy serve
 
 clean:
-	php easyphp cache:clear
+	php easy cache:clear
 
 deploy: clean migrate test
 	@echo "Deployment complete"
@@ -967,7 +967,7 @@ make deploy
 
 ## Summary
 
-The EasyPHP CLI provides a comprehensive, unified interface for all framework operations:
+The EasyAPP CLI provides a comprehensive, unified interface for all framework operations:
 
 ### Key Benefits:
 - **Unified Interface:** Single command for all operations
@@ -983,10 +983,10 @@ The EasyPHP CLI provides a comprehensive, unified interface for all framework op
 - **Utilities:** Cache management and development server
 
 ### Next Steps:
-1. **Explore Commands:** Try `php easyphp help`
+1. **Explore Commands:** Try `php easy help`
 2. **Create Components:** Use `make:*` commands
 3. **Manage Database:** Use `migrate:*` commands  
-4. **Develop Locally:** Use `php easyphp serve`
+4. **Develop Locally:** Use `php easy serve`
 5. **Automate Workflows:** Integrate with CI/CD
 
 The unified CLI interface makes EasyAPP development faster, more consistent, and follows modern framework best practices.

@@ -24,13 +24,13 @@ class Logger {
         'emergency' => 7
     ];
     
-    public function __construct($logFile = null, $logLevel = LOG_LEVEL) {
-        $this->logFile = $logFile ?: PATH . LOG_FILE;
-        $this->logLevel = $logLevel;
+    public function __construct($logFile = null, $logLevel = null) {
+        $this->logFile = $logFile ?: PATH . CONFIG_LOG_FILE;
+        $this->logLevel = $logLevel ?: (defined('CONFIG_LOG_LEVEL') ? CONFIG_LOG_LEVEL : 'debug');
         $this->ensureLogDirectory();
     }
 
-    public static function getInstance($logFile = null, $logLevel = LOG_LEVEL) {
+    public static function getInstance($logFile = null, $logLevel = null) {
         if (self::$instance === null) {
             self::$instance = new self($logFile, $logLevel);
         }

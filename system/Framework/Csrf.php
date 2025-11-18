@@ -14,9 +14,11 @@ class Csrf {
     private $sessionKey = '_csrf_tokens';
     private $tokenLength = 32;
     private $maxTokens = 10; // Limit stored tokens to prevent memory issues
+    private $request;
     
     public function __construct($registry) {
         $this->registry = $registry;
+        $this->request = $registry->get('request');
         $this->initializeSession();
     }
     
@@ -24,8 +26,8 @@ class Csrf {
      * Initialize CSRF session storage
      */
     private function initializeSession() {
-        if (!isset($_SESSION[$this->sessionKey])) {
-            $_SESSION[$this->sessionKey] = [];
+        if (!isset($this->request->session[$this->sessionKey])) {
+            $this->request->session[$this->sessionKey] = [];
         }
     }
     
@@ -39,18 +41,22 @@ class Csrf {
         $timestamp = time();
         
         // Store token with timestamp and action
-        $_SESSION[$this->sessionKey][$token] = [
+        $this->request->session[$this->sessionKey][$token] = [
             'action' => $action,
             'timestamp' => $timestamp,
             'used' => false
         ];
         
-        // Debug: Log token storage
-        error_log("CSRF DEBUG: Generated token {$token} for action {$action}");
-        error_log("CSRF DEBUG: Session tokens after generation: " . print_r($_SESSION[$this->sessionKey], true));
-        
+        if(CONFIG_DEBUG) {
+            // Debug: Log token generation
+            error_log("CSRF DEBUG: Generated token {$token} for action {$action}");
+            error_log("CSRF DEBUG: Session tokens after generation: " . print_r($this->request->session[$this->sessionKey], true));
+        }
+
         // Temporarily disable cleanup for debugging
-        // $this->cleanupTokens();
+        if(!CONFIG_DEBUG) {
+            $this->cleanupTokens();
+        }
         
         return $token;
     }
@@ -69,14 +75,17 @@ class Csrf {
             return true; // Skip validation if disabled
         }
         
-        if (empty($token) || !isset($_SESSION[$this->sessionKey][$token])) {
+        if (empty($token) || !isset($this->request->session[$this->sessionKey][$token])) {
             // Debug: Log validation failure
-            error_log("CSRF DEBUG: Validation failed for token {$token}");
-            error_log("CSRF DEBUG: Available tokens: " . print_r(array_keys($_SESSION[$this->sessionKey] ?? []), true));
+            if(CONFIG_DEBUG) {
+                error_log("CSRF DEBUG: Validation failed for token {$token}");
+                error_log("CSRF DEBUG: Available tokens: " . print_r(array_keys($this->request->session[$this->sessionKey] ?? []), true));
+            }
+            
             return false;
         }
         
-        $tokenData = $_SESSION[$this->sessionKey][$token];
+        $tokenData = $this->request->session[$this->sessionKey][$token];
         
         // Check if token was already used (for single-use tokens)
         if ($singleUse && $tokenData['used']) {
@@ -90,13 +99,13 @@ class Csrf {
         
         // Check token age
         if ((time() - $tokenData['timestamp']) > $maxAge) {
-            unset($_SESSION[$this->sessionKey][$token]);
+            unset($this->request->session[$this->sessionKey][$token]);
             return false;
         }
         
         // Mark token as used if single-use
         if ($singleUse) {
-            $_SESSION[$this->sessionKey][$token]['used'] = true;
+            $this->request->session[$this->sessionKey][$token]['used'] = true;
         }
         
         return true;
@@ -108,13 +117,13 @@ class Csrf {
      */
     public function getTokenFromRequest() {
         // Check POST data directly (most common)
-        if (!empty($_POST['_csrf_token'])) {
-            return $_POST['_csrf_token'];
+        if (!empty($this->request->post['csrf_token'])) {
+            return $this->request->post['csrf_token'];
         }
         
         // Check GET data (less secure, but sometimes needed)
-        if (!empty($_GET['_csrf_token'])) {
-            return $_GET['_csrf_token'];
+        if (!empty($this->request->get['csrf_token'])) {
+            return $this->request->get['csrf_token'];
         }
         
         // Check HTTP headers for AJAX requests
@@ -150,7 +159,7 @@ class Csrf {
      */
     public function getTokenField($action = 'default') {
         $token = $this->generateToken($action);
-        return '<input type="hidden" name="_csrf_token" value="' . htmlspecialchars($token, ENT_QUOTES, 'UTF-8') . '">';
+        return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($token, ENT_QUOTES, 'UTF-8') . '">';
     }
     
     /**
@@ -185,7 +194,7 @@ class Csrf {
      * Clean up old and used tokens
      */
     private function cleanupTokens() {
-        if (count($_SESSION[$this->sessionKey]) <= $this->maxTokens) {
+        if (count($this->request->session[$this->sessionKey]) <= $this->maxTokens) {
             return;
         }
         
@@ -193,7 +202,7 @@ class Csrf {
         $cleaned = [];
         
         // Remove expired tokens (older than 1 hour)
-        foreach ($_SESSION[$this->sessionKey] as $token => $data) {
+        foreach ($this->request->session[$this->sessionKey] as $token => $data) {
             if (($currentTime - $data['timestamp']) < 3600 && !$data['used']) {
                 $cleaned[$token] = $data;
             }
@@ -207,7 +216,7 @@ class Csrf {
             $cleaned = array_slice($cleaned, 0, $this->maxTokens, true);
         }
         
-        $_SESSION[$this->sessionKey] = $cleaned;
+        $this->request->session[$this->sessionKey] = $cleaned;
     }
     
     /**
@@ -222,7 +231,7 @@ class Csrf {
      * Clear all CSRF tokens from session
      */
     public function clearTokens() {
-        $_SESSION[$this->sessionKey] = [];
+        $this->request->session[$this->sessionKey] = [];
     }
     
     /**
@@ -230,7 +239,7 @@ class Csrf {
      * @return array Token statistics
      */
     public function getTokenStats() {
-        $tokens = $_SESSION[$this->sessionKey] ?? [];
+        $tokens = $this->request->session[$this->sessionKey] ?? [];
         $active = 0;
         $used = 0;
         $expired = 0;

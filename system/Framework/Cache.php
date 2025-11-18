@@ -5,6 +5,43 @@
 * @author       YoYo
 * @copyright    Copyright (c) 2022, script-php.ro
 * @link         https://script-php.ro
+* 
+* Cache System - File-based caching with TTL support
+* 
+* Configuration (in .env or config.php):
+* - CACHE_ENABLED: Enable/disable caching globally (default: false)
+* - CACHE_DRIVER: Cache storage driver (default: 'file')
+* - CACHE_TTL: Default cache time-to-live in seconds (default: 3600)
+* 
+* Usage Examples:
+* 
+* 1. Basic cache operations:
+*    $cache = Cache::getInstance();
+*    $cache->set('key', 'value', 3600);
+*    $value = $cache->get('key');
+*    $cache->delete('key');
+*    $cache->clear(); // Clear all cache
+* 
+* 2. Cache with callback (remember pattern):
+*    $users = $cache->remember('users_list', function() {
+*        return User::all();
+*    }, 3600);
+* 
+* 3. ORM Query Caching (automatically uses these config values):
+*    User::where('active', 1)->cache()->get(); // Uses config settings
+*    User::where('status', 'active')->cache(7200)->get(); // Custom TTL
+*    User::cacheKey('active_users')->cache()->get(); // Custom key
+*    User::noCache()->get(); // Skip cache for this query
+* 
+* Cache is automatically cleared on:
+* - Model save() operations
+* - Model update() operations  
+* - Model delete() operations
+* 
+* Storage:
+* - Files stored in: storage/cache/
+* - Format: [md5_hash].cache
+* - Serialized data with expiration timestamp
 */
 
 namespace System\Framework;
