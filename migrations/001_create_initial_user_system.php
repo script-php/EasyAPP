@@ -14,7 +14,8 @@ class Migration_001_CreateInitialUserSystem extends Migration {
      */
     public function up(): void {
         // Create users table
-        $this->tables->table('users')
+        $this->tables->table('users_migration')
+            ->tableComment('User account management')
             ->column('id')->type('INT(11)')->autoIncrement(true)->primary('`id`')
             ->column('username')->type('VARCHAR(50)')->notNull(true)
             ->column('email')->type('VARCHAR(100)')->notNull(true)
@@ -29,7 +30,7 @@ class Migration_001_CreateInitialUserSystem extends Migration {
             ->create();
             
         // Create user_profiles table
-        $this->tables->table('user_profiles')
+        $this->tables->table('user_profiles_migration')
             ->column('id')->type('INT(11)')->autoIncrement(true)->primary('`id`')
             ->column('user_id')->type('INT(11)')->notNull(true)
             ->column('first_name')->type('VARCHAR(50)')
@@ -38,11 +39,11 @@ class Migration_001_CreateInitialUserSystem extends Migration {
             ->column('avatar')->type('VARCHAR(255)')
             ->column('bio')->text()
             ->column('metadata')->json()
-            ->foreign('user_id', 'users', 'id', true) // CASCADE delete
+            ->foreign('fk_user_profiles_user_id_test', 'user_id', 'users_migration', 'id', true) // CASCADE delete
             ->index('idx_user', ['user_id'])
             ->create();
             
-        $this->log('Created initial user system with users and user_profiles tables');
+        $this->log('Created initial user system with users_migration and user_profiles_migration tables');
     }
     
     /**
@@ -50,8 +51,8 @@ class Migration_001_CreateInitialUserSystem extends Migration {
      */
     public function down(): void {
         // Drop tables in reverse dependency order
-        $this->tables->drop('user_profiles');
-        $this->tables->drop('users');
+        $this->tables->drop('user_profiles_migration');
+        $this->tables->drop('users_migration');
         
         $this->log('Dropped user system tables');
     }
@@ -60,7 +61,7 @@ class Migration_001_CreateInitialUserSystem extends Migration {
      * Get migration description
      */
     public function getDescription(): string {
-        return 'Create Initial User System - users and user_profiles tables';
+        return 'Create Initial User System - users_migration and user_profiles_migration tables';
     }
     
     /**
@@ -69,10 +70,10 @@ class Migration_001_CreateInitialUserSystem extends Migration {
     public function checkDependencies(string $direction = 'up'): bool {
         if ($direction === 'up') {
             // Ensure we don't already have users table
-            return !$this->tableExists('users');
+            return !$this->tableExists('users_migration');
         } else {
             // Ensure tables exist before dropping
-            return $this->tableExists('users') && $this->tableExists('user_profiles');
+            return $this->tableExists('users_migration') && $this->tableExists('user_profiles_migration');
         }
     }
 }

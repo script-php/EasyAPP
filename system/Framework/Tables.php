@@ -68,13 +68,14 @@ use System\Framework\Exceptions\DatabaseQuery as FrameworkException;
  * uniqueComposite(array $columns, $indexName = null) - Multi-column unique constraint
  * fulltext($columns = [])          - Create fulltext search index
  * spatial($column, $indexName = null) - Create spatial index for GIS data
- * foreign($key, $table, $column, $cascade = false) - Define foreign key relationship
+ * foreign($constraintName = null, $key, $table, $column, $cascade = false) - Define foreign key with optional custom constraint name
  * 
  * TABLE PROPERTIES:
  * ----------------
  * engine($str)                     - Set storage engine (InnoDB, MyISAM, MEMORY)
  * charset($str)                    - Set character set (utf8mb4, latin1, etc.)
  * collate($str)                    - Set collation (utf8mb4_unicode_ci, etc.)
+ * tableComment($str)               - Set table comment/description
  * 
  * COLUMN OPERATIONS:
  * -----------------
@@ -120,7 +121,7 @@ use System\Framework\Exceptions\DatabaseQuery as FrameworkException;
  * $tables->table('orders')
  *     ->column('id')->type('INT(11)')->autoIncrement(true)->primary('`id`')
  *     ->column('user_id')->type('INT(11)')->notNull(true)
- *     ->foreign('user_id', 'users', 'id', true)  // CASCADE delete
+ *     ->foreign('fk_orders_users', 'user_id', 'users', 'id', true)  // CASCADE delete with custom constraint name
  *     ->create();
  * 
  * Complex Indexes:
@@ -267,8 +268,9 @@ class Tables {
                     foreach ($table['foreign'] as $foreign) {
 
                         $cascade = ($foreign['cascade'] ? " ON DELETE CASCADE " : "");
+                        $constraintName = $foreign['name'] ?? 'fk_' . $table['name'] . '_' . $foreign['table'] . '_' . $foreign['key'];
 
-                        $addForeignKeySql = "ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['column'] . "`)" . $cascade;
+                        $addForeignKeySql = "ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD CONSTRAINT `" . $constraintName . "` FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['column'] . "`)" . $cascade;
                         $this->db->query($addForeignKeySql);
                         $this->logQuery($addForeignKeySql);
                     }
@@ -479,6 +481,11 @@ class Tables {
                 throw new FrameworkException("Foreign key references non-existent column: {$foreign['column']} in table {$foreign['table']}");
             }
             
+            // Validate constraint name if provided
+            if (isset($foreign['name']) && !preg_match('/^[a-zA-Z][a-zA-Z0-9_]*$/', $foreign['name'])) {
+                throw new FrameworkException("Invalid foreign key constraint name: {$foreign['name']} in table {$table['name']}");
+            }
+            
             // Check type compatibility (basic check)
             $localType = $this->normalizeType($table['column'][$foreign['key']]['type']);
             $referencedType = $this->normalizeType($referencedTable['column'][$foreign['column']]['type']);
@@ -492,22 +499,111 @@ class Tables {
     /**
      * Normalize MySQL type for comparison
      * 
+     * Handles various MySQL type representations and normalizes them for FK validation.
+     * Examples:
+     *   'INT(11)' -> 'INT'
+     *   'VARCHAR(255)' -> 'VARCHAR'
+     *   'BIGINT(20) UNSIGNED' -> 'BIGINT'
+     *   'BOOLEAN' -> 'TINYINT'
+     * 
      * @param string $type MySQL column type
      * @return string Normalized type
      */
     private function normalizeType(string $type): string {
-        // Remove size specifications and convert to uppercase
-        $type = preg_replace('/\([^)]*\)/', '', strtoupper(trim($type)));
+        // Trim whitespace and convert to uppercase
+        $type = strtoupper(trim($type));
         
-        // Handle common type mappings
+        // Remove size specifications (e.g., INT(11), VARCHAR(255))
+        $type = preg_replace('/\([^)]*\)/', '', $type);
+        
+        // Remove modifiers like UNSIGNED, ZEROFILL, etc.
+        $type = preg_replace('/(UNSIGNED|ZEROFILL|SIGNED|BINARY)\s*/i', '', $type);
+        
+        // Clean up any remaining extra whitespace
+        $type = trim(preg_replace('/\s+/', ' ', $type));
+        
+        // Comprehensive type mapping for synonyms and aliases
         $typeMap = [
+            // Integer types
             'INTEGER' => 'INT',
+            'TINYINT' => 'TINYINT',
+            'SMALLINT' => 'SMALLINT',
+            'MEDIUMINT' => 'MEDIUMINT',
+            'INT' => 'INT',
+            'BIGINT' => 'BIGINT',
+            
+            // Decimal types
+            'NUMERIC' => 'DECIMAL',
+            'FIXED' => 'DECIMAL',
+            'DEC' => 'DECIMAL',
+            'DECIMAL' => 'DECIMAL',
+            
+            // Floating point types
+            'FLOAT' => 'FLOAT',
+            'DOUBLE' => 'DOUBLE',
+            'REAL' => 'DOUBLE',
+            'DOUBLE PRECISION' => 'DOUBLE',
+            
+            // Boolean type
             'BOOLEAN' => 'TINYINT',
-            'BOOL' => 'TINYINT'
+            'BOOL' => 'TINYINT',
+            
+            // String types
+            'CHAR' => 'CHAR',
+            'VARCHAR' => 'VARCHAR',
+            'BINARY' => 'BINARY',
+            'VARBINARY' => 'VARBINARY',
+            
+            // Text types
+            'TINYTEXT' => 'TINYTEXT',
+            'TEXT' => 'TEXT',
+            'MEDIUMTEXT' => 'MEDIUMTEXT',
+            'LONGTEXT' => 'LONGTEXT',
+            
+            // Blob types
+            'TINYBLOB' => 'TINYBLOB',
+            'BLOB' => 'BLOB',
+            'MEDIUMBLOB' => 'MEDIUMBLOB',
+            'LONGBLOB' => 'LONGBLOB',
+            
+            // Date/Time types
+            'DATE' => 'DATE',
+            'TIME' => 'TIME',
+            'DATETIME' => 'DATETIME',
+            'TIMESTAMP' => 'TIMESTAMP',
+            'YEAR' => 'YEAR',
+            
+            // Spatial types
+            'GEOMETRY' => 'GEOMETRY',
+            'POINT' => 'POINT',
+            'LINESTRING' => 'LINESTRING',
+            'POLYGON' => 'POLYGON',
+            'MULTIPOINT' => 'MULTIPOINT',
+            'MULTILINESTRING' => 'MULTILINESTRING',
+            'MULTIPOLYGON' => 'MULTIPOLYGON',
+            'GEOMETRYCOLLECTION' => 'GEOMETRYCOLLECTION',
+            
+            // JSON type
+            'JSON' => 'JSON',
+            
+            // Enum and Set
+            'ENUM' => 'ENUM',
+            'SET' => 'SET'
         ];
         
         return $typeMap[$type] ?? $type;
     }
+    /**
+     * Set table comment
+     * 
+     * @param string $comment Table comment/description
+     * @return $this
+     */
+    public function tableComment(string $comment) {
+        $this->tables[$this->table_use]['table_comment'] = $comment;
+        return $this;
+    }
+    
     /**
      * Build column definition string for SQL
      * 
@@ -628,7 +724,15 @@ class Tables {
             $charset = $table['charset'] ?? self::DEFAULT_CHARSET;
             $collate = $table['collate'] ?? self::DEFAULT_COLLATE;
             
-            $sql .= "\n) ENGINE={$engine} DEFAULT CHARSET={$charset} COLLATE={$collate};";
+            $sql .= "\n) ENGINE={$engine} DEFAULT CHARSET={$charset} COLLATE={$collate}";
+            
+            // Add table comment if provided
+            if (!empty($table['table_comment'])) {
+                $comment = addslashes($table['table_comment']);
+                $sql .= " COMMENT '{$comment}'";
+            }
+            
+            $sql .= ";";
             
             $this->db->query($sql);
             $this->logQuery($sql);
@@ -866,28 +970,37 @@ class Tables {
     }
     
     /**
-     * Update table properties (engine, charset, collation)
+     * Update table properties (engine, charset, collation, comment)
      * 
      * @param array $table Table configuration
      */
     private function updateTableProperties(array $table): void {
         $tableName = CONFIG_DB_PREFIX . $table['name'];
         
+        // Collect all ALTER TABLE modifications
+        $alterStatements = [];
+        
         // Update engine
         if (isset($table['engine'])) {
-            $sql = "ALTER TABLE `{$tableName}` ENGINE = {$table['engine']}";
-            $this->db->query($sql);
-            $this->logQuery($sql);
+            $alterStatements[] = "ENGINE = {$table['engine']}";
         }
         
         // Update charset and collation
         if (isset($table['charset'])) {
-            $sql = "ALTER TABLE `{$tableName}` CONVERT TO CHARACTER SET {$table['charset']}";
-            
-            if (isset($table['collate'])) {
-                $sql .= " COLLATE {$table['collate']}";
-            }
-            
+            $charset = $table['charset'];
+            $collate = isset($table['collate']) ? " COLLATE {$table['collate']}" : '';
+            $alterStatements[] = "CONVERT TO CHARACTER SET {$charset}{$collate}";
+        }
+        
+        // Update table comment
+        if (!empty($table['table_comment'])) {
+            $comment = addslashes($table['table_comment']);
+            $alterStatements[] = "COMMENT '{$comment}'";
+        }
+        
+        // Execute all ALTER statements at once (more efficient)
+        if (!empty($alterStatements)) {
+            $sql = "ALTER TABLE `{$tableName}` " . implode(", ", $alterStatements);
             $this->db->query($sql);
             $this->logQuery($sql);
         }
@@ -949,12 +1062,17 @@ class Tables {
 		return $this;
 	}
 
-    public function foreign($key, $table, $column, bool $cascade = false) {
+    public function foreign(?string $constraintName, $key, $table, $column, bool $cascade = false) {
+        // Auto-generate constraint name if not provided
+        // Format: fk_<local_table>_<foreign_table>_<column>
+        $name = $constraintName ?: 'fk_' . $this->table_use . '_' . $table . '_' . $key;
+        
         $this->tables[$this->table_use]['foreign'][] = [
             'key' => $key,
             'table' => $table,
             'column' => $column,
-            'cascade' => $cascade
+            'cascade' => $cascade,
+            'name' => $name
         ];
 		return $this;
 	}
