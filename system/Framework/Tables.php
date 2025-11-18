@@ -68,7 +68,7 @@ use System\Framework\Exceptions\DatabaseQuery as FrameworkException;
  * uniqueComposite(array $columns, $indexName = null) - Multi-column unique constraint
  * fulltext($columns = [])          - Create fulltext search index
  * spatial($column, $indexName = null) - Create spatial index for GIS data
- * foreign($constraintName = null, $key, $table, $column, $cascade = false) - Define foreign key with optional custom constraint name
+ * foreign($constraintName = null, $key, $table, $column, $onDelete = false, $onUpdate = false) - Define foreign key with CASCADE options
  * 
  * TABLE PROPERTIES:
  * ----------------
@@ -121,7 +121,7 @@ use System\Framework\Exceptions\DatabaseQuery as FrameworkException;
  * $tables->table('orders')
  *     ->column('id')->type('INT(11)')->autoIncrement(true)->primary('`id`')
  *     ->column('user_id')->type('INT(11)')->notNull(true)
- *     ->foreign('fk_orders_users', 'user_id', 'users', 'id', true)  // CASCADE delete with custom constraint name
+ *     ->foreign('fk_orders_users', 'user_id', 'users', 'id', true, true)  // CASCADE on delete and update
  *     ->create();
  * 
  * Complex Indexes:
@@ -267,10 +267,11 @@ class Tables {
                 if (isset($table['foreign'])) {
                     foreach ($table['foreign'] as $foreign) {
 
-                        $cascade = ($foreign['cascade'] ? " ON DELETE CASCADE " : "");
+                        $onDelete = ($foreign['onDelete'] ? " ON DELETE CASCADE" : "");
+                        $onUpdate = ($foreign['onUpdate'] ? " ON UPDATE CASCADE" : "");
                         $constraintName = $foreign['name'] ?? 'fk_' . $table['name'] . '_' . $foreign['table'] . '_' . $foreign['key'];
 
-                        $addForeignKeySql = "ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD CONSTRAINT `" . $constraintName . "` FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['column'] . "`)" . $cascade;
+                        $addForeignKeySql = "ALTER TABLE `" . CONFIG_DB_PREFIX . $table['name'] . "` ADD CONSTRAINT `" . $constraintName . "` FOREIGN KEY (`" . $foreign['key'] . "`) REFERENCES `" . CONFIG_DB_PREFIX . $foreign['table'] . "` (`" . $foreign['column'] . "`)" . $onDelete . $onUpdate;
                         $this->db->query($addForeignKeySql);
                         $this->logQuery($addForeignKeySql);
                     }
@@ -1062,7 +1063,7 @@ class Tables {
 		return $this;
 	}
 
-    public function foreign(?string $constraintName, $key, $table, $column, bool $cascade = false) {
+    public function foreign(?string $constraintName, $key, $table, $column, bool $onDelete = false, bool $onUpdate = false) {
         // Auto-generate constraint name if not provided
         // Format: fk_<local_table>_<foreign_table>_<column>
         $name = $constraintName ?: 'fk_' . $this->table_use . '_' . $table . '_' . $key;
@@ -1071,7 +1072,8 @@ class Tables {
             'key' => $key,
             'table' => $table,
             'column' => $column,
-            'cascade' => $cascade,
+            'onDelete' => $onDelete,
+            'onUpdate' => $onUpdate,
             'name' => $name
         ];
 		return $this;
