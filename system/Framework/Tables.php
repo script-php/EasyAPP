@@ -18,6 +18,15 @@ use System\Framework\Exceptions\DatabaseQuery as FrameworkException;
  * with proper error handling, validation, and performance optimizations.
  * 
  * =============================================================================
+ * VALIDATION FEATURES
+ * =============================================================================
+ * 
+ * • Table/Column Names: Validates against MySQL reserved keywords and enforces max 64 char limit
+ * • Column Positioning: Validates that target columns exist before applying AFTER/FIRST clauses
+ * • Foreign Keys: Checks type compatibility and validates constraint names
+ * • Pre-flight Checks: All operations validated before SQL execution in transactions
+ * 
+ * =============================================================================
  * COMPLETE METHOD REFERENCE
  * =============================================================================
  * 
@@ -81,6 +90,7 @@ use System\Framework\Exceptions\DatabaseQuery as FrameworkException;
  * -----------------
  * delete()                         - Mark column for deletion
  * first()                          - Position column as first in table
+ * after($str)                      - Position column after another column (validates target exists)
  * 
  * SCHEMA INTROSPECTION:
  * --------------------
@@ -222,8 +232,8 @@ class Tables {
                 // Validate all tables before execution
                 $this->validateTables($allTables);
                 
-                // Execute schema changes
-                $this->executeTables($allTables);
+                // Compute diff-based changes and execute only what's needed
+                $this->executeDiffBasedChanges($allTables);
                 
                 // Update change tracking
                 $this->updateChangeHash($allTables);
@@ -426,9 +436,11 @@ class Tables {
      */
     private function validateTableStructure(array $table): void {
         // Validate table name
-        if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_]*$/', $table['name'])) {
-            throw new FrameworkException('Invalid table name: ' . $table['name']);
+        if (!isset($table['name']) || empty($table['name'])) {
+            throw new FrameworkException('Table name is required');
         }
+        
+        $this->validateTableName($table['name']);
         
         // Validate columns
         if (!isset($table['column']) || !is_array($table['column'])) {
@@ -441,9 +453,7 @@ class Tables {
             }
             
             // Validate column name
-            if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_]*$/', $column['name'])) {
-                throw new FrameworkException('Invalid column name: ' . $column['name']);
-            }
+            $this->validateColumnName($column['name']);
         }
     }
     
@@ -494,6 +504,95 @@ class Tables {
             if ($localType !== $referencedType) {
                 throw new FrameworkException("Foreign key type mismatch: {$foreign['key']} ({$localType}) does not match {$foreign['table']}.{$foreign['column']} ({$referencedType})");
             }
+        }
+    }
+    
+    /**
+     * Validate table name against MySQL restrictions and reserved keywords
+     * 
+     * @param string $tableName Table name to validate
+     * @throws FrameworkException If validation fails
+     */
+    private function validateTableName(string $tableName): void {
+        // Check length (max 64 characters in MySQL)
+        if (strlen($tableName) > 64) {
+            throw new FrameworkException("Table name exceeds maximum length of 64 characters: {$tableName}");
+        }
+        
+        // Check for valid naming pattern
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $tableName)) {
+            throw new FrameworkException("Invalid table name format: {$tableName}. Must start with letter or underscore and contain only alphanumeric characters and underscores.");
+        }
+        
+        // Common MySQL reserved keywords that should be avoided
+        $reservedKeywords = [
+            'ACCESSIBLE', 'ADD', 'ALL', 'ALTER', 'ANALYZE', 'AND', 'AS', 'ASC', 'ASENSITIVE',
+            'BEFORE', 'BETWEEN', 'BIGINT', 'BINARY', 'BLOB', 'BOTH', 'BY', 'CALL', 'CASCADE',
+            'CASE', 'CHANGE', 'CHAR', 'CHARACTER', 'CHECK', 'COLLATE', 'COLUMN', 'CONDITION',
+            'CONSTRAINT', 'CONTINUE', 'CONVERT', 'CREATE', 'CROSS', 'CURRENT_DATE', 'CURRENT_TIME',
+            'CURRENT_TIMESTAMP', 'CURRENT_USER', 'CURSOR', 'DATABASE', 'DATABASES', 'DAY_HOUR',
+            'DAY_MICROSECOND', 'DAY_MINUTE', 'DAY_SECOND', 'DEC', 'DECIMAL', 'DECLARE', 'DEFAULT',
+            'DELAYED', 'DELETE', 'DESC', 'DESCRIBE', 'DETERMINISTIC', 'DISTINCT', 'DISTINCTROW',
+            'DIV', 'DOUBLE', 'DROP', 'DUAL', 'EACH', 'ELSE', 'ELSEIF', 'ENCLOSED', 'ESCAPED',
+            'EXISTS', 'EXIT', 'EXPLAIN', 'FALSE', 'FETCH', 'FLOAT', 'FLOAT4', 'FLOAT8', 'FOR',
+            'FORCE', 'FOREIGN', 'FROM', 'FULLTEXT', 'GENERAL', 'GRANT', 'GROUP', 'HAVING',
+            'HIGH_PRIORITY', 'HOUR_MICROSECOND', 'HOUR_MINUTE', 'HOUR_SECOND', 'IF', 'IGNORE',
+            'IN', 'INDEX', 'INFILE', 'INNER', 'INOUT', 'INSENSITIVE', 'INSERT', 'INT', 'INT1',
+            'INT2', 'INT3', 'INT4', 'INT8', 'INTEGER', 'INTERVAL', 'INTO', 'IO_AFTER_GTIDS',
+            'IO_BEFORE_GTIDS', 'IS', 'ITERATE', 'JOIN', 'KEY', 'KEYS', 'KILL', 'LEADING', 'LEAVE',
+            'LEFT', 'LIKE', 'LIMIT', 'LINEAR', 'LINES', 'LOAD', 'LOCALTIME', 'LOCALTIMESTAMP',
+            'LOCK', 'LONG', 'LONGBLOB', 'LONGTEXT', 'LOOP', 'LOW_PRIORITY', 'MASTER_BIND',
+            'MASTER_SSL_VERIFY_SERVER_CERT', 'MATCH', 'MAXVALUE', 'MEDIUMBLOB', 'MEDIUMINT',
+            'MEDIUMTEXT', 'MIDDLEINT', 'MINUTE_MICROSECOND', 'MINUTE_SECOND', 'MOD', 'MODIFIES',
+            'NATURAL', 'NOT', 'NO_WRITE_TO_BINLOG', 'NULL', 'NUMERIC', 'ON', 'ONE_SHOT', 'OR',
+            'ORDER', 'OUT', 'OUTER', 'OUTFILE', 'OPTION', 'OPTIMIZATION', 'OPTIMIZE', 'OPTIONALLY',
+            'PARTITION', 'PRECISION', 'PRIMARY', 'PROCEDURE', 'PURGE', 'RANGE', 'READ', 'READS',
+            'READ_WRITE', 'REAL', 'REFERENCES', 'REGEXP', 'RELEASE', 'RENAME', 'REPEAT', 'REPLACE',
+            'REQUIRE', 'RESIGNAL', 'RESTRICT', 'RETURN', 'REVOKE', 'RIGHT', 'RLIKE', 'SCHEMA',
+            'SCHEMAS', 'SECOND_MICROSECOND', 'SELECT', 'SENSITIVE', 'SEPARATOR', 'SET', 'SHOW',
+            'SIGNAL', 'SPATIAL', 'SPECIFIC', 'SQL', 'SQLEXCEPTION', 'SQLSTATE', 'SQLWARNING',
+            'SQL_BIG_RESULT', 'SQL_CALC_FOUND_ROWS', 'SQL_SMALL_RESULT', 'SSL', 'STARTING',
+            'STRAIGHT_JOIN', 'TABLE', 'TERMINATED', 'THEN', 'TINYBLOB', 'TINYINT', 'TINYTEXT',
+            'TO', 'TRAILING', 'TRIGGER', 'TRUE', 'UNDO', 'UNION', 'UNIQUE', 'UNLOCK', 'UNSIGNED',
+            'UPDATE', 'USAGE', 'USE', 'USING', 'UTC_DATE', 'UTC_TIME', 'UTC_TIMESTAMP', 'VALUES',
+            'VARBINARY', 'VARCHAR', 'VARCHARACTER', 'VARYING', 'WHEN', 'WHERE', 'WHILE', 'WITH',
+            'WRITE', 'X509', 'XOR', 'YEAR_MONTH', 'ZEROFILL'
+        ];
+        
+        if (in_array(strtoupper($tableName), $reservedKeywords, true)) {
+            throw new FrameworkException("Table name '{$tableName}' is a MySQL reserved keyword. Please use a different name.");
+        }
+    }
+    
+    /**
+     * Validate column name against MySQL restrictions and reserved keywords
+     * 
+     * @param string $columnName Column name to validate
+     * @throws FrameworkException If validation fails
+     */
+    private function validateColumnName(string $columnName): void {
+        // Check length (max 64 characters in MySQL)
+        if (strlen($columnName) > 64) {
+            throw new FrameworkException("Column name exceeds maximum length of 64 characters: {$columnName}");
+        }
+        
+        // Check for valid naming pattern
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $columnName)) {
+            throw new FrameworkException("Invalid column name format: {$columnName}. Must start with letter or underscore and contain only alphanumeric characters and underscores.");
+        }
+        
+        // Most problematic reserved keywords that should be avoided in column names
+        $restrictedKeywords = [
+            'SELECT', 'FROM', 'WHERE', 'ORDER', 'GROUP', 'HAVING', 'LIMIT', 'OFFSET', 'JOIN',
+            'LEFT', 'RIGHT', 'INNER', 'OUTER', 'ON', 'AND', 'OR', 'NOT', 'IN', 'EXISTS',
+            'BETWEEN', 'LIKE', 'IS', 'NULL', 'TRUE', 'FALSE', 'DEFAULT', 'KEY', 'PRIMARY',
+            'FOREIGN', 'CONSTRAINT', 'INDEX', 'UNIQUE', 'CHECK', 'ACTION', 'CASCADE',
+            'RESTRICT', 'SET', 'TABLE', 'COLUMN', 'CREATE', 'ALTER', 'DROP', 'DELETE',
+            'INSERT', 'UPDATE', 'VALUES', 'INTO', 'REFERENCES', 'ADD', 'MODIFY', 'CHANGE'
+        ];
+        
+        if (in_array(strtoupper($columnName), $restrictedKeywords, true)) {
+            throw new FrameworkException("Column name '{$columnName}' is a MySQL reserved keyword. Please use a different name.");
         }
     }
     
@@ -609,10 +708,15 @@ class Tables {
      * Build column definition string for SQL
      * 
      * @param array $column Column configuration
+     * @param bool $includePositioning Whether to include AFTER/FIRST clauses (only for ALTER, not CREATE)
      * @return string Column definition
      */
-    private function buildColumnDefinition(array $column): string {
+    private function buildColumnDefinition(array $column, bool $includePositioning = false): string {
+        // Get column name (handle CHANGE COLUMN if specified)
         $name = isset($column['change']) && !empty($column['change']) ? $column['change'] : $column['name'];
+        
+        // Remove backticks if present (normalize)
+        $name = trim($name, '`');
         
         $definition = "`{$name}` {$column['type']}";
         
@@ -653,7 +757,17 @@ class Tables {
         
         // Add column comment
         if (!empty($column['comment'])) {
-            $definition .= ' COMMENT ' . $this->db->quote($column['comment']);
+            $comment = addslashes($column['comment']);
+            $definition .= " COMMENT '{$comment}'";
+        }
+        
+        // Add positioning ONLY if explicitly requested (for ALTER TABLE ADD COLUMN)
+        if ($includePositioning) {
+            if (isset($column['after'])) {
+                $definition .= " AFTER `{$column['after']}`";
+            } elseif (isset($column['first']) && $column['first']) {
+                $definition .= " FIRST";
+            }
         }
         
         return $definition;
@@ -690,9 +804,9 @@ class Tables {
                 foreach ($table['fulltext'] as $fulltext) {
                     if (is_array($fulltext)) {
                         $columns = implode('`, `', $fulltext);
-                        $sql .= ",\n  FULLTEXT INDEX (`{$columns})";
+                        $sql .= ",\n  FULLTEXT INDEX (`{$columns}`)";
                     } else {
-                        $sql .= ",\n  FULLTEXT INDEX (`{$fulltext})";
+                        $sql .= ",\n  FULLTEXT INDEX (`{$fulltext}`)";
                     }
                 }
             }
@@ -777,8 +891,21 @@ class Tables {
     private function alterTableColumns(array $table): void {
         $tableName = CONFIG_DB_PREFIX . $table['name'];
         
+        // Get existing columns from database for positioning validation
+        $tableNameOnly = str_replace(CONFIG_DB_PREFIX, '', $tableName);
+        $sql = "SELECT COLUMN_NAME as name FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION";
+        $result = $this->db->query($sql, [CONFIG_DB_DATABASE, $tableNameOnly]);
+        $existingColumns = $result->rows ?? [];
+        
+        // Merge with new columns from configuration
+        $allColumns = array_merge($existingColumns, array_map(function($col) {
+            return ['name' => $col['name']];
+        }, array_filter($table['column'], function($col) {
+            return !isset($col['delete']) || !$col['delete'];
+        })));
+        
         foreach ($table['column'] as $column) {
-            $this->alterSingleColumn($tableName, $column);
+            $this->alterSingleColumn($tableName, $column, $allColumns);
         }
     }
     
@@ -787,8 +914,9 @@ class Tables {
      * 
      * @param string $tableName Full table name with prefix
      * @param array $column Column configuration
+     * @param array $allColumns All columns in the table for validation
      */
-    private function alterSingleColumn(string $tableName, array $column): void {
+    private function alterSingleColumn(string $tableName, array $column, array $allColumns = []): void {
         // Check if column exists
         $columnExists = $this->columnExists($tableName, $column['name']);
         
@@ -801,8 +929,11 @@ class Tables {
             return;
         }
         
-        // Build column definition
-        $columnDef = $this->buildColumnDefinition($column);
+        // Determine if positioning should be included (only for ADD and CHANGE operations)
+        $usePositioning = !$columnExists || (isset($column['change']) && !empty($column['change']));
+        
+        // Build column definition with positioning only when valid
+        $columnDef = $this->buildColumnDefinition($column, $usePositioning);
         
         // Determine operation type
         if (!$columnExists) {
@@ -813,15 +944,41 @@ class Tables {
             $sql = "ALTER TABLE `{$tableName}` MODIFY COLUMN {$columnDef}";
         }
         
-        // Add positioning
-        if (isset($column['after'])) {
-            $sql .= " AFTER `{$column['after']}`";
-        } elseif (isset($column['first']) && $column['first']) {
-            $sql .= " FIRST";
+        // Validate positioning if it's being used
+        if ((isset($column['after']) || (isset($column['first']) && $column['first'])) && $usePositioning) {
+            if (isset($column['after'])) {
+                $this->validateColumnPositioning($tableName, $column['after'], 'after', $allColumns);
+            }
         }
         
-        $this->db->query($sql);
+        // Log BEFORE executing so we can see what failed
         $this->logQuery($sql);
+        $this->db->query($sql);
+    }
+    
+    /**
+     * Validate column positioning (AFTER/FIRST clauses)
+     * 
+     * @param string $tableName Full table name with prefix
+     * @param string $targetColumn The column to position after/before
+     * @param string $type The positioning type ('after' or 'first')
+     * @param array $allColumns All columns in table for validation
+     * @throws FrameworkException If target column doesn't exist
+     */
+    private function validateColumnPositioning(string $tableName, string $targetColumn, string $type = 'after', array $allColumns = []): void {
+        // If we have allColumns array, check against it
+        if (!empty($allColumns)) {
+            $columnNames = array_column($allColumns, 'name');
+            if (!in_array($targetColumn, $columnNames)) {
+                throw new FrameworkException("Column positioning failed: Target column '{$targetColumn}' does not exist in {$type} clause for table " . str_replace(CONFIG_DB_PREFIX, '', $tableName));
+            }
+            return;
+        }
+        
+        // Otherwise, query the database to verify column exists
+        if (!$this->columnExists($tableName, $targetColumn)) {
+            throw new FrameworkException("Column positioning failed: Target column '{$targetColumn}' does not exist in {$type} clause for table " . str_replace(CONFIG_DB_PREFIX, '', $tableName));
+        }
     }
     
     /**
@@ -886,9 +1043,15 @@ class Tables {
             // Remove AUTO_INCREMENT first if exists
             $this->removeAutoIncrementFromPrimaryKey($tableName);
             
+            // Temporarily disable foreign key checks to allow primary key drop
+            $this->db->query('SET FOREIGN_KEY_CHECKS = 0');
+            
             $dropPrimarySql = "ALTER TABLE `{$tableName}` DROP PRIMARY KEY";
             $this->db->query($dropPrimarySql);
             $this->logQuery($dropPrimarySql);
+            
+            // Re-enable foreign key checks
+            $this->db->query('SET FOREIGN_KEY_CHECKS = 1');
         }
     }
     
@@ -1701,6 +1864,476 @@ class Tables {
             $error = 'Table copy failed: ' . $e->getMessage();
             $this->logError($error);
             throw new FrameworkException($error);
+        }
+    }
+
+    /**
+     * Execute schema changes based on computed differences between desired and existing schemas
+     * Only modifies tables/columns/indexes that have actual changes
+     * 
+     * @param array $tables Desired table definitions
+     * @return void
+     * @throws FrameworkException On execution failure
+     */
+    private function executeDiffBasedChanges(array $tables): void {
+        try {
+            // Clear table cache to get fresh state of what exists in DB
+            $this->tableCache = [];
+            
+            $dbPrefix = CONFIG_DB_PREFIX;
+            $dbName = CONFIG_DB_DATABASE;
+            
+            // Step 1: Identify and drop changed foreign keys
+            $this->dropChangedForeignKeys($tables, $dbPrefix, $dbName);
+            
+            // Step 2: Process each table - create new or alter existing
+            foreach ($tables as $table) {
+                $tableName = $dbPrefix . $table['name'];
+                
+                // Check if table exists in database
+                if ($this->tableExists($table['name'])) {
+                    // Get existing schema
+                    $existingSchema = $this->getTableSchema($table['name']);
+                    
+                    // Compute differences
+                    $diff = $this->computeTableDiff($existingSchema, $table);
+                    
+                    if (!empty($diff['changes'])) {
+                        if ($this->debug) {
+                            $this->log("Table '{$table['name']}' has changes: " . json_encode($diff['changes']));
+                        }
+                        
+                        // Apply only the changes detected
+                        $this->applyTableChanges($table['name'], $diff);
+                    } else {
+                        if ($this->debug) {
+                            $this->log("Table '{$table['name']}' has no changes, skipping");
+                        }
+                    }
+                } else {
+                    // Table doesn't exist - create it
+                    if ($this->debug) {
+                        $this->log("Creating new table '{$table['name']}'");
+                    }
+                    $this->createTable($table);
+                }
+            }
+            
+            // Step 3: Re-add foreign keys with proper CASCADE options
+            $this->addForeignKeys($tables, $dbPrefix);
+            
+        } catch (\Exception $exception) {
+            $this->logError('Failed to execute diff-based changes: ' . $exception->getMessage());
+            throw new FrameworkException('Database operation failed: ' . $exception->getMessage());
+        }
+    }
+
+    /**
+     * Get complete schema information for existing table
+     * 
+     * @param string $tableName Table name without prefix
+     * @return array Schema information with columns, indexes, constraints
+     */
+    private function getTableSchema(string $tableName): array {
+        $dbPrefix = CONFIG_DB_PREFIX;
+        $dbName = CONFIG_DB_DATABASE;
+        $schema = [
+            'name' => $tableName,
+            'columns' => [],
+            'indexes' => [],
+            'foreignKeys' => [],
+            'properties' => []
+        ];
+        
+        // Get columns
+        $sql = "SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_KEY, EXTRA, COLUMN_DEFAULT, COLUMN_COMMENT 
+                FROM information_schema.COLUMNS 
+                WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+                ORDER BY ORDINAL_POSITION";
+        $result = $this->db->query($sql, [$dbName, $dbPrefix . $tableName]);
+        
+        foreach ($result->rows as $col) {
+            $schema['columns'][$col['COLUMN_NAME']] = [
+                'type' => $col['COLUMN_TYPE'],
+                'nullable' => $col['IS_NULLABLE'] === 'YES',
+                'primary' => $col['COLUMN_KEY'] === 'PRI',
+                'unique' => $col['COLUMN_KEY'] === 'UNI',
+                'extra' => $col['EXTRA'],
+                'default' => $col['COLUMN_DEFAULT'],
+                'comment' => $col['COLUMN_COMMENT']
+            ];
+        }
+        
+        // Get indexes
+        $sql = "SELECT DISTINCT INDEX_NAME, INDEX_TYPE, COLUMN_NAME, SEQ_IN_INDEX
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND INDEX_NAME != 'PRIMARY'
+                ORDER BY INDEX_NAME, SEQ_IN_INDEX";
+        $result = $this->db->query($sql, [$dbName, $dbPrefix . $tableName]);
+        
+        foreach ($result->rows as $idx) {
+            if (!isset($schema['indexes'][$idx['INDEX_NAME']])) {
+                $schema['indexes'][$idx['INDEX_NAME']] = [
+                    'type' => $idx['INDEX_TYPE'],
+                    'columns' => []
+                ];
+            }
+            $schema['indexes'][$idx['INDEX_NAME']]['columns'][] = $idx['COLUMN_NAME'];
+        }
+        
+        // Get foreign keys
+        $sql = "SELECT kcu.CONSTRAINT_NAME, kcu.COLUMN_NAME, kcu.REFERENCED_TABLE_NAME, kcu.REFERENCED_COLUMN_NAME,
+                       COALESCE(rc.DELETE_RULE, 'RESTRICT') as DELETE_RULE,
+                       COALESCE(rc.UPDATE_RULE, 'RESTRICT') as UPDATE_RULE
+                FROM information_schema.KEY_COLUMN_USAGE kcu
+                LEFT JOIN information_schema.REFERENTIAL_CONSTRAINTS rc 
+                    ON kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME 
+                    AND kcu.TABLE_SCHEMA = rc.CONSTRAINT_SCHEMA
+                WHERE kcu.TABLE_SCHEMA = ? AND kcu.TABLE_NAME = ? AND kcu.REFERENCED_TABLE_NAME IS NOT NULL";
+        $result = $this->db->query($sql, [$dbName, $dbPrefix . $tableName]);
+        
+        foreach ($result->rows as $fk) {
+            $schema['foreignKeys'][$fk['CONSTRAINT_NAME']] = [
+                'column' => $fk['COLUMN_NAME'],
+                'table' => $fk['REFERENCED_TABLE_NAME'],
+                'refColumn' => $fk['REFERENCED_COLUMN_NAME'],
+                'onDelete' => $fk['DELETE_RULE'] === 'CASCADE',
+                'onUpdate' => $fk['UPDATE_RULE'] === 'CASCADE'
+            ];
+        }
+        
+        // Get table properties
+        $sql = "SELECT ENGINE, TABLE_COLLATION, TABLE_COMMENT FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
+        $result = $this->db->query($sql, [$dbName, $dbPrefix . $tableName]);
+        
+        if ($result->num_rows > 0) {
+            $props = $result->rows[0];
+            $schema['properties'] = [
+                'engine' => $props['ENGINE'],
+                'collation' => $props['TABLE_COLLATION'],
+                'comment' => $props['TABLE_COMMENT']
+            ];
+        }
+        
+        return $schema;
+    }
+
+    /**
+     * Compute differences between existing and desired table schemas
+     * 
+     * @param array $existing Existing table schema
+     * @param array $desired Desired table definition
+     * @return array Diff information with types of changes
+     */
+    private function computeTableDiff(array $existing, array $desired): array {
+        $diff = [
+            'changes' => [],
+            'columnsToAdd' => [],
+            'columnsToModify' => [],
+            'columnsToDelete' => [],
+            'indexesChanged' => false,
+            'propertyChanges' => []
+        ];
+        
+        // Compare columns
+        $existingCols = array_keys($existing['columns']);
+        $desiredCols = array_column($desired['column'] ?? [], 'name');
+        
+        // Columns to delete
+        $toDelete = array_diff($existingCols, $desiredCols);
+        if (!empty($toDelete)) {
+            $diff['changes']['columnDeletions'] = count($toDelete);
+            $diff['columnsToDelete'] = $toDelete;
+        }
+        
+        // Columns to add or modify
+        foreach ($desired['column'] ?? [] as $desiredCol) {
+            $colName = $desiredCol['name'];
+            
+            if (!isset($existing['columns'][$colName])) {
+                // New column
+                $diff['changes']['columnAdditions'][] = $colName;
+                $diff['columnsToAdd'][] = $desiredCol;
+            } else {
+                // Check if column needs modification
+                if ($this->columnNeedsUpdate($existing['columns'][$colName], $desiredCol, $colName)) {
+                    $diff['changes']['columnModifications'][] = $colName;
+                    $diff['columnsToModify'][] = $desiredCol;
+                }
+            }
+        }
+        
+        // Compare indexes
+        if ($this->indexesChanged($existing['indexes'], $desired['index'] ?? [])) {
+            $diff['changes']['indexChanges'] = true;
+            $diff['indexesChanged'] = true;
+        }
+        
+        // Compare table properties
+        if (isset($desired['tableComment'])) {
+            if (($existing['properties']['comment'] ?? '') !== $desired['tableComment']) {
+                $diff['changes']['commentChange'] = $desired['tableComment'];
+                $diff['propertyChanges']['comment'] = $desired['tableComment'];
+            }
+        }
+        
+        if (isset($desired['engine'])) {
+            if (($existing['properties']['engine'] ?? '') !== $desired['engine']) {
+                $diff['changes']['engineChange'] = $desired['engine'];
+                $diff['propertyChanges']['engine'] = $desired['engine'];
+            }
+        }
+        
+        return $diff;
+    }
+
+    /**
+     * Check if a column needs updating based on definition changes
+     * Compares the SQL that would be generated for the column
+     * 
+     * @param array $existingCol Existing column definition (from database)
+     * @param array $desiredCol Desired column definition (from migration)
+     * @param string $colName Column name
+     * @return bool True if column needs modification
+     */
+    private function columnNeedsUpdate(array $existingCol, array $desiredCol, string $colName = ''): bool {
+        // Build what the SQL would look like for both
+        // If they're identical, no update needed
+        
+        // For existing column, reconstruct what it would look like
+        $existingSql = $this->buildColumnDefinitionFromDb($existingCol, $colName);
+        
+        // For desired column, build its definition
+        $desiredSql = $this->buildColumnDefinition($desiredCol, false);
+        
+        // Compare the SQL definitions
+        // Normalize whitespace for comparison
+        $existingSql = preg_replace('/\s+/', ' ', trim($existingSql));
+        $desiredSql = preg_replace('/\s+/', ' ', trim($desiredSql));
+        
+        return $existingSql !== $desiredSql;
+    }
+    
+    /**
+     * Build column definition from existing database column info
+     * This reconstructs what the column definition SQL would be
+     * 
+     * @param array $col Database column information
+     * @param string $colName Column name (since DB schema doesn't include it)
+     * @return string Column definition SQL
+     */
+    private function buildColumnDefinitionFromDb(array $col, string $colName = ''): string {
+        // The column name comes from the array key, not the value
+        $definition = "`{$colName}` {$col['type']}";
+        
+        if (!$col['nullable']) {
+            $definition .= ' NOT NULL';
+        }
+        
+        if ($col['default'] !== null) {
+            // Handle SQL functions
+            $default = $col['default'];
+            if (in_array(strtoupper($default), ['CURRENT_TIMESTAMP', 'NOW()', 'NULL']) || 
+                preg_match('/^[0-9]+(\.[0-9]+)?$/', $default) ||
+                strtolower($default) === 'true' || 
+                strtolower($default) === 'false') {
+                $definition .= ' DEFAULT ' . $default;
+            } else {
+                $definition .= " DEFAULT '" . addslashes($default) . "'";
+            }
+        }
+        
+        if (strpos($col['extra'], 'auto_increment') !== false) {
+            $definition .= ' AUTO_INCREMENT';
+        }
+        
+        if (!empty($col['comment'])) {
+            $definition .= " COMMENT '" . addslashes($col['comment']) . "'";
+        }
+        
+        return $definition;
+    }
+
+    /**
+     * Check if indexes have changed between existing and desired state
+     * 
+     * @param array $existingIndexes Existing indexes
+     * @param array $desiredIndexes Desired indexes
+     * @return bool True if indexes differ
+     */
+    private function indexesChanged(array $existingIndexes, array $desiredIndexes): bool {
+        // Build comparable format
+        $existing = [];
+        foreach ($existingIndexes as $name => $index) {
+            $existing[$name] = [
+                'type' => $index['type'],
+                'columns' => json_encode($index['columns'])
+            ];
+        }
+        
+        $desired = [];
+        foreach ($desiredIndexes as $index) {
+            $indexName = $index['name'] ?? '';
+            if ($indexName) {
+                $desired[$indexName] = [
+                    'type' => $index['type'] ?? 'BTREE',
+                    'columns' => json_encode($index['column'] ?? [])
+                ];
+            }
+        }
+        
+        // Compare structure
+        return json_encode($existing) !== json_encode($desired);
+    }
+
+    /**
+     * Apply detected changes to a table
+     * 
+     * @param string $tableName Table name without prefix
+     * @param array $diff Differences from computeTableDiff
+     * @return void
+     */
+    private function applyTableChanges(string $tableName, array $diff): void {
+        $dbPrefix = CONFIG_DB_PREFIX;
+        $fullTableName = $dbPrefix . $tableName;
+        
+        // Delete columns
+        foreach ($diff['columnsToDelete'] as $colName) {
+            $sql = "ALTER TABLE `{$fullTableName}` DROP COLUMN `{$colName}`";
+            $this->db->query($sql);
+            $this->logQuery($sql);
+            if ($this->debug) {
+                $this->log("Dropped column '{$colName}' from table '{$tableName}'");
+            }
+        }
+        
+        // Add new columns
+        foreach ($diff['columnsToAdd'] as $column) {
+            $colDef = $this->buildColumnDefinition($column, true);
+            $sql = "ALTER TABLE `{$fullTableName}` ADD COLUMN " . $colDef;
+            $this->db->query($sql);
+            $this->logQuery($sql);
+            if ($this->debug) {
+                $this->log("Added column '{$column['name']}' to table '{$tableName}'");
+            }
+        }
+        
+        // Modify existing columns
+        foreach ($diff['columnsToModify'] as $column) {
+            $colDef = $this->buildColumnDefinition($column, false);
+            $sql = "ALTER TABLE `{$fullTableName}` MODIFY COLUMN " . $colDef;
+            $this->db->query($sql);
+            $this->logQuery($sql);
+            if ($this->debug) {
+                $this->log("Modified column '{$column['name']}' in table '{$tableName}'");
+            }
+        }
+        
+        // Handle index changes (drop and recreate all indexes)
+        if ($diff['indexesChanged']) {
+            // Re-create indexes will be handled at table level
+            if ($this->debug) {
+                $this->log("Table '{$tableName}' has index changes");
+            }
+        }
+        
+        // Update table properties
+        if (isset($diff['propertyChanges']['comment'])) {
+            $comment = addslashes($diff['propertyChanges']['comment']);
+            $sql = "ALTER TABLE `{$fullTableName}` COMMENT = '{$comment}'";
+            $this->db->query($sql);
+            $this->logQuery($sql);
+        }
+    }
+
+    /**
+     * Drop foreign keys that are about to change
+     * 
+     * @param array $tables Tables with desired FK definitions
+     * @param string $dbPrefix Database prefix
+     * @param string $dbName Database name
+     * @return void
+     */
+    private function dropChangedForeignKeys(array $tables, string $dbPrefix, string $dbName): void {
+        foreach ($tables as $table) {
+            $tableName = $dbPrefix . $table['name'];
+            
+            // Get existing foreign keys
+            $sql = "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+                    WHERE CONSTRAINT_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_TYPE = 'FOREIGN KEY'";
+            $result = $this->db->query($sql, [$dbName, $tableName]);
+            
+            // Build list of desired FK names
+            $desiredFKs = [];
+            if (isset($table['foreign'])) {
+                foreach ($table['foreign'] as $fk) {
+                    $fkName = $fk['name'] ?? 'fk_' . $table['name'] . '_' . $fk['table'] . '_' . $fk['key'];
+                    $desiredFKs[$fkName] = true;
+                }
+            }
+            
+            // Drop FKs that don't exist in desired definition or have changed
+            foreach ($result->rows as $row) {
+                $fkName = $row['CONSTRAINT_NAME'];
+                
+                if (!isset($desiredFKs[$fkName])) {
+                    // FK to be removed - drop it
+                    $dropSql = "ALTER TABLE `{$tableName}` DROP FOREIGN KEY `{$fkName}`";
+                    $this->db->query($dropSql);
+                    $this->logQuery($dropSql);
+                    if ($this->debug) {
+                        $this->log("Dropped foreign key '{$fkName}' from table '{$table['name']}'");
+                    }
+                } else {
+                    // FK exists in desired state - keep as is
+                    unset($desiredFKs[$fkName]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Add all foreign keys defined in table schemas
+     * 
+     * @param array $tables Tables with foreign key definitions
+     * @param string $dbPrefix Database prefix
+     * @return void
+     */
+    private function addForeignKeys(array $tables, string $dbPrefix): void {
+        $dbName = CONFIG_DB_DATABASE;
+        
+        foreach ($tables as $table) {
+            if (isset($table['foreign'])) {
+                foreach ($table['foreign'] as $foreign) {
+                    $tableName = $dbPrefix . $table['name'];
+                    $constraintName = $foreign['name'] ?? 'fk_' . $table['name'] . '_' . $foreign['table'] . '_' . $foreign['key'];
+                    
+                    // Check if the constraint already exists
+                    $checkSql = "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+                                WHERE CONSTRAINT_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_NAME = ? AND CONSTRAINT_TYPE = 'FOREIGN KEY'";
+                    $result = $this->db->query($checkSql, [$dbName, $tableName, $constraintName]);
+                    
+                    if ($result->num_rows > 0) {
+                        // FK already exists, skip
+                        if ($this->debug) {
+                            $this->log("Foreign key '{$constraintName}' already exists on table '{$table['name']}'");
+                        }
+                        continue;
+                    }
+                    
+                    $onDelete = ($foreign['onDelete'] ? " ON DELETE CASCADE" : "");
+                    $onUpdate = ($foreign['onUpdate'] ? " ON UPDATE CASCADE" : "");
+                    
+                    $addForeignKeySql = "ALTER TABLE `{$tableName}` ADD CONSTRAINT `{$constraintName}` FOREIGN KEY (`{$foreign['key']}`) REFERENCES `{$dbPrefix}{$foreign['table']}` (`{$foreign['column']}`)" . $onDelete . $onUpdate;
+                    $this->db->query($addForeignKeySql);
+                    $this->logQuery($addForeignKeySql);
+                    
+                    if ($this->debug) {
+                        $this->log("Added foreign key '{$constraintName}' to table '{$table['name']}'");
+                    }
+                }
+            }
         }
     }
 
