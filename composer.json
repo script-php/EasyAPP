@@ -3,6 +3,7 @@
     "description": "EasyAPP is a different type of Framework. EasyAPP aims to help you in the easy development of any type of website, without consuming resources in vain.",
     "type": "project",
     "homepage": "https://script-php.ro/",
+    "license": "GPL-3.0",
     "authors": [
         {
             "name": "YoYo",
